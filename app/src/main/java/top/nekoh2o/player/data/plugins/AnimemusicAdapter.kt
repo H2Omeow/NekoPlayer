@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.plugins
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -13,14 +15,14 @@ import java.io.IOException
 class AnimemusicAdapter : PluginAdapter {
     suspend fun request(source: PluginSource, route: String, params: Map<String, String>): JsonObject {
         val base = source.plugin.descriptor.string("api")
-        require(validPluginUrl(base)) { "音源 api 地址无效" }
+        require(validPluginUrl(base)) { tr("音源 api 地址无效") }
         val parsed = base.toHttpUrl()
         val builder = parsed.newBuilder()
         if (!parsed.encodedPath.endsWith("index.php")) builder.encodedPath(parsed.encodedPath.trimEnd('/') + "/index.php")
         builder.setQueryParameter("route", route)
         params.forEach { (key, value) -> builder.setQueryParameter(key, value) }
         val root = Json.parseToJsonElement(PluginHttp.get(builder.build().toString())).jsonObject
-        if (root.string("code") != "200" && root["ok"] != JsonPrimitive(true)) throw IOException("音源接口请求失败（${root.string("code").toIntOrNull() ?: 0}）")
+        if (root.string("code") != "200" && root["ok"] != JsonPrimitive(true)) throw IOException(tr("音源接口请求失败（{code}）", "code" to (root.string("code").toIntOrNull() ?: 0)))
         return root
     }
 

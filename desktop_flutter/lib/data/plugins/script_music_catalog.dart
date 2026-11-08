@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import '../../domain/music_plugin.dart';
 import '../../domain/online_music.dart';
 import '../../domain/library.dart' show encodeLyrics;
@@ -64,7 +65,7 @@ class ScriptMusicCatalog {
     String preferred, {
     bool exact = false,
   }) async {
-    if (source.lx) throw const MusicSearchException('洛雪音源需要搭配同平台搜索结果使用。');
+    if (source.lx) throw       MusicSearchException(tr('洛雪音源需要搭配同平台搜索结果使用。'));
     final choices = qualities(source, song);
     var quality = preferred;
     if (!exact && !choices.any((item) => item.id == quality)) {
@@ -96,11 +97,11 @@ class ScriptMusicCatalog {
       await runtime.invoke(source, 'getMediaSource', [_item(song), quality]),
     );
     if (result['ekey'] != null || result['cek'] != null) {
-      throw const AudioUnavailableException('该插件返回加密音频，当前尚不支持解密播放。');
+      throw       AudioUnavailableException(tr('该插件返回加密音频，当前尚不支持解密播放。'));
     }
     final actual = '${result['quality'] ?? quality}';
     if (exact && actual != quality) {
-      throw const AudioUnavailableException('该音质不可用，插件返回了其他音质。');
+      throw       AudioUnavailableException(tr('该音质不可用，插件返回了其他音质。'));
     }
     return _audio(result, actual, musicFree: source.format == 'musicfree');
   }
@@ -114,7 +115,7 @@ class ScriptMusicCatalog {
   }) async {
     final descriptor = _object(source.lxSources[platform]);
     if (!(descriptor['actions'] as List? ?? []).contains('musicUrl')) {
-      throw const AudioUnavailableException('洛雪音源不支持该平台播放解析。');
+      throw       AudioUnavailableException(tr('洛雪音源不支持该平台播放解析。'));
     }
     var quality =
         const {
@@ -131,7 +132,7 @@ class ScriptMusicCatalog {
     final supported = descriptor['qualitys'] as List? ?? [];
     if (supported.isNotEmpty && !supported.contains(quality)) {
       if (exact) {
-        throw const AudioUnavailableException('洛雪音源不支持该音质。');
+        throw       AudioUnavailableException(tr('洛雪音源不支持该音质。'));
       }
       final ranked = supported.whereType<String>().toList()
         ..sort(
@@ -256,21 +257,21 @@ class ScriptMusicCatalog {
         !const {'https', 'http'}.contains(uri.scheme) ||
         uri.host.isEmpty ||
         uri.userInfo.isNotEmpty) {
-      throw const AudioUnavailableException('插件未返回有效的音频地址。');
+      throw       AudioUnavailableException(tr('插件未返回有效的音频地址。'));
     }
     final headers = <String, String>{};
     for (final entry in _object(result['headers']).entries) {
       final value = '${entry.value}';
       if (!RegExp(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$").hasMatch(entry.key) ||
           value.contains(RegExp(r'[\r\n]'))) {
-        throw const FormatException('插件返回了无效媒体请求头。');
+        throw       FormatException(tr('插件返回了无效媒体请求头。'));
       }
       headers[entry.key] = value;
     }
     if (result['userAgent'] is String) {
       final agent = result['userAgent'] as String;
       if (agent.contains(RegExp(r'[\r\n]'))) {
-        throw const FormatException('插件返回了无效 User-Agent。');
+        throw       FormatException(tr('插件返回了无效 User-Agent。'));
       }
       headers['User-Agent'] = agent;
     }

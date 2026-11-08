@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -198,13 +199,13 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
 
   String _token() {
     final token = accounts.siteToken;
-    if (token.isEmpty) throw const MusicSearchException('请先登录本站账号。');
+    if (token.isEmpty) throw       MusicSearchException(tr('请先登录本站账号。'));
     return token;
   }
 
   void _checkToken(String token) {
     if (_disposed || token != accounts.siteToken) {
-      throw const MusicSearchException('本站账号已切换，已取消同步。');
+      throw       MusicSearchException(tr('本站账号已切换，已取消同步。'));
     }
   }
 
@@ -270,14 +271,14 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   String _describe(Object failure) => failure is SiteConflictException
-      ? '云端数据已被其他设备更新，请刷新云端状态后手动选择方向。'
+      ? tr('云端数据已被其他设备更新，请刷新云端状态后手动选择方向。')
       : failure is MusicSearchException
       ? failure.message
       : failure is FormatException
       ? failure.message
       : failure is StateError
       ? failure.message
-      : '同步未完成，请检查网络后重试。';
+      : tr('同步未完成，请检查网络后重试。');
 
   Future<void> _run(Future<void> Function(String token) work) async {
     if (busy || _disposed) return;
@@ -289,7 +290,7 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final token = _token();
       if (!player.storageReadable) {
-        throw const MusicSearchException('本地音乐库读取失败，已暂停云同步以保护数据。');
+        throw       MusicSearchException(tr('本地音乐库读取失败，已暂停云同步以保护数据。'));
       }
       await _ensureUser(token);
       await work(token);
@@ -369,7 +370,7 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
             uploads.add(section);
           case SyncAction.none:
             if (status == SyncStatus.conflict) {
-              results.add(SectionResult(section, false, '两端都有改动，请在云端同步页选择方向。'));
+              results.add(SectionResult(section, false, tr('两端都有改动，请在云端同步页选择方向。')));
             }
         }
       }
@@ -422,7 +423,7 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
         remote: merge ? snapshot.data : null,
       );
       if (credentials == null) {
-        results.add(SectionResult(section, false, '本机没有登录凭据，未上传（避免清空云端）。'));
+        results.add(SectionResult(section, false, tr('本机没有登录凭据，未上传（避免清空云端）。')));
       } else {
         payload[section.key] = credentials;
         counts[section] = CloudCredentials.localCount(accounts);
@@ -441,7 +442,7 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
       _applyMeta(conflict.meta);
       results.addAll([
         for (final section in counts.keys)
-          SectionResult(section, false, '云端刚被其他设备更新，未覆盖；请手动选择方向。'),
+          SectionResult(section, false, tr('云端刚被其他设备更新，未覆盖；请手动选择方向。')),
       ]);
       return;
     }
@@ -458,7 +459,9 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
         SectionResult(
           entry.key,
           true,
-          merge ? '已合并并上传，共 ${entry.value} 项。' : '已上传到云端，共 ${entry.value} 项。',
+          merge
+              ? tr('已合并并上传，共 {count} 项。', {'count': entry.value})
+              : tr('已上传到云端，共 {count} 项。', {'count': entry.value}),
         ),
       );
     }
@@ -488,7 +491,7 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
           SectionResult(
             section,
             true,
-            '已从云端拉取，共 ${remote[section]?.count ?? 0} 项。',
+            tr('已从云端拉取，共 {count} 项。', {'count': remote[section]?.count ?? 0}),
           ),
         );
       }
@@ -525,8 +528,8 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
           onlyMissing && !parsed.isEmpty,
           [
             onlyMissing && !parsed.isEmpty
-                ? '本机登录已完整，无需导入。'
-                : '云端没有可导入的有效登录凭据，本机登录未改变。',
+                ? tr('本机登录已完整，无需导入。')
+                : tr('云端没有可导入的有效登录凭据，本机登录未改变。'),
             ...lines,
           ].join(' '),
         ),
@@ -548,17 +551,21 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
         expectedSiteToken: token,
       );
       if (useNetease) {
-        lines.add(await _verify(MusicProvider.netease, '网易云', null));
+        lines.add(await _verify(MusicProvider.netease, tr('网易云'), null));
       }
       for (var slot = 0; slot < 2; slot++) {
         if (slots[slot] == null) continue;
-        final label = slot == 0 ? '酷狗原版' : '酷狗概念版';
+        final label = slot == 0 ? tr('酷狗原版') : tr('酷狗概念版');
         if (accounts.kugouTokenOnly(slot)) {
-          lines.add('$label：已导入 token，但云端没有 userid，可播放，账号信息与权益不可用。');
+          lines.add(
+            tr('{label}：已导入 token，但云端没有 userid，可播放，账号信息与权益不可用。', {
+              'label': label,
+            }),
+          );
         } else if (slot == accounts.platform) {
           lines.add(await _verify(MusicProvider.kugou, label, slot));
         } else {
-          lines.add('$label：已导入。');
+          lines.add(tr('{label}：已导入。', {'label': label}));
         }
       }
     } finally {
@@ -576,7 +583,7 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
     int? slot,
   ) async {
     final verify = verifier;
-    if (verify == null) return '$label：已导入。';
+    if (verify == null) return tr('{label}：已导入。', {'label': label});
     try {
       final name = await verify(provider);
       if (provider == MusicProvider.netease) {
@@ -584,9 +591,15 @@ class CloudSyncController extends ChangeNotifier with WidgetsBindingObserver {
       } else {
         accounts.setNickname(kugouSlot: slot, kugou: name);
       }
-      return '$label：已导入并验证（$name）。';
+      return tr('{label}：已导入并验证（{name}）。', {
+        'label': label,
+        'name': name,
+      });
     } catch (failure) {
-      return '$label：已导入，但账号验证失败（${_describe(failure)}）。';
+      return tr('{label}：已导入，但账号验证失败（{reason}）。', {
+        'label': label,
+        'reason': _describe(failure),
+      });
     }
   }
 

@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -53,10 +55,10 @@ fun HomeScreen(
 }
 
 fun greeting(hour: Int): String = when (hour) {
-    in 5..10 -> "早上好"
-    in 11..13 -> "中午好"
-    in 14..17 -> "下午好"
-    else -> "晚上好"
+    in 5..10 -> tr("早上好")
+    in 11..13 -> tr("中午好")
+    in 14..17 -> tr("下午好")
+    else -> tr("晚上好")
 }
 
 @Composable
@@ -74,7 +76,7 @@ fun HomeContent(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = NekoSpace.xl)
     ) {
-        item { ScreenHeader(greeting, subtitle = "让喜欢的音乐，陪你一会儿") }
+        item { ScreenHeader(greeting, subtitle = tr("让喜欢的音乐，陪你一会儿")) }
         item {
             NowPlayingCard(
                 state = state,
@@ -89,28 +91,28 @@ fun HomeContent(
                 Modifier.fillMaxWidth().padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm),
                 horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)
             ) {
-                LibraryShortcut(Icons.Filled.Favorite, "我的收藏", state.favorites.size, Modifier.weight(1f)) {
+                LibraryShortcut(Icons.Filled.Favorite, tr("我的收藏"), state.favorites.size, Modifier.weight(1f)) {
                     onOpenLibrary(LibraryTab.FAVORITES)
                 }
-                LibraryShortcut(Icons.Filled.History, "最近播放", state.history.size, Modifier.weight(1f)) {
+                LibraryShortcut(Icons.Filled.History, tr("最近播放"), state.history.size, Modifier.weight(1f)) {
                     onOpenLibrary(LibraryTab.HISTORY)
                 }
-                LibraryShortcut(Icons.AutoMirrored.Filled.QueueMusic, "我的歌单", state.playlists.size, Modifier.weight(1f)) {
+                LibraryShortcut(Icons.AutoMirrored.Filled.QueueMusic, tr("我的歌单"), state.playlists.size, Modifier.weight(1f)) {
                     onOpenLibrary(LibraryTab.PLAYLISTS)
                 }
             }
         }
         item {
             SectionHeader(
-                "最近听过",
+                tr("最近听过"),
                 Modifier.padding(start = NekoSpace.lg, end = NekoSpace.sm, top = NekoSpace.lg, bottom = NekoSpace.xs),
-                actionLabel = if (recent.isNotEmpty()) "全部" else null,
+                actionLabel = if (recent.isNotEmpty()) tr("全部") else null,
                 onAction = { onOpenLibrary(LibraryTab.HISTORY) }
             )
         }
         if (recent.isEmpty()) item {
             Text(
-                "播放记录会出现在这里。收藏的歌曲和创建的歌单都在「我的」中。",
+                tr("播放记录会出现在这里。收藏的歌曲和创建的歌单都在「我的」中。"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = NekoSpace.lg)
@@ -160,17 +162,17 @@ private fun NowPlayingCard(
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    if (current == null) "开始收听" else if (state.isPlaying) "正在播放" else "继续收听",
+                    if (current == null) tr("开始收听") else if (state.isPlaying) tr("正在播放") else tr("继续收听"),
                     style = MaterialTheme.typography.labelMedium,
                     color = colors.primary
                 )
                 Text(
-                    current?.nm ?: "还没有正在播放的歌曲",
+                    current?.nm ?: tr("还没有正在播放的歌曲"),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 2, overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    current?.ar ?: "搜索一首歌，或从推荐开始",
+                    current?.ar ?: tr("搜索一首歌，或从推荐开始"),
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis
@@ -180,12 +182,12 @@ private fun NowPlayingCard(
                 FilledIconButton(onClick = onTogglePlay, modifier = Modifier.size(48.dp)) {
                     Icon(
                         if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (state.isPlaying) "暂停" else "播放"
+                        contentDescription = if (state.isPlaying) tr("暂停") else tr("播放")
                     )
                 }
             } else {
                 FilledTonalIconButton(onClick = onBrowse, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Filled.Search, contentDescription = "去音乐页搜索")
+                    Icon(Icons.Filled.Search, contentDescription = tr("去音乐页搜索"))
                 }
             }
         }

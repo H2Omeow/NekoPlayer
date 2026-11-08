@@ -1,6 +1,7 @@
 package top.nekoh2o.player.data.repo
 
 import top.nekoh2o.player.data.net.ApiFactory
+import top.nekoh2o.player.i18n.NekoI18n.tr
 
 data class MusicVideo(val id: String, val title: String, val artist: String,
     val artwork: String? = null, val source: String = "netease")
@@ -8,7 +9,7 @@ data class MusicVideo(val id: String, val title: String, val artist: String,
 class MvRepository {
     suspend fun search(source: String, keyword: String, page: Int = 1): List<MusicVideo> {
         val response = ApiFactory.animemusic.mvSearch(platformFor(source), keyword, page)
-        check(response.code == 200) { "内置插件 MV 搜索失败" }
+        check(response.code == 200) { tr("内置插件 MV 搜索失败") }
         return response.data.map { MusicVideo(it.id, it.title, it.artist, it.artwork, source) }
     }
 

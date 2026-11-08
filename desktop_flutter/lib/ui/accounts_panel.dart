@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -46,7 +47,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
               ? failure.message
               : failure is FormatException
               ? failure.message
-              : '账号操作失败，请检查系统密钥环、网络与凭据格式。';
+              : tr('账号操作失败，请检查系统密钥环、网络与凭据格式。');
         });
       }
     } finally {
@@ -61,8 +62,13 @@ class _AccountsPanelState extends State<AccountsPanel> {
       if (!mounted || request != generation) return;
       setState(() {
         qr = created;
-        message =
-            '请使用${provider.label}${provider == MusicProvider.kugou && created.platform == 1 ? '概念版' : ''}手机客户端扫码。';
+        message = provider == MusicProvider.kugou && created.platform == 1
+            ? tr('请使用{provider}概念版手机客户端扫码。', {
+                'provider': provider.label,
+              })
+            : tr('请使用{provider}手机客户端扫码。', {
+                'provider': provider.label,
+              });
       });
     });
     if (!mounted || request != generation || qr == null) return;
@@ -81,10 +87,10 @@ class _AccountsPanelState extends State<AccountsPanel> {
         if (!mounted || request != generation) return;
         setState(() {
           message = switch (result) {
-            LoginProgress.waiting => '等待扫码…',
-            LoginProgress.scanned => '已扫码，请在手机上确认。',
-            LoginProgress.expired => '二维码已过期，请重新生成。',
-            LoginProgress.authorized => '登录成功，凭据已存入系统密钥环。',
+            LoginProgress.waiting => tr('等待扫码…'),
+            LoginProgress.scanned => tr('已扫码，请在手机上确认。'),
+            LoginProgress.expired => tr('二维码已过期，请重新生成。'),
+            LoginProgress.authorized => tr('登录成功，凭据已存入系统密钥环。'),
           };
           if (result == LoginProgress.expired ||
               result == LoginProgress.authorized) {
@@ -97,7 +103,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
           setState(() {
             message = failure is MusicSearchException
                 ? failure.message
-                : '扫码检查失败，请重新生成二维码。';
+                : tr('扫码检查失败，请重新生成二维码。');
             qr = null;
           });
         }
@@ -107,7 +113,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
     if (mounted && request == generation) {
       setState(() {
         qr = null;
-        message = '二维码已过期，请重新生成。';
+        message = tr('二维码已过期，请重新生成。');
       });
     }
   }
@@ -119,14 +125,14 @@ class _AccountsPanelState extends State<AccountsPanel> {
     final value = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('导入${provider.label} Cookie'),
+        title: Text(tr('导入{provider} Cookie', {'provider': provider.label})),
         content: SizedBox(
           width: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('仅导入你自己的账号凭据。凭据保存在系统密钥环，不上传至本站。'),
+                    Text(tr('仅导入你自己的账号凭据。凭据保存在系统密钥环，不上传至本站。')),
               const SizedBox(height: 12),
               TextField(
                 controller: input,
@@ -144,11 +150,11 @@ class _AccountsPanelState extends State<AccountsPanel> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child:       Text(tr('取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, input.text),
-            child: const Text('导入'),
+            child:       Text(tr('导入')),
           ),
         ],
       ),
@@ -159,7 +165,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
       final cookies = AccountStore.parseCookies(value);
       if (provider == MusicProvider.netease) {
         if ((cookies['MUSIC_U'] ?? '').isEmpty) {
-          throw const FormatException('缺少 MUSIC_U 登录凭据。');
+          throw       FormatException(tr('缺少 MUSIC_U 登录凭据。'));
         }
         await accounts.update(
           netease: {'deviceId': accounts.neteaseDevice, ...cookies},
@@ -168,7 +174,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
       } else {
         if ((cookies['token'] ?? '').isEmpty ||
             (int.tryParse(cookies['userid'] ?? '') ?? 0) <= 0) {
-          throw const FormatException('缺少有效的 token 或 userid。');
+          throw       FormatException(tr('缺少有效的 token 或 userid。'));
         }
         final device = {
           for (final entry in accounts.kugou().entries)
@@ -177,7 +183,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
         };
         await accounts.update(kugou: {...device, ...cookies}, replace: true);
       }
-      if (mounted) setState(() => message = '凭据已导入；实际播放权限由音乐平台验证。');
+      if (mounted) setState(() => message = tr('凭据已导入；实际播放权限由音乐平台验证。'));
     });
   }
 
@@ -200,14 +206,14 @@ class _AccountsPanelState extends State<AccountsPanel> {
           replace: true,
         );
       }
-      if (mounted) setState(() => message = '已清除本机登录凭据。');
+      if (mounted) setState(() => message = tr('已清除本机登录凭据。'));
     });
   }
 
   Future<void> neteaseInfo() => action(() async {
     final original = accounts.netease['MUSIC_U'];
     if (!accounts.neteaseLoggedIn) {
-      throw const MusicSearchException('请先登录网易云账号。');
+      throw       MusicSearchException(tr('请先登录网易云账号。'));
     }
     final response = await widget.catalog.neteaseApi(
       '/api/nuser/account/get',
@@ -215,7 +221,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
       weapi: true,
     );
     if (response['code'] != 200 || response['account'] is! Map) {
-      throw const MusicSearchException('网易云未确认账号有效，请重新登录。');
+      throw       MusicSearchException(tr('网易云未确认账号有效，请重新登录。'));
     }
     if (!mounted || accounts.netease['MUSIC_U'] != original) return;
     final profile = response['profile'] is Map
@@ -224,8 +230,14 @@ class _AccountsPanelState extends State<AccountsPanel> {
     final account = response['account'] as Map;
     accounts.setNickname(netease: profile['nickname']?.toString());
     setState(
-      () => message =
-          '${profile['nickname'] ?? '网易云用户'} · ID ${account['id'] ?? profile['userId'] ?? '未知'} · 会员类型 ${profile['vipType'] ?? 0}。实际可播音质由平台验证。',
+      () => message = tr(
+        '{nickname} · ID {id} · 会员类型 {vip}。实际可播音质由平台验证。',
+        {
+          'nickname': profile['nickname'] ?? tr('网易云用户'),
+          'id': account['id'] ?? profile['userId'] ?? tr('未知'),
+          'vip': profile['vipType'] ?? 0,
+        },
+      ),
     );
   });
 
@@ -233,17 +245,17 @@ class _AccountsPanelState extends State<AccountsPanel> {
     if (provider == MusicProvider.netease) {
       final name = accounts.neteaseNickname;
       return accounts.neteaseLoggedIn
-          ? (true, name == null ? '已登录' : '已登录 · $name')
-          : (false, '未登录');
+          ? (true, name == null ? tr('已登录') : tr('已登录 · {name}', {'name': name}))
+          : (false, tr('未登录'));
     }
     final name = accounts.kugouNicknames[accounts.platform];
     if (accounts.kugouLoggedIn()) {
-      return (true, name == null ? '已登录' : '已登录 · $name');
+      return (true, name == null ? tr('已登录') : tr('已登录 · {name}', {'name': name}));
     }
     if (accounts.kugouTokenOnly()) {
-      return (false, '凭据不完整：缺少 userid，可以播放，但账号功能不可用，请重新登录');
+      return (false, tr('凭据不完整：缺少 userid，可以播放，但账号功能不可用，请重新登录'));
     }
-    return (false, '未登录');
+    return (false, tr('未登录'));
   }
 
   void _switchPlatform(int platform) {
@@ -276,7 +288,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
                       ? colors.onPrimaryContainer
                       : colors.onSurfaceVariant,
                   child: Text(
-                    kugou ? '酷' : '网',
+                    kugou ? tr('酷') : tr('网'),
                     style: text.titleSmall?.copyWith(color: null),
                   ),
                 ),
@@ -301,9 +313,9 @@ class _AccountsPanelState extends State<AccountsPanel> {
                     style: const ButtonStyle(
                       visualDensity: VisualDensity.compact,
                     ),
-                    segments: const [
-                      ButtonSegment(value: 0, label: Text('原版')),
-                      ButtonSegment(value: 1, label: Text('概念版')),
+                    segments:       [
+                      ButtonSegment(value: 0, label: Text(tr('原版'))),
+                      ButtonSegment(value: 1, label: Text(tr('概念版'))),
                     ],
                     selected: {accounts.platform},
                     onSelectionChanged: busy
@@ -320,13 +332,13 @@ class _AccountsPanelState extends State<AccountsPanel> {
                 (signedIn ? OutlinedButton.icon : FilledButton.icon)(
                   onPressed: enabled ? () => unawaited(login(provider)) : null,
                   icon: const Icon(Icons.qr_code_rounded, size: 18),
-                  label: Text(signedIn ? '重新扫码登录' : '扫码登录'),
+                  label: Text(signedIn ? tr('重新扫码登录') : tr('扫码登录')),
                 ),
                 TextButton(
                   onPressed: enabled
                       ? () => unawaited(importCookie(provider))
                       : null,
-                  child: const Text('导入 Cookie'),
+                  child:       Text(tr('导入 Cookie')),
                 ),
                 if (kugou)
                   TextButton(
@@ -338,12 +350,12 @@ class _AccountsPanelState extends State<AccountsPanel> {
                             ),
                           )
                         : null,
-                    child: const Text('短信登录与权益'),
+                    child:       Text(tr('短信登录与权益')),
                   )
                 else if (signedIn)
                   TextButton(
                     onPressed: busy ? null : neteaseInfo,
-                    child: const Text('验证账号与会员'),
+                    child:       Text(tr('验证账号与会员')),
                   ),
                 if (signedIn || (kugou && accounts.kugouTokenOnly()))
                   TextButton(
@@ -351,7 +363,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
                     onPressed: enabled
                         ? () => unawaited(logout(provider))
                         : null,
-                    child: const Text('退出'),
+                    child:       Text(tr('退出')),
                   ),
               ],
             ),
@@ -388,8 +400,8 @@ class _AccountsPanelState extends State<AccountsPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!accounts.readable) ...[
-          const InlineNotice(
-            '系统凭据库不可用或数据损坏。原数据已保护，暂不保存账号；Linux 请先解锁系统密钥环。',
+                InlineNotice(
+            tr('系统凭据库不可用或数据损坏。原数据已保护，暂不保存账号；Linux 请先解锁系统密钥环。'),
             error: true,
           ),
           const SizedBox(height: NekoSpace.lg),
@@ -407,8 +419,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
           const SizedBox(height: NekoSpace.md),
         ],
         Text(
-          '账号只保存在本机的系统密钥环中；酷狗原版与概念版的登录相互独立。'
-          '如需在其他设备使用，可以在“账号与云端同步”中同步平台登录。',
+          tr('账号只保存在本机的系统密钥环中；酷狗原版与概念版的登录相互独立。') + tr('如需在其他设备使用，可以在“账号与云端同步”中同步平台登录。'),
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],

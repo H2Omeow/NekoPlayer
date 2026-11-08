@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
@@ -33,7 +35,13 @@ import top.nekoh2o.player.ui.components.StatusBadge
 import top.nekoh2o.player.ui.theme.NekoDefaults
 import top.nekoh2o.player.ui.theme.NekoSpace
 
-enum class SyncAction(val label: String) { UPLOAD("上传到云端"), PULL("从云端拉取"), MERGE("合并两端") }
+enum class SyncAction(private val rawLabel: String) {
+    UPLOAD("上传到云端"),
+    PULL("从云端拉取"),
+    MERGE("合并两端");
+
+    val label: String get() = tr(rawLabel)
+}
 
 @Composable
 fun CloudSyncScreen(vm: PlayerViewModel, onBack: () -> Unit) {
@@ -94,20 +102,20 @@ fun CloudSyncContent(
 ) {
     val canOperate = loggedIn && !sync.busy
     DetailPage(
-        title = "云端同步",
+        title = tr("云端同步"),
         onBack = onBack,
         actions = {
             IconButton(onClick = onRefresh, enabled = canOperate) {
-                Icon(Icons.Filled.Refresh, contentDescription = "刷新云端状态")
+                Icon(Icons.Filled.Refresh, contentDescription = tr("刷新云端状态"))
             }
         }
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
             InlineNotice(
                 when {
-                    !loggedIn -> "请先在「我的」页登录 NekoPlayer 账号。"
-                    sync.busy -> "正在与云端通信…"
-                    else -> "${accountName ?: "已登录"} · 上次检查 ${formatSyncTime(sync.lastCheckedAt, now)}"
+                    !loggedIn -> tr("请先在「我的」页登录 NekoPlayer 账号。")
+                    sync.busy -> tr("正在与云端通信…")
+                    else -> tr("{account} · 上次检查 {time}", "account" to (accountName ?: tr("已登录")), "time" to formatSyncTime(sync.lastCheckedAt, now))
                 }
             )
             if (sync.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -115,8 +123,8 @@ fun CloudSyncContent(
         }
 
         SettingsSection(
-            title = "同步内容",
-            description = "勾选的项目用于下方的手动操作。自动同步只处理单边改动，两端都改过时会等你选择方向。"
+            title = tr("同步内容"),
+            description = tr("勾选的项目用于下方的手动操作。自动同步只处理单边改动，两端都改过时会等你选择方向。")
         ) {
             sync.rows.forEach { row ->
                 SectionRowTile(
@@ -134,30 +142,30 @@ fun CloudSyncContent(
             val enabled = canOperate && selected.isNotEmpty()
             Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
                 Button(onClick = { onAction(SyncAction.UPLOAD) }, enabled = enabled, modifier = Modifier.weight(1f)) {
-                    ActionLabel(Icons.Outlined.CloudUpload, "上传")
+                    ActionLabel(Icons.Outlined.CloudUpload, tr("上传"))
                 }
                 FilledTonalButton(onClick = { onAction(SyncAction.PULL) }, enabled = enabled, modifier = Modifier.weight(1f)) {
-                    ActionLabel(Icons.Outlined.CloudDownload, "拉取")
+                    ActionLabel(Icons.Outlined.CloudDownload, tr("拉取"))
                 }
                 OutlinedButton(
                     onClick = { onAction(SyncAction.MERGE) }, enabled = enabled, modifier = Modifier.weight(1f),
                     colors = NekoDefaults.outlinedButtonColors()
                 ) {
-                    ActionLabel(Icons.Outlined.Merge, "合并")
+                    ActionLabel(Icons.Outlined.Merge, tr("合并"))
                 }
             }
             Text(
-                if (selected.isEmpty()) "先勾选要操作的数据。"
-                else "上传 / 拉取会让另一端与这一端完全一致（包括删除）；合并保留两端的全部条目，适合第一次同步或处理冲突。",
+                if (selected.isEmpty()) tr("先勾选要操作的数据。")
+                else tr("上传 / 拉取会让另一端与这一端完全一致（包括删除）；合并保留两端的全部条目，适合第一次同步或处理冲突。"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         if (sync.results.isNotEmpty()) {
-            SettingsSection(title = "上次操作") {
+            SettingsSection(title = tr("上次操作")) {
                 sync.results.forEach { r ->
-                    val tag = when (r.outcome) { Outcome.OK -> "成功"; Outcome.SKIPPED -> "跳过"; Outcome.FAILED -> "失败" }
+                    val tag = when (r.outcome) { Outcome.OK -> tr("成功"); Outcome.SKIPPED -> tr("跳过"); Outcome.FAILED -> tr("失败") }
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = NekoSpace.lg, vertical = NekoSpace.md),
                         horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm),
@@ -175,7 +183,7 @@ fun CloudSyncContent(
             }
         }
         Text(
-            "本地音频文件及其路径不会上传。",
+            tr("本地音频文件及其路径不会上传。"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -201,9 +209,9 @@ private fun SectionRowTile(
     val section = row.section
     val colors = MaterialTheme.colorScheme
     val remote = when {
-        row.remoteUpdatedAt == null -> "未检查"
-        row.remoteCount == null || row.remoteUpdatedAt <= 0L -> "暂无数据"
-        else -> "${row.remoteCount} ${section.unit} · ${formatSyncTime(row.remoteUpdatedAt, now)}" +
+        row.remoteUpdatedAt == null -> tr("未检查")
+        row.remoteCount == null || row.remoteUpdatedAt <= 0L -> tr("暂无数据")
+        else -> tr("{count} {unit} · {time}", "count" to row.remoteCount, "unit" to section.unit, "time" to formatSyncTime(row.remoteUpdatedAt, now)) +
             row.remoteDevice.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
     }
     Row(
@@ -217,7 +225,7 @@ private fun SectionRowTile(
             checked = checked,
             onCheckedChange = null,
             enabled = enabled,
-            modifier = Modifier.padding(NekoSpace.md).semantics { contentDescription = "选择${section.label}" }
+            modifier = Modifier.padding(NekoSpace.md).semantics { contentDescription = tr("选择{section}", "section" to section.label) }
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             // 自动同步开关放在标题行，下面的时间信息占满整行宽度
@@ -225,18 +233,18 @@ private fun SectionRowTile(
                 Text(section.label, style = MaterialTheme.typography.bodyLarge)
                 StatusBadge(row.status.label, statusColor(row.status))
                 Spacer(Modifier.weight(1f))
-                Text("自动", style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
+                Text(tr("自动"), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
                 Switch(
                     checked = row.autoSync,
                     onCheckedChange = onAuto,
-                    modifier = Modifier.scale(0.8f).semantics { contentDescription = "${section.label}自动同步" }
+                    modifier = Modifier.scale(0.8f).semantics { contentDescription = tr("{section}自动同步", "section" to section.label) }
                 )
             }
-            SideLine(Icons.Outlined.PhoneAndroid, "本机", "${row.localCount} ${section.unit} · ${formatSyncTime(row.localUpdatedAt, now)}")
-            SideLine(Icons.Outlined.Cloud, "云端", remote)
+            SideLine(Icons.Outlined.PhoneAndroid, tr("本机"), "${row.localCount} ${section.unit} · ${formatSyncTime(row.localUpdatedAt, now)}")
+            SideLine(Icons.Outlined.Cloud, tr("云端"), remote)
             if (section == SyncSection.CREDENTIALS) {
                 Text(
-                    "包含网易云 / 酷狗的登录 Cookie，只在信任的设备上开启。",
+                    tr("包含网易云 / 酷狗的登录 Cookie，只在信任的设备上开启。"),
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.error
                 )
@@ -273,18 +281,18 @@ private fun ConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val names = sections.joinToString("、") { it.label }
+    val names = sections.joinToString(tr("、")) { it.label }
     val body = buildString {
         append(when (action) {
-            SyncAction.UPLOAD -> "将用本机的「$names」覆盖云端对应数据，其他设备上较新的改动会丢失。"
-            SyncAction.PULL -> "将用云端的「$names」覆盖本机对应数据，本机尚未上传的改动会丢失。"
-            SyncAction.MERGE -> "将合并本机与云端的「$names」，并把结果上传到云端。"
+            SyncAction.UPLOAD -> tr("将用本机的「{names}」覆盖云端对应数据，其他设备上较新的改动会丢失。", "names" to names)
+            SyncAction.PULL -> tr("将用云端的「{names}」覆盖本机对应数据，本机尚未上传的改动会丢失。", "names" to names)
+            SyncAction.MERGE -> tr("将合并本机与云端的「{names}」，并把结果上传到云端。", "names" to names)
         })
         if (SyncSection.CREDENTIALS in sections) {
             append("\n\n")
             append(when (action) {
-                SyncAction.PULL -> "「音乐平台登录」会替换本机已登录的网易云 / 酷狗账号。"
-                else -> "「音乐平台登录」包含网易云 / 酷狗 Cookie，将上传到云端，请确认这是你信任的账号和设备。"
+                SyncAction.PULL -> tr("「音乐平台登录」会替换本机已登录的网易云 / 酷狗账号。")
+                else -> tr("「音乐平台登录」包含网易云 / 酷狗 Cookie，将上传到云端，请确认这是你信任的账号和设备。")
             })
         }
     }
@@ -294,7 +302,7 @@ private fun ConfirmDialog(
         text = { Text(body) },
         confirmButton = { TextButton(onClick = onConfirm) { Text(action.label) } },
         dismissButton = {
-            TextButton(onClick = onDismiss, colors = NekoDefaults.textButtonColors()) { Text("取消") }
+            TextButton(onClick = onDismiss, colors = NekoDefaults.textButtonColors()) { Text(tr("取消")) }
         }
     )
 }

@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show ImageFilter;
@@ -5,6 +6,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -19,6 +21,7 @@ import '../deep_links.dart';
 import '../domain/library.dart';
 import '../domain/online_music.dart';
 import '../dynamic_lyrics.dart';
+import '../i18n/app_language.dart';
 import '../player_controller.dart';
 import '../search_controller.dart' as online;
 import '../site_controller.dart';
@@ -53,9 +56,15 @@ export 'widgets/artwork.dart';
 export 'widgets/empty_state.dart';
 
 class NekoApp extends StatefulWidget {
-  const NekoApp({super.key, required this.controller, this.deepLinks});
+  const NekoApp({
+    super.key,
+    required this.controller,
+    required this.language,
+    this.deepLinks,
+  });
 
   final PlayerController controller;
+  final AppLanguage language;
   final DeepLinkRouter? deepLinks;
 
   @override
@@ -82,13 +91,23 @@ class _NekoAppState extends State<NekoApp> {
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-    animation: appearance,
+    animation: Listenable.merge([appearance, widget.language]),
     builder: (context, _) {
       final wallpaper =
           appearance.wallpaperEnabled && appearance.wallpaper != null;
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'NekoPlayer',
+        locale: widget.language.locale,
+        supportedLocales: const [
+          Locale('zh', 'CN'),
+          Locale('zh', 'TW'),
+          Locale('en'),
+          Locale('ja'),
+        ],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        localeListResolutionCallback: (locales, supported) =>
+            localeForTag(resolveLanguageTag(systemLanguageTag, locales ?? const [])),
         theme: nekoTheme(
           brightness: Brightness.light,
           controlAlpha: appearance.controls,
@@ -142,6 +161,7 @@ class _NekoAppState extends State<NekoApp> {
         home: PlayerShell(
           controller: widget.controller,
           deepLinks: widget.deepLinks,
+          language: widget.language,
         ),
       );
     },
@@ -151,10 +171,16 @@ class _NekoAppState extends State<NekoApp> {
 /// The main window: sidebar, content panel with its own navigation stack,
 /// optional queue panel and the transport bar.
 class PlayerShell extends StatefulWidget {
-  const PlayerShell({super.key, required this.controller, this.deepLinks});
+  PlayerShell({
+    super.key,
+    required this.controller,
+    this.deepLinks,
+    AppLanguage? language,
+  }) : language = language ?? AppLanguage();
 
   final PlayerController controller;
   final DeepLinkRouter? deepLinks;
+  final AppLanguage language;
 
   @override
   State<PlayerShell> createState() => _PlayerShellState();
@@ -219,6 +245,7 @@ class _PlayerShellState extends State<PlayerShell> {
     );
     integration.onUri = (uri) => widget.deepLinks?.open(uri);
     unawaited(integration.initialize());
+    widget.language.addListener(languageChanged);
     actions = LibraryActions(
       player: controller,
       onComments: openComments,
@@ -293,7 +320,7 @@ class _PlayerShellState extends State<PlayerShell> {
 
   Future<void> openShareTrack(Track track) async {
     if (track.online == null) {
-      snack('本地文件不能生成分享链接。');
+      snack(tr('本地文件不能生成分享链接。'));
       return;
     }
     final isCurrent = controller.current?.path == track.path;
@@ -314,6 +341,7 @@ class _PlayerShellState extends State<PlayerShell> {
 
   @override
   void dispose() {
+    widget.language.removeListener(languageChanged);
     widget.deepLinks?.removeListener(deepLinkChanged);
     site.removeListener(siteChanged);
     social.removeListener(socialChanged);
@@ -326,6 +354,8 @@ class _PlayerShellState extends State<PlayerShell> {
     site.dispose();
     super.dispose();
   }
+
+  void languageChanged() => unawaited(integration.refreshTrayLabels());
 
   void subscriptionChanged() {
     final selected = onlineSearch.pluginSource;
@@ -366,17 +396,17 @@ class _PlayerShellState extends State<PlayerShell> {
     try {
       final files = await openFiles(
         acceptedTypeGroups: [
-          XTypeGroup(label: '音乐文件', extensions: PlayerController.extensions),
+          XTypeGroup(label: tr('音乐文件'), extensions: PlayerController.extensions),
         ],
       );
       if (!mounted) return;
       await controller.importFiles(files.map((file) => file.path).toList());
       if (mounted && files.isNotEmpty) {
         navigate(const Destination(Section.all));
-        snack('已导入 ${files.length} 个文件');
+        snack(tr('已导入 {count} 个文件', {'count': files.length}));
       }
     } catch (_) {
-      snack('文件选择未完成，请重试。');
+      snack(tr('文件选择未完成，请重试。'));
     } finally {
       if (mounted) setState(() => importing = false);
     }
@@ -391,7 +421,7 @@ class _PlayerShellState extends State<PlayerShell> {
       void checkSession() {
         if (session != AccountMusicRepository(catalog).sessionKey ||
             siteToken != catalog.accounts.siteToken) {
-          throw const MusicSearchException('账号已切换，请重新选择歌曲并检查音质。');
+          throw       MusicSearchException(tr('账号已切换，请重新选择歌曲并检查音质。'));
         }
       }
 
@@ -406,15 +436,15 @@ class _PlayerShellState extends State<PlayerShell> {
       checkSession();
       final directory =
           AppearanceScope.maybeOf(context)?.downloadDirectory ??
-          await getDirectoryPath(confirmButtonText: '下载到此文件夹');
+          await getDirectoryPath(confirmButtonText: tr('下载到此文件夹'));
       if (!mounted || directory == null) return;
       checkSession();
       await downloads.enqueue(song, directory, quality);
-      snack(downloads.error ?? '已加入下载队列');
+      snack(downloads.error ?? tr('已加入下载队列'));
     } on MusicSearchException catch (failure) {
       snack(failure.message);
     } catch (_) {
-      snack('无法创建下载任务，请检查目录权限。');
+      snack(tr('无法创建下载任务，请检查目录权限。'));
     }
   }
 
@@ -423,14 +453,14 @@ class _PlayerShellState extends State<PlayerShell> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('新建歌单'),
+        title:       Text(tr('新建歌单')),
         content: SizedBox(
           width: 360,
           child: TextField(
             controller: input,
             autofocus: true,
             maxLength: 80,
-            decoration: const InputDecoration(hintText: '歌单名称'),
+            decoration:       InputDecoration(hintText: tr('歌单名称')),
             onSubmitted: (value) {
               if (value.trim().isNotEmpty) Navigator.pop(context, value);
             },
@@ -439,7 +469,7 @@ class _PlayerShellState extends State<PlayerShell> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child:       Text(tr('取消')),
           ),
           FilledButton(
             onPressed: () {
@@ -447,7 +477,7 @@ class _PlayerShellState extends State<PlayerShell> {
                 Navigator.pop(context, input.text);
               }
             },
-            child: const Text('创建'),
+            child:       Text(tr('创建')),
           ),
         ],
       ),
@@ -506,10 +536,10 @@ class _PlayerShellState extends State<PlayerShell> {
     try {
       final uri = await dynamicLyrics.start();
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        throw StateError('无法打开浏览器');
+        throw StateError(tr('无法打开浏览器'));
       }
     } catch (_) {
-      snack('无法打开浏览器，普通歌词仍可使用。');
+      snack(tr('无法打开浏览器，普通歌词仍可使用。'));
     }
   }
 
@@ -581,6 +611,7 @@ class _PlayerShellState extends State<PlayerShell> {
       site: site,
       cloudSync: cloudSync,
       integration: integration,
+      language: widget.language,
     ),
     _ => collectionPage(destination),
   };
@@ -840,7 +871,7 @@ class _ContentPanel extends StatelessWidget {
             error: true,
             action: TextButton(
               onPressed: onDismissError,
-              child: const Text('知道了'),
+              child:       Text(tr('知道了')),
             ),
           ),
         ),
@@ -880,7 +911,7 @@ class LibraryOverviewPage extends StatelessWidget {
     builder: (context, _) => ListView(
       padding: const EdgeInsets.all(NekoSpace.lg),
       children: [
-        Text('音乐库', style: Theme.of(context).textTheme.headlineMedium),
+        Text(tr('音乐库'), style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: NekoSpace.lg),
         SettingsSection(
           children: [
@@ -900,19 +931,19 @@ class LibraryOverviewPage extends StatelessWidget {
           ],
         ),
         SettingsSection(
-          title: '歌单',
+          title: tr('歌单'),
           children: [
             for (final playlist in player.playlists)
               SettingsTile(
                 icon: Icons.queue_music_rounded,
                 title: playlist.name,
-                value: '${playlist.paths.length} 首',
+                value: tr('{count} 首', {'count': playlist.paths.length}),
                 onTap: () =>
                     onSelect(Destination(Section.playlist, playlist.id)),
               ),
             SettingsTile(
               icon: Icons.add_rounded,
-              title: '新建歌单',
+              title: tr('新建歌单'),
               onTap: onCreatePlaylist,
             ),
           ],

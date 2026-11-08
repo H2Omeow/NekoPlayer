@@ -3,13 +3,15 @@ import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
 
+import '../../i18n/tr.dart';
+
 class PluginVm {
   PluginVm(String libraryPath) : _library = DynamicLibrary.open(libraryPath) {
     _handle = _library
         .lookupFunction<Pointer<Void> Function(), Pointer<Void> Function()>(
           'neko_plugin_create',
         )();
-    if (_handle == nullptr) throw StateError('音源脚本引擎初始化失败。');
+    if (_handle == nullptr) throw StateError(tr('音源脚本引擎初始化失败。'));
   }
 
   final DynamicLibrary _library;
@@ -29,7 +31,7 @@ class PluginVm {
     final input = script.toNativeUtf8();
     try {
       final output = _eval(_handle, input);
-      if (output == nullptr) throw StateError('音源脚本执行失败。');
+      if (output == nullptr) throw StateError(tr('音源脚本执行失败。'));
       final envelope =
           jsonDecode(output.toDartString()) as Map<String, dynamic>;
       if (envelope['ok'] != true) throw FormatException('${envelope['error']}');

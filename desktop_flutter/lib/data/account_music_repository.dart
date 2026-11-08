@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
@@ -54,12 +55,12 @@ class AccountMusicRepository {
 
   void requireAccount(MusicProvider provider) {
     if (provider != MusicProvider.netease && provider != MusicProvider.kugou) {
-      throw const MusicSearchException('此页面只支持原生平台账号。');
+      throw       MusicSearchException(tr('此页面只支持原生平台账号。'));
     }
     if (provider == MusicProvider.netease
         ? !catalog.accounts.neteaseLoggedIn
         : !catalog.accounts.kugouLoggedIn()) {
-      throw const MusicSearchException('请先在平台账号中登录。');
+      throw       MusicSearchException(tr('请先在平台账号中登录。'));
     }
   }
 
@@ -69,7 +70,7 @@ class AccountMusicRepository {
   ) async {
     final body = await catalog.neteaseApi(path, data, weapi: true);
     if (number(body['code']) != 200) {
-      throw const MusicSearchException('网易云未确认读取成功，请检查登录状态后重试。');
+      throw       MusicSearchException(tr('网易云未确认读取成功，请检查登录状态后重试。'));
     }
     return body;
   }
@@ -80,7 +81,7 @@ class AccountMusicRepository {
     final id = text(
       object(body['account'])['id'] ?? object(body['profile'])['userId'],
     );
-    if (number(id) <= 0) throw const MusicSearchException('未取得网易云账号 ID，请重新登录。');
+    if (number(id) <= 0) throw       MusicSearchException(tr('未取得网易云账号 ID，请重新登录。'));
     return id;
   }
 
@@ -179,7 +180,7 @@ class AccountMusicRepository {
   static Map<String, dynamic> kgData(Map<String, dynamic> body) {
     if (number(body['status']) != 1 ||
         number(body['error_code'] ?? body['errcode']) != 0) {
-      throw const MusicSearchException('酷狗未确认读取成功，请检查账号与设备验证。');
+      throw       MusicSearchException(tr('酷狗未确认读取成功，请检查账号与设备验证。'));
     }
     return object(body['data']);
   }
@@ -323,7 +324,7 @@ class AccountMusicRepository {
       });
       final detail = object(body['playlist']);
       if (detail['trackIds'] is! List) {
-        throw const MusicSearchException('歌单未返回歌曲清单，可能没有访问权限。');
+        throw       MusicSearchException(tr('歌单未返回歌曲清单，可能没有访问权限。'));
       }
       return songsByIds(
         items(
@@ -404,7 +405,7 @@ class AccountMusicRepository {
           : 'OIlwieks28dk2k092lksi2UIkp';
       final history = collection == AccountCollection.history;
       if (!history && collection != AccountCollection.recommendations) {
-        throw const MusicSearchException('此酷狗分类暂不支持。');
+        throw       MusicSearchException(tr('此酷狗分类暂不支持。'));
       }
       final body = await catalog.kugouApi(
         history ? '/playhistory/v1/get_songs' : '/v2/personal_recommend',
@@ -468,7 +469,7 @@ class AccountMusicRepository {
     }
     if (collection == AccountCollection.likes) {
       final body = await nc('/api/song/like/get', {'uid': await accountId()});
-      if (body['ids'] is! List) throw const MusicSearchException('红心歌曲清单格式异常。');
+      if (body['ids'] is! List) throw       MusicSearchException(tr('红心歌曲清单格式异常。'));
       return songsByIds(
         (body['ids'] as List).map(text).where((id) => number(id) > 0).toList(),
         page,
@@ -487,7 +488,7 @@ class AccountMusicRepository {
         'areaId': 0,
         'total': true,
       }),
-      _ => throw const MusicSearchException('请选择一个歌单。'),
+      _ => throw       MusicSearchException(tr('请选择一个歌单。')),
     };
     final rows = switch (collection) {
       AccountCollection.history => items(

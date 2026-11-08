@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.annotation.SuppressLint
 import android.graphics.Color as AndroidColor
 import android.net.Uri
@@ -46,8 +48,8 @@ fun DynamicLyricsScreen(
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text("动态歌词", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                    TextButton(onClick = onClose) { Text("返回原歌词") }
+                    Text(tr("动态歌词"), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = onClose) { Text(tr("返回原歌词")) }
                 }
                 DynamicLyricsWebView(state, Modifier.weight(1f).fillMaxWidth())
                 Column(Modifier.padding(horizontal = 20.dp)) {
@@ -63,17 +65,17 @@ fun DynamicLyricsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = onPrevious) {
-                            Icon(Icons.Filled.SkipPrevious, contentDescription = "上一首", modifier = Modifier.size(32.dp))
+                            Icon(Icons.Filled.SkipPrevious, contentDescription = tr("上一首"), modifier = Modifier.size(32.dp))
                         }
                         FilledIconButton(onClick = onToggle, enabled = state.current != null, modifier = Modifier.size(60.dp)) {
                             Icon(
                                 if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                contentDescription = if (state.isPlaying) "暂停" else "播放",
+                                contentDescription = if (state.isPlaying) tr("暂停") else tr("播放"),
                                 modifier = Modifier.size(30.dp)
                             )
                         }
                         IconButton(onClick = onNext) {
-                            Icon(Icons.Filled.SkipNext, contentDescription = "下一首", modifier = Modifier.size(32.dp))
+                            Icon(Icons.Filled.SkipNext, contentDescription = tr("下一首"), modifier = Modifier.size(32.dp))
                         }
                     }
                 }
@@ -151,7 +153,7 @@ private fun DynamicLyricsWebView(state: UiState, modifier: Modifier) {
         if (failed) {
             Surface(Modifier.fillMaxSize()) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("动态歌词加载失败，请更新 Android System WebView，或返回原歌词。",
+                    Text(tr("动态歌词加载失败，请更新 Android System WebView，或返回原歌词。"),
                         modifier = Modifier.padding(24.dp))
                 }
             }

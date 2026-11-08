@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'package:flutter/material.dart';
 
 import '../data/comments_repository.dart';
@@ -69,7 +70,7 @@ class _CommentsPageState extends State<CommentsPage> {
       } else {
         setState(() {
           matches = candidates;
-          if (candidates.isEmpty) error = '没有找到对应平台歌曲，请切换评论来源。';
+          if (candidates.isEmpty) error = tr('没有找到对应平台歌曲，请切换评论来源。');
         });
       }
     } catch (failure) {
@@ -77,7 +78,7 @@ class _CommentsPageState extends State<CommentsPage> {
         setState(
           () => error = failure is MusicSearchException
               ? failure.message
-              : '评论服务暂时不可用，请重试。',
+              : tr('评论服务暂时不可用，请重试。'),
         );
       }
     } finally {
@@ -117,7 +118,7 @@ class _CommentsPageState extends State<CommentsPage> {
         setState(
           () => error = failure is MusicSearchException
               ? failure.message
-              : '评论加载失败，请重试。',
+              : tr('评论加载失败，请重试。'),
         );
       }
     } finally {
@@ -143,7 +144,7 @@ class _CommentsPageState extends State<CommentsPage> {
         setState(
           () => error = failure is MusicSearchException
               ? failure.message
-              : '操作未获确认，请检查平台状态后再试，避免重复发送。',
+              : tr('操作未获确认，请检查平台状态后再试，避免重复发送。'),
         );
       }
     } finally {
@@ -153,14 +154,22 @@ class _CommentsPageState extends State<CommentsPage> {
 
   Future<void> compose([SongComment? reply]) async {
     if (!widget.repository.loggedIn(source)) {
-      setState(() => error = '请先在设置中登录${source.label}账号。');
+      setState(
+        () => error = tr('请先在设置中登录{provider}账号。', {
+          'provider': source.label,
+        }),
+      );
       return;
     }
     final input = TextEditingController();
     final value = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(reply == null ? '发布到${source.label}' : '回复 ${reply.user}'),
+        title: Text(
+          reply == null
+              ? tr('发布到{provider}', {'provider': source.label})
+              : tr('回复 {name}', {'name': reply.user}),
+        ),
         content: SizedBox(
           width: 440,
           child: TextField(
@@ -168,17 +177,17 @@ class _CommentsPageState extends State<CommentsPage> {
             maxLength: 2000,
             minLines: 3,
             maxLines: 6,
-            decoration: const InputDecoration(hintText: '写下你想说的话…'),
+            decoration:       InputDecoration(hintText: tr('写下你想说的话…')),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child:       Text(tr('取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, input.text),
-            child: const Text('确认发布'),
+            child:       Text(tr('确认发布')),
           ),
         ],
       ),
@@ -193,7 +202,7 @@ class _CommentsPageState extends State<CommentsPage> {
         parent: reply ?? widget.parent,
         page: widget.parent == null ? page : widget.parentPage,
       ),
-      '评论已发布。',
+      tr('评论已发布。'),
     );
   }
 
@@ -201,16 +210,16 @@ class _CommentsPageState extends State<CommentsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('删除这条评论？'),
-        content: const Text('此操作不能撤销。'),
+        title:       Text(tr('删除这条评论？')),
+        content:       Text(tr('此操作不能撤销。')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child:       Text(tr('取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除'),
+            child:       Text(tr('删除')),
           ),
         ],
       ),
@@ -218,7 +227,7 @@ class _CommentsPageState extends State<CommentsPage> {
     if (confirmed == true && mounted && selected != null) {
       await mutate(
         () => widget.repository.delete(source, selected!, comment),
-        '评论已删除。',
+        tr('评论已删除。'),
       );
     }
   }
@@ -233,7 +242,7 @@ class _CommentsPageState extends State<CommentsPage> {
     final text = Theme.of(context).textTheme;
     final colors = Theme.of(context).colorScheme;
     final palette = NekoPalette.of(context);
-    final name = comment.user.isEmpty ? '音乐爱好者' : comment.user;
+    final name = comment.user.isEmpty ? tr('音乐爱好者') : comment.user;
     final idle = posting || loading || comment.deleted;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: NekoSpace.md),
@@ -267,7 +276,7 @@ class _CommentsPageState extends State<CommentsPage> {
                 ),
                 const SizedBox(height: NekoSpace.xs),
                 SelectableText(
-                  comment.deleted ? '评论已删除' : comment.content,
+                  comment.deleted ? tr('评论已删除') : comment.content,
                   style: text.bodyMedium?.copyWith(
                     color: comment.deleted ? colors.onSurfaceVariant : null,
                   ),
@@ -305,7 +314,7 @@ class _CommentsPageState extends State<CommentsPage> {
                                   selected!,
                                   comment,
                                 ),
-                                comment.liked ? '已取消点赞。' : '已点赞。',
+                                comment.liked ? tr('已取消点赞。') : tr('已点赞。'),
                               ),
                         icon: Icon(
                           comment.liked
@@ -321,7 +330,7 @@ class _CommentsPageState extends State<CommentsPage> {
                         visualDensity: VisualDensity.compact,
                       ),
                       onPressed: idle ? null : () => compose(comment),
-                      child: const Text('回复'),
+                      child:       Text(tr('回复')),
                     ),
                     if (comment.replies > 0)
                       TextButton(
@@ -339,7 +348,9 @@ class _CommentsPageState extends State<CommentsPage> {
                             ),
                           ),
                         ),
-                        child: Text('${comment.replies} 条回复'),
+                        child: Text(
+                          tr('{count} 条回复', {'count': comment.replies}),
+                        ),
                       ),
                     if (comment.owned &&
                         source != CommentSource.kugou &&
@@ -352,7 +363,7 @@ class _CommentsPageState extends State<CommentsPage> {
                         onPressed: posting || loading
                             ? null
                             : () => delete(comment),
-                        child: const Text('删除'),
+                        child:       Text(tr('删除')),
                       ),
                   ],
                 ),
@@ -414,11 +425,11 @@ class _CommentsPageState extends State<CommentsPage> {
             FilledButton.icon(
               onPressed: posting || loading ? null : () => compose(),
               icon: const Icon(Icons.edit_rounded, size: 18),
-              label: const Text('写评论'),
+              label:       Text(tr('写评论')),
             ),
           const Spacer(),
           IconButton(
-            tooltip: '刷新',
+            tooltip: tr('刷新'),
             onPressed: posting || loading
                 ? null
                 : () => selected == null ? prepare() : fetch(reset: true),
@@ -437,7 +448,7 @@ class _CommentsPageState extends State<CommentsPage> {
         if (matches.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: NekoSpace.sm),
-            child: Text('请选择对应的歌曲，避免看到其他版本的评论。', style: text.bodySmall),
+            child: Text(tr('请选择对应的歌曲，避免看到其他版本的评论。'), style: text.bodySmall),
           ),
         for (final song in matches)
           ListTile(
@@ -456,12 +467,12 @@ class _CommentsPageState extends State<CommentsPage> {
     } else if (comments.isEmpty) {
       body = [
         if (!loading)
-          const Padding(
+                Padding(
             padding: EdgeInsets.symmetric(vertical: NekoSpace.xxl),
             child: EmptyState(
               icon: Icons.forum_outlined,
-              title: '暂无评论',
-              description: '来写第一条吧。',
+              title: tr('暂无评论'),
+              description: tr('来写第一条吧。'),
             ),
           ),
       ];
@@ -475,7 +486,7 @@ class _CommentsPageState extends State<CommentsPage> {
           Center(
             child: TextButton(
               onPressed: loading ? null : fetch,
-              child: const Text('加载更多'),
+              child:       Text(tr('加载更多')),
             ),
           ),
       ];
@@ -483,7 +494,9 @@ class _CommentsPageState extends State<CommentsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.parent == null ? '${widget.song.title} · 评论' : '评论回复',
+          widget.parent == null
+              ? tr('{title} · 评论', {'title': widget.song.title})
+              : tr('评论回复'),
         ),
       ),
       body: Align(

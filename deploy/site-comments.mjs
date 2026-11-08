@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { resolveLocale, t as translateMessage } from './server-i18n.mjs';
 
 const fail = (status, message) => { const error = new Error(message); error.status = status; throw error; };
 const resource = value => {
@@ -85,8 +86,21 @@ export function installSiteComments(app, { dataRoot, resolveUser, jsonParser }) 
   const store = createCommentStore(join(dataRoot, 'comments', 'comments.sqlite'));
   const handle = action => (req, res) => {
     res.set('Cache-Control', 'no-store');
-    try { res.json(action(req)); }
-    catch (error) { res.status(error.status || 500).json({ code: error.status || 500, message: error.status ? error.message : '评论服务暂时不可用' }); }
+    const locale = resolveLocale(req);
+    try {
+      const body = action(req);
+      if (Array.isArray(body?.comments)) {
+        for (const comment of body.comments) {
+          if (comment?.quotedContent) comment.quotedContent = translateMessage(locale, comment.quotedContent);
+        }
+      }
+      res.json(body);
+    }
+    catch (error) {
+      const status = error.status || 500;
+      const message = status >= 500 ? '评论服务暂时不可用' : error.message;
+      res.status(status).json({ code: status, message: translateMessage(locale, message) });
+    }
   };
   const user = req => resolveUser(/^Bearer\s+\S+$/i.test(req.get('Authorization') || '') ? { headers: req.headers } : req)?.user;
   const authorized = req => {

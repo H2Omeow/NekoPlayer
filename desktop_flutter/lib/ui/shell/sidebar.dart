@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'package:flutter/material.dart';
 
 import '../../player_controller.dart';
@@ -121,7 +122,7 @@ class Sidebar extends StatelessWidget {
                       ? '99+'
                       : '$socialUnread',
                 ),
-                heading('音乐库'),
+                heading(tr('音乐库')),
                 item(
                   Section.favorites,
                   trailing: collapsed ? null : '${player.favorites.length}',
@@ -134,9 +135,9 @@ class Sidebar extends StatelessWidget {
                 if (showDownloads) item(Section.downloads),
                 if (showPlatform) item(Section.platform),
                 heading(
-                  '歌单',
+                  tr('歌单'),
                   action: IconButton(
-                    tooltip: '新建歌单',
+                    tooltip: tr('新建歌单'),
                     visualDensity: VisualDensity.compact,
                     iconSize: 18,
                     onPressed: onCreatePlaylist,
@@ -147,7 +148,7 @@ class Sidebar extends StatelessWidget {
                   _SidebarItem(
                     icon: Icons.add_rounded,
                     selectedIcon: Icons.add_rounded,
-                    label: '新建歌单',
+                    label: tr('新建歌单'),
                     selected: false,
                     collapsed: true,
                     onTap: onCreatePlaylist,
@@ -171,7 +172,7 @@ class Sidebar extends StatelessWidget {
                       NekoSpace.md,
                       NekoSpace.md,
                     ),
-                    child: Text('还没有歌单', style: text.bodySmall),
+                    child: Text(tr('还没有歌单'), style: text.bodySmall),
                   ),
               ],
             ),

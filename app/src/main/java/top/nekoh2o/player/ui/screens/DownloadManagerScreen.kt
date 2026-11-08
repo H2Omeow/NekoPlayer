@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -39,8 +41,8 @@ fun DownloadManagerScreen(vm: PlayerViewModel, onBack: () -> Unit) {
         val song = showDeleteConfirm
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = null },
-            title = { Text("删除下载的文件？") },
-            text = { Text("确定要删除「${song?.nm ?: "该歌曲"}」及其文件吗？此操作不可撤销。") },
+            title = { Text(tr("删除下载的文件？")) },
+            text = { Text(tr("确定要删除「{title}」及其文件吗？此操作不可撤销。", "title" to (song?.nm ?: tr("该歌曲")))) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -48,29 +50,29 @@ fun DownloadManagerScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                         showDeleteConfirm = null
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("删除") }
+                ) { Text(tr("删除")) }
             },
             dismissButton = {
                 TextButton(
                     onClick = { showDeleteConfirm = null },
                     colors = NekoDefaults.textButtonColors()
-                ) { Text("取消") }
+                ) { Text(tr("取消")) }
             }
         )
     }
 
     Column(Modifier.fillMaxSize()) {
-        DetailTopBar("下载管理", onBack)
+        DetailTopBar(tr("下载管理"), onBack)
 
         if (active.isEmpty() && done.isEmpty()) {
-            EmptyState(Icons.Outlined.Download, "还没有下载", description = "在全屏播放器中点「下载」，选择音质后开始下载。")
+            EmptyState(Icons.Outlined.Download, tr("还没有下载"), description = tr("在全屏播放器中点「下载」，选择音质后开始下载。"))
             return@Column
         }
 
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = NekoSpace.xl)) {
             if (active.isNotEmpty()) {
                 item {
-                    SectionHeader("正在下载 · ${active.size}", Modifier.padding(start = NekoSpace.lg, top = NekoSpace.sm, bottom = NekoSpace.xs))
+                    SectionHeader(tr("正在下载 · {count}", "count" to active.size), Modifier.padding(start = NekoSpace.lg, top = NekoSpace.sm, bottom = NekoSpace.xs))
                 }
                 items(active, key = { it.song.source + ":" + it.song.id }) { task ->
                     ActiveTaskRow(
@@ -96,7 +98,7 @@ fun DownloadManagerScreen(vm: PlayerViewModel, onBack: () -> Unit) {
 
             if (done.isNotEmpty()) {
                 item {
-                    SectionHeader("已下载 · ${done.size}", Modifier.padding(start = NekoSpace.lg, top = NekoSpace.lg, bottom = NekoSpace.xs))
+                    SectionHeader(tr("已下载 · {count}", "count" to done.size), Modifier.padding(start = NekoSpace.lg, top = NekoSpace.lg, bottom = NekoSpace.xs))
                 }
                 items(done, key = { it.song.source + ":" + it.songId }) { d ->
                     DownloadedRow(
@@ -137,7 +139,7 @@ private fun ActiveTaskRow(task: DownloadTask, onRetry: () -> Unit, modifier: Mod
                 style = MaterialTheme.typography.bodyMedium)
             when (task.status) {
                 DownloadStatus.FAILED -> Text(
-                    "下载失败：${task.errorMsg ?: "未知错误"}",
+                    tr("下载失败：{reason}", "reason" to (task.errorMsg ?: tr("未知错误"))),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -164,7 +166,7 @@ private fun ActiveTaskRow(task: DownloadTask, onRetry: () -> Unit, modifier: Mod
                 onClick = onRetry,
                 colors = NekoDefaults.textButtonColors()
             ) {
-                Text("重试")
+                Text(tr("重试"))
             }
         } else {
             Text("${(task.progress * 100).toInt()}%",
@@ -187,7 +189,7 @@ private fun DownloadedRow(
         Row(
             Modifier.weight(1f).clickableRow(
                 rowLabel = "${item.song.nm}，${item.song.ar}，${qualityLabel(item.quality)}",
-                actionLabel = "播放"
+                actionLabel = tr("播放")
             ) { onPlay() },
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -205,20 +207,20 @@ private fun DownloadedRow(
             }
         }
         IconButton(onClick = onRemove) {
-            Icon(Icons.Filled.Delete, contentDescription = "删除文件", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Filled.Delete, contentDescription = tr("删除文件"), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 private fun qualityLabel(q: String): String = when (q) {
-    "standard" -> "标准"
-    "higher" -> "较高"
-    "exhigh" -> "极高"
-    "lossless" -> "无损 SQ"
-    "hires" -> "Hi-Res 无损"
-    "jyeffect" -> "高清臻音"
-    "sky" -> "沉浸环绕声"
-    "jymaster" -> "超清母带"
-    "dolby" -> "臻音全景声"
+    "standard" -> tr("标准")
+    "higher" -> tr("较高")
+    "exhigh" -> tr("极高")
+    "lossless" -> tr("无损 SQ")
+    "hires" -> tr("Hi-Res 无损")
+    "jyeffect" -> tr("高清臻音")
+    "sky" -> tr("沉浸环绕声")
+    "jymaster" -> tr("超清母带")
+    "dolby" -> tr("臻音全景声")
     else -> q
 }

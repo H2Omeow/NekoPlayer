@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.net.nativeapi
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import kotlinx.serialization.json.*
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -138,7 +140,7 @@ class KugouNativeInterceptor(private val sessions: KugouSessionStore) : Intercep
                     query("key" to key(seconds.toString()+mid+data.toString()))
                 } else query("key" to key(seconds.toString()+mid),"content" to arg("content"),"tid" to arg("tid"),"is_t" to number("is_t",1),"pid" to number("pid"))
             }
-            else -> throw IOException("尚未支持的酷狗接口："+endpoint)
+            else -> throw IOException(tr("尚未支持的酷狗接口：")+endpoint)
         }
         val merged=linkedMapOf<String,Any?>()
         if(!clear) { merged.putAll(linkedMapOf("dfid" to dfid,"mid" to mid,"uuid" to "-","appid" to appid,"clientver" to ver,"clienttime" to seconds));if(token.isNotEmpty()) merged["token"]=token;if(uid!="0") merged["userid"]=uid }
@@ -156,17 +158,17 @@ class KugouNativeInterceptor(private val sessions: KugouSessionStore) : Intercep
         headers.forEach { (k,v) -> request.header(k,v) }
         if(method=="POST") request.post(body.toRequestBody((if(data!=null) "application/json; charset=UTF-8" else "application/x-www-form-urlencoded").toMediaType()))
         return chain.proceed(request.build()).use { response ->
-            val bytes=response.body?.bytes()?:throw IOException("酷狗返回空响应")
+            val bytes=response.body?.bytes()?:throw IOException(tr("酷狗返回空响应"))
             val decoded=try { registerKey?.let { secret -> val h=Crypto.md5(secret);String(Crypto.aes(bytes,h.take(16),h.takeLast(16),true)) } ?: String(bytes) }
-                catch (_: Exception) { throw IOException("酷狗设备响应解密失败") }
-            var result=try { Json.parseToJsonElement(decoded).jsonObject } catch (_: Exception) { throw IOException("酷狗响应格式异常（HTTP "+response.code+"）") }
+                catch (_: Exception) { throw IOException(tr("酷狗设备响应解密失败")) }
+            var result=try { Json.parseToJsonElement(decoded).jsonObject } catch (_: Exception) { throw IOException(tr("酷狗响应格式异常（HTTP ")+response.code+"）") }
             val additional=mutableMapOf<String,String>()
             if(registerKey!=null && result.text("status")=="1") additional["dfid"]=result.obj("data").text("dfid")
             if(decryptKey!=null && result.text("status")=="1") {
                 val values=result.obj("data").toMutableMap();val encrypted=result.obj("data").text("secu_params")
                 if(encrypted.isNotBlank()) {
                     val h=Crypto.md5(decryptKey!!)
-                    val clearText=try { String(Crypto.aes(Crypto.unhex(encrypted),h,h.takeLast(16),true)) } catch (_: Exception) { throw IOException("酷狗登录响应解密失败") }
+                    val clearText=try { String(Crypto.aes(Crypto.unhex(encrypted),h,h.takeLast(16),true)) } catch (_: Exception) { throw IOException(tr("酷狗登录响应解密失败")) }
                     val parsed=runCatching { Json.parseToJsonElement(clearText) as? JsonObject }.getOrNull()
                     if(parsed!=null) values.putAll(parsed) else values["token"]=JsonPrimitive(clearText)
                 }

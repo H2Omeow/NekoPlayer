@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.repo
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -42,15 +44,15 @@ class UserRepository : SyncRemote {
         val resp = api.pullData()
         val body = resp.body()
         when {
-            !resp.isSuccessful -> FetchResult.Failure(httpMessage(resp.code(), resp.errorBody()?.string(), "读取云端数据"))
+            !resp.isSuccessful -> FetchResult.Failure(httpMessage(resp.code(), resp.errorBody()?.string(), tr("读取云端数据")))
             body == null || body.code != 0 || body.data == null ->
-                FetchResult.Failure(body?.msg?.ifBlank { null } ?: "云端返回了无效数据")
+                FetchResult.Failure(body?.msg?.ifBlank { null } ?: tr("云端返回了无效数据"))
             else -> FetchResult.Ok(SyncCodec.snapshot(body.data, body.meta))
         }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        FetchResult.Failure("读取云端数据失败：" + (e.message ?: e.javaClass.simpleName))
+        FetchResult.Failure(tr("读取云端数据失败：") + (e.message ?: e.javaClass.simpleName))
     }
 
     override suspend fun patch(
@@ -69,14 +71,14 @@ class UserRepository : SyncRemote {
             resp.isSuccessful && body != null && body.code == 0 -> PatchResult.Ok(SyncCodec.parseMeta(body.meta))
             resp.code() == 409 -> {
                 val err = parseError(resp.errorBody()?.string())
-                PatchResult.Conflict(SyncCodec.parseMeta(err?.meta), err?.msg?.ifBlank { null } ?: "云端数据已被其他设备更新")
+                PatchResult.Conflict(SyncCodec.parseMeta(err?.meta), err?.msg?.ifBlank { null } ?: tr("云端数据已被其他设备更新"))
             }
-            else -> PatchResult.Failure(httpMessage(resp.code(), resp.errorBody()?.string(), "上传到云端"))
+            else -> PatchResult.Failure(httpMessage(resp.code(), resp.errorBody()?.string(), tr("上传到云端")))
         }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        PatchResult.Failure("上传到云端失败：" + (e.message ?: e.javaClass.simpleName))
+        PatchResult.Failure(tr("上传到云端失败：") + (e.message ?: e.javaClass.simpleName))
     }
 
     private fun parseError(text: String?): SectionsPatchResp? =
@@ -85,9 +87,9 @@ class UserRepository : SyncRemote {
     private fun httpMessage(code: Int, text: String?, action: String): String {
         val msg = text?.let { runCatching { errorJson.decodeFromString<SectionsPatchResp>(it).msg }.getOrNull() }
         return when {
-            code == 401 -> "登录已失效，请重新登录"
-            !msg.isNullOrBlank() -> "$action 失败：$msg"
-            else -> "$action 失败（HTTP $code）"
+            code == 401 -> tr("登录已失效，请重新登录")
+            !msg.isNullOrBlank() -> tr("{action} 失败：{message}", "action" to action, "message" to msg)
+            else -> tr("{action} 失败（HTTP {code}）", "action" to action, "code" to code)
         }
     }
 

@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.net
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import okhttp3.Cookie
 import okhttp3.HttpUrl
 
@@ -44,25 +46,25 @@ class KugouSessionStore(private val prefs: ProviderPreferences) {
     @Synchronized fun importCookie(platform: Int, raw: String) {
         checked(platform)
         require(raw.length <= 16384 && raw.none { it.code < 32 || it.code > 126 }) {
-            "Cookie 必须是单行文本，且不超过 16384 字符"
+            tr("Cookie 必须是单行文本，且不超过 16384 字符")
         }
         val content = raw.trim().replaceFirst(Regex("^Cookie: *", RegexOption.IGNORE_CASE), "")
         val values = linkedMapOf<String, String>()
         content.split(';').filter(String::isNotBlank).forEach { part ->
             val index = part.indexOf('=')
-            require(index > 0) { "Cookie 格式应为 token=…; userid=…" }
+            require(index > 0) { tr("Cookie 格式应为 token=…; userid=…") }
             val name = part.substring(0, index).trim()
             val value = part.substring(index + 1).trim()
             if (allowed(name)) {
-                require(name !in values) { "Cookie 包含重复字段，请检查后重试" }
+                require(name !in values) { tr("Cookie 包含重复字段，请检查后重试") }
                 require(value.isNotBlank() && value !in setOf("null", "undefined") &&
-                    value.none { it.isWhitespace() }) { "Cookie 包含无效字段，请检查后重试" }
+                    value.none { it.isWhitespace() }) { tr("Cookie 包含无效字段，请检查后重试") }
                 values[name] = value
             }
         }
         val userid = values["userid"]?.toLongOrNull()?.takeIf { it > 0 }
         require(!values["token"].isNullOrBlank() && userid != null) {
-            "酷狗 Cookie 必须包含有效的 token 和 userid；仅有网页追踪 Cookie 无法登录"
+            tr("酷狗 Cookie 必须包含有效的 token 和 userid；仅有网页追踪 Cookie 无法登录")
         }
         values["userid"] = userid.toString()
         // Never carry VIP credentials from the previous account into an imported account.

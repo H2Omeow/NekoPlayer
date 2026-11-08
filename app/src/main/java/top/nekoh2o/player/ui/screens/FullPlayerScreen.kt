@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.content.res.Configuration
 import android.provider.Settings
 import androidx.compose.animation.AnimatedContent
@@ -178,19 +180,19 @@ fun FullPlayerScreen(vm: PlayerViewModel, onClose: () -> Unit) {
     if (showFloatingPermDialog) {
         AlertDialog(
             onDismissRequest = { showFloatingPermDialog = false },
-            title = { Text("需要悬浮窗权限") },
-            text = { Text("悬浮歌词需要「显示在其他应用上层」权限，才能在其他应用和锁屏界面上显示当前歌词。") },
+            title = { Text(tr("需要悬浮窗权限")) },
+            text = { Text(tr("悬浮歌词需要「显示在其他应用上层」权限，才能在其他应用和锁屏界面上显示当前歌词。")) },
             confirmButton = {
-                TextButton(onClick = { showFloatingPermDialog = false; vm.toggleFloatingLyric(context) }) { Text("去授权") }
+                TextButton(onClick = { showFloatingPermDialog = false; vm.toggleFloatingLyric(context) }) { Text(tr("去授权")) }
             },
             dismissButton = {
-                TextButton(onClick = { showFloatingPermDialog = false }, colors = NekoDefaults.textButtonColors()) { Text("取消") }
+                TextButton(onClick = { showFloatingPermDialog = false }, colors = NekoDefaults.textButtonColors()) { Text(tr("取消")) }
             }
         )
     }
     if (showSpeedDialog) {
         OptionDialog(
-            title = "播放速度",
+            title = tr("播放速度"),
             options = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).map { it to "${it}x" },
             current = state.settings.playbackSpeed,
             onSelect = { vm.setPlaybackSpeed(it); showSpeedDialog = false },
@@ -199,8 +201,8 @@ fun FullPlayerScreen(vm: PlayerViewModel, onClose: () -> Unit) {
     }
     if (showTimerDialog) {
         OptionDialog(
-            title = "定时关闭",
-            options = listOf(0 to "关闭", 15 to "15 分钟", 30 to "30 分钟", 45 to "45 分钟", 60 to "60 分钟"),
+            title = tr("定时关闭"),
+            options = listOf(0 to tr("关闭"), 15 to tr("{minutes} 分钟", "minutes" to 15), 30 to tr("{minutes} 分钟", "minutes" to 30), 45 to tr("{minutes} 分钟", "minutes" to 45), 60 to tr("{minutes} 分钟", "minutes" to 60)),
             current = state.sleepMinutes,
             onSelect = { vm.setSleepTimer(it); showTimerDialog = false },
             onDismiss = { showTimerDialog = false }
@@ -272,7 +274,7 @@ private fun PortraitLayout(
                 Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .clickable(onClickLabel = if (showLyrics) "显示封面" else "显示歌词", role = Role.Button) { onToggleLyrics() },
+                    .clickable(onClickLabel = if (showLyrics) tr("显示封面") else tr("显示歌词"), role = Role.Button) { onToggleLyrics() },
                 contentAlignment = Alignment.Center
             ) {
                 Crossfade(targetState = showLyrics, animationSpec = tween(300), label = "lyrics_cover_toggle") { show ->
@@ -325,19 +327,19 @@ private fun LandscapeLayout(state: UiState, isFav: Boolean, controls: PlayerCont
 private fun PlayerTopBar(song: Song?, controls: PlayerControls, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = controls.onClose) {
-            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "收起", tint = TextMain)
+            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = tr("收起"), tint = TextMain)
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("正在播放", style = MaterialTheme.typography.labelMedium, color = TextSub)
+            Text(tr("正在播放"), style = MaterialTheme.typography.labelMedium, color = TextSub)
             if (song != null) {
                 Text(songSourceLabel(song), style = MaterialTheme.typography.labelSmall, color = TextSub.copy(alpha = 0.5f))
             }
         }
         IconButton(onClick = controls.onShare) {
-            Icon(Icons.Filled.Share, contentDescription = "分享歌曲", tint = TextMain)
+            Icon(Icons.Filled.Share, contentDescription = tr("分享歌曲"), tint = TextMain)
         }
         IconButton(onClick = controls.onDynamicLyrics) {
-            Icon(Icons.Filled.AutoAwesome, contentDescription = "动态歌词", tint = TextMain)
+            Icon(Icons.Filled.AutoAwesome, contentDescription = tr("动态歌词"), tint = TextMain)
         }
     }
 }
@@ -366,13 +368,13 @@ private fun TrackHeader(song: Song?, isFav: Boolean, onToggleFav: () -> Unit, mo
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(
-                song?.nm ?: "未在播放",
+                song?.nm ?: tr("未在播放"),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = TextMain,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(
-                song?.ar ?: "从音乐页选一首歌",
+                song?.ar ?: tr("从音乐页选一首歌"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSub,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
@@ -392,11 +394,11 @@ private fun Transport(state: UiState, controls: PlayerControls, modifier: Modifi
         verticalAlignment = Alignment.CenterVertically
     ) {
         val modeLabel = when (state.playMode) {
-            PlayMode.LOOP -> "列表循环"
-            PlayMode.SINGLE -> "单曲循环"
-            PlayMode.RANDOM -> "随机播放"
+            PlayMode.LOOP -> tr("列表循环")
+            PlayMode.SINGLE -> tr("单曲循环")
+            PlayMode.RANDOM -> tr("随机播放")
         }
-        IconButton(onClick = controls.onCycleMode, modifier = Modifier.toggleSemantics("播放模式", modeLabel)) {
+        IconButton(onClick = controls.onCycleMode, modifier = Modifier.toggleSemantics(tr("播放模式"), modeLabel)) {
             AnimatedContent(
                 targetState = state.playMode,
                 transitionSpec = {
@@ -416,7 +418,7 @@ private fun Transport(state: UiState, controls: PlayerControls, modifier: Modifi
             }
         }
         IconButton(onClick = controls.onPrev, modifier = Modifier.size(56.dp)) {
-            Icon(Icons.Filled.SkipPrevious, contentDescription = "上一首", tint = TextMain, modifier = Modifier.size(36.dp))
+            Icon(Icons.Filled.SkipPrevious, contentDescription = tr("上一首"), tint = TextMain, modifier = Modifier.size(36.dp))
         }
         FilledIconButton(
             onClick = controls.onTogglePlay,
@@ -433,16 +435,16 @@ private fun Transport(state: UiState, controls: PlayerControls, modifier: Modifi
             ) { playing ->
                 Icon(
                     if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (playing) "暂停" else "播放",
+                    contentDescription = if (playing) tr("暂停") else tr("播放"),
                     modifier = Modifier.size(36.dp)
                 )
             }
         }
         IconButton(onClick = controls.onNext, modifier = Modifier.size(56.dp)) {
-            Icon(Icons.Filled.SkipNext, contentDescription = "下一首", tint = TextMain, modifier = Modifier.size(36.dp))
+            Icon(Icons.Filled.SkipNext, contentDescription = tr("下一首"), tint = TextMain, modifier = Modifier.size(36.dp))
         }
         IconButton(onClick = controls.onQueue) {
-            Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "播放列表", tint = TextSub)
+            Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = tr("播放列表"), tint = TextSub)
         }
     }
 }
@@ -452,16 +454,16 @@ private fun ActionRow(state: UiState, controls: PlayerControls, modifier: Modifi
     val sleep = state.sleepMinutes
     val floating = state.settings.floatingLyricEnabled
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-        ActionItem(Icons.Outlined.Speed, "${state.settings.playbackSpeed}x", "倍速", onClick = controls.onSpeed)
+        ActionItem(Icons.Outlined.Speed, "${state.settings.playbackSpeed}x", tr("倍速"), onClick = controls.onSpeed)
         ActionItem(
-            Icons.Outlined.Timer, if (sleep > 0) "${sleep} 分钟" else "定时", "定时关闭",
-            active = sleep > 0, state = if (sleep > 0) "已设定 $sleep 分钟" else "未开启", onClick = controls.onTimer
+            Icons.Outlined.Timer, if (sleep > 0) tr("{minutes} 分钟", "minutes" to sleep) else tr("定时"), tr("定时关闭"),
+            active = sleep > 0, state = if (sleep > 0) tr("已设定 {minutes} 分钟", "minutes" to sleep) else tr("未开启"), onClick = controls.onTimer
         )
-        ActionItem(Icons.AutoMirrored.Outlined.Comment,"评论", "查看歌曲评论", onClick = controls.onComments)
-        ActionItem(Icons.Outlined.Download, "下载", "下载当前歌曲", onClick = controls.onDownload)
+        ActionItem(Icons.AutoMirrored.Outlined.Comment,tr("评论"), tr("查看歌曲评论"), onClick = controls.onComments)
+        ActionItem(Icons.Outlined.Download, tr("下载"), tr("下载当前歌曲"), onClick = controls.onDownload)
         ActionItem(
-            if (floating) Icons.Outlined.Subtitles else Icons.Outlined.SubtitlesOff, "悬浮词", "悬浮歌词",
-            active = floating, state = if (floating) "已开启" else "已关闭", onClick = controls.onFloating
+            if (floating) Icons.Outlined.Subtitles else Icons.Outlined.SubtitlesOff, tr("悬浮词"), tr("悬浮歌词"),
+            active = floating, state = if (floating) tr("已开启") else tr("已关闭"), onClick = controls.onFloating
         )
     }
 }
@@ -555,7 +557,7 @@ private fun fmtTime(ms: Long): String {
 private fun LyricView(state: UiState, modifier: Modifier = Modifier) {
     val lyrics = state.lyrics
     if (lyrics.isEmpty()) {
-        Box(modifier, Alignment.Center) { Text("暂无歌词", color = LyricIdle) }
+        Box(modifier, Alignment.Center) { Text(tr("暂无歌词"), color = LyricIdle) }
         return
     }
     val activeIndex = state.lyricIndex
@@ -711,7 +713,7 @@ private fun <T> OptionDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss, colors = NekoDefaults.textButtonColors()) { Text("取消") }
+            TextButton(onClick = onDismiss, colors = NekoDefaults.textButtonColors()) { Text(tr("取消")) }
         }
     )
 }
@@ -726,26 +728,26 @@ private fun QualityDialog(song: Song?, current: String, onSelect: (String) -> Un
         loading = true; error = null
         try { options = song?.let { top.nekoh2o.player.data.repo.SongQualityRepository().downloadable(it) }.orEmpty() }
         catch (e: kotlinx.coroutines.CancellationException) { throw e }
-        catch (e: Exception) { error = e.message ?: "音质查询失败" }
+        catch (e: Exception) { error = e.message ?: tr("音质查询失败") }
         finally { loading = false }
     }
     val preferred = top.nekoh2o.player.data.repo.SongQualityRepository.preferredFor(song?.source.orEmpty(), current)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("下载音质") },
+        title = { Text(tr("下载音质")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
                 when {
                     loading -> Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(NekoSpace.md))
-                        Text("正在查询音质和下载权限…")
+                        Text(tr("正在查询音质和下载权限…"))
                     }
                     error != null -> {
                         Text(error!!, color = MaterialTheme.colorScheme.error)
-                        TextButton(onClick = { retry++ }) { Text("重试") }
+                        TextButton(onClick = { retry++ }) { Text(tr("重试")) }
                     }
-                    options.isEmpty() -> Text("当前账号没有可下载的音质，请登录对应音乐平台或检查歌曲版权。")
+                    options.isEmpty() -> Text(tr("当前账号没有可下载的音质，请登录对应音乐平台或检查歌曲版权。"))
                     else -> LazyColumn {
                         items(options, key = { it.id }) { option ->
                             Row(
@@ -775,7 +777,7 @@ private fun QualityDialog(song: Song?, current: String, onSelect: (String) -> Un
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss, colors = NekoDefaults.textButtonColors()) { Text("取消") } }
+        dismissButton = { TextButton(onClick = onDismiss, colors = NekoDefaults.textButtonColors()) { Text(tr("取消")) } }
     )
 }
 
@@ -793,12 +795,12 @@ private fun QueueSheet(vm: PlayerViewModel, onDismiss: () -> Unit) {
             Modifier.fillMaxWidth().padding(horizontal = NekoSpace.xl, vertical = NekoSpace.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("播放队列", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            Text("${state.queue.size} 首", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(tr("播放队列"), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(tr("{count} 首", "count" to state.queue.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (state.queue.isEmpty()) {
             Box(Modifier.fillMaxWidth().padding(NekoSpace.xxl), Alignment.Center) {
-                Text("播放队列是空的", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("播放队列是空的"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(
@@ -822,8 +824,8 @@ private fun QueueSheet(vm: PlayerViewModel, onDismiss: () -> Unit) {
                                     Modifier
                                         .weight(1f)
                                         .clickableRow(
-                                            rowLabel = "${song.nm}，${song.ar}" + if (playing) "，正在播放" else "",
-                                            actionLabel = "播放"
+                                            rowLabel = "${song.nm}，${song.ar}" + if (playing) tr("，正在播放") else "",
+                                            actionLabel = tr("播放")
                                         ) { vm.playAt(index); onDismiss() }
                                         .padding(vertical = NekoSpace.sm),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -852,11 +854,11 @@ private fun QueueSheet(vm: PlayerViewModel, onDismiss: () -> Unit) {
                                     }
                                 }
                                 IconButton(onClick = { vm.removeFromQueue(index) }) {
-                                    Icon(Icons.Filled.Close, contentDescription = "移除", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Icon(Icons.Filled.Close, contentDescription = tr("移除"), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 Icon(
                                     Icons.Filled.DragHandle,
-                                    contentDescription = "拖动排序",
+                                    contentDescription = tr("拖动排序"),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.draggableHandle().padding(NekoSpace.md)
                                 )

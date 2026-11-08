@@ -1,4 +1,6 @@
+import './i18n/tr.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
@@ -8,8 +10,9 @@ import 'data/audio_cache.dart';
 import 'data/library_store.dart';
 import 'diagnostics/crash_guard.dart';
 import 'diagnostics/crash_log.dart';
-import 'data/native_music_catalog.dart';
+import 'i18n/app_language.dart';
 import 'data/account_store.dart';
+import 'data/native_music_catalog.dart';
 import 'data/plugin_subscriptions.dart';
 import 'data/plugins/plugin_runtime.dart';
 import 'deep_links.dart';
@@ -28,6 +31,8 @@ Future<void> _start(List<String> arguments) async {
   final deepLinks = await DeepLinkRouter.start(arguments);
   // 第二个实例已把深链转发给正在运行的窗口，直接退出。
   if (deepLinks == null) return;
+  final language = AppLanguage();
+  await language.initialize();
   registerBundledFontLicense();
   try {
     MediaKit.ensureInitialized();
@@ -75,7 +80,7 @@ Future<void> _start(List<String> arguments) async {
       store: PreferencesLibraryStore(SharedPreferencesAsync()),
     );
     await controller.initialize();
-    runApp(NekoApp(controller: controller, deepLinks: deepLinks));
+    runApp(NekoApp(controller: controller, deepLinks: deepLinks, language: language));
   } catch (failure, stack) {
     CrashLog.error(
       'startup',
@@ -86,6 +91,16 @@ Future<void> _start(List<String> arguments) async {
     runApp(
       MaterialApp(
         theme: nekoTheme(),
+        locale: language.locale,
+        supportedLocales: const [
+          Locale('zh', 'CN'),
+          Locale('zh', 'TW'),
+          Locale('en'),
+          Locale('ja'),
+        ],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        localeListResolutionCallback: (locales, supported) =>
+            localeForTag(resolveLanguageTag(systemLanguageTag, locales ?? const [])),
         home: Scaffold(
           body: Center(
             child: Padding(
@@ -93,13 +108,15 @@ Future<void> _start(List<String> arguments) async {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SelectableText(
-                    '播放内核初始化失败。\nLinux 请安装与你的系统架构匹配的 libmpv 和 GTK 3；Windows 请检查安装包中的播放依赖。',
+                        SelectableText(
+                    tr('播放内核初始化失败。\nLinux 请安装与你的系统架构匹配的 libmpv 和 GTK 3；Windows 请检查安装包中的播放依赖。'),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   SelectableText(
-                    '错误详情已写入日志：${CrashGuard.logPath ?? defaultLogRoot().path}',
+                    tr('错误详情已写入日志：{path}', {
+                      'path': CrashGuard.logPath ?? defaultLogRoot().path,
+                    }),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
@@ -111,7 +128,7 @@ Future<void> _start(List<String> arguments) async {
                         ),
                       ),
                       icon: const Icon(Icons.bug_report_outlined),
-                      label: const Text('查看崩溃日志'),
+                      label:       Text(tr('查看崩溃日志')),
                     ),
                   ),
                 ],

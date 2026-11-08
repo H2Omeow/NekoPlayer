@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -46,7 +47,7 @@ class PlaybackOptionsButton extends StatelessWidget {
           showDialog<void>(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('播放速度'),
+              title:       Text(tr('播放速度')),
               scrollable: true,
               content: Wrap(
                 spacing: 8,
@@ -66,7 +67,7 @@ class PlaybackOptionsButton extends StatelessWidget {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('关闭'),
+                  child:       Text(tr('关闭')),
                 ),
               ],
             ),
@@ -77,7 +78,7 @@ class PlaybackOptionsButton extends StatelessWidget {
           showDialog<void>(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('定时暂停'),
+              title:       Text(tr('定时暂停')),
               scrollable: true,
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -85,8 +86,12 @@ class PlaybackOptionsButton extends StatelessWidget {
                 children: [
                   Text(
                     controller.sleepDeadline == null
-                        ? '当前未开启'
-                        : '将在 ${controller.sleepDeadline!.hour.toString().padLeft(2, '0')}:${controller.sleepDeadline!.minute.toString().padLeft(2, '0')} 暂停',
+                        ? tr('当前未开启')
+                        : tr('将在 {time} 暂停', {
+                            'time':
+                                '${controller.sleepDeadline!.hour.toString().padLeft(2, '0')}:'
+                                '${controller.sleepDeadline!.minute.toString().padLeft(2, '0')}',
+                          }),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -95,7 +100,7 @@ class PlaybackOptionsButton extends StatelessWidget {
                     children: [
                       for (final minutes in [15, 30, 60, 90])
                         ActionChip(
-                          label: Text('$minutes 分钟'),
+                          label: Text(tr('{minutes} 分钟', {'minutes': minutes})),
                           onPressed: () {
                             controller.setSleepTimer(
                               Duration(minutes: minutes),
@@ -105,7 +110,7 @@ class PlaybackOptionsButton extends StatelessWidget {
                         ),
                       if (controller.sleepDeadline != null)
                         ActionChip(
-                          label: const Text('取消定时'),
+                          label:       Text(tr('取消定时')),
                           onPressed: () {
                             controller.setSleepTimer(null);
                             Navigator.pop(context);
@@ -118,7 +123,7 @@ class PlaybackOptionsButton extends StatelessWidget {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('关闭'),
+                  child:       Text(tr('关闭')),
                 ),
               ],
             ),
@@ -133,7 +138,7 @@ class PlaybackOptionsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PopupMenuButton<String>(
-    tooltip: '播放选项',
+    tooltip: tr('播放选项'),
     icon: const Icon(Icons.more_vert_rounded),
     onSelected: (action) => select(context, action),
     itemBuilder: (_) => [
@@ -143,24 +148,31 @@ class PlaybackOptionsButton extends StatelessWidget {
             value: 'view-${mode.name}',
             checked: view == mode,
             child: Text(switch (mode) {
-              PlaybackView.split => '封面与歌词',
-              PlaybackView.record => '唱片视图',
-              PlaybackView.lyrics => '专注歌词',
+              PlaybackView.split => tr('封面与歌词'),
+              PlaybackView.record => tr('唱片视图'),
+              PlaybackView.lyrics => tr('专注歌词'),
             }),
           ),
         const PopupMenuDivider(),
       ],
-      const PopupMenuItem(value: 'queue', child: Text('播放队列')),
+            PopupMenuItem(value: 'queue', child: Text(tr('播放队列'))),
       if (controller.current != null)
-        const PopupMenuItem(value: 'playlist', child: Text('加入本机歌单')),
-      PopupMenuItem(value: 'rate', child: Text('播放速度 · ${controller.rate}x')),
+              PopupMenuItem(value: 'playlist', child: Text(tr('加入本机歌单'))),
+      PopupMenuItem(
+        value: 'rate',
+        child: Text(tr('播放速度 · {rate}x', {'rate': controller.rate})),
+      ),
       PopupMenuItem(
         value: 'timer',
-        child: Text(controller.sleepDeadline == null ? '定时暂停' : '定时暂停 · 已开启'),
+        child: Text(
+          controller.sleepDeadline == null
+              ? tr('定时暂停')
+              : tr('定时暂停 · 已开启'),
+        ),
       ),
       PopupMenuItem(
         value: 'translation',
-        child: Text(controller.showTranslation ? '隐藏歌词翻译' : '显示歌词翻译'),
+        child: Text(controller.showTranslation ? tr('隐藏歌词翻译') : tr('显示歌词翻译')),
       ),
     ],
   );

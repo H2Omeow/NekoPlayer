@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -59,10 +60,10 @@ class _TrackCollectionPageState extends State<TrackCollectionPage> {
   };
 
   String get title => switch (widget.kind) {
-    CollectionKind.local => '全部歌曲',
-    CollectionKind.favorites => '我喜欢',
-    CollectionKind.recent => '最近播放',
-    CollectionKind.playlist => playlist?.name ?? '歌单',
+    CollectionKind.local => tr('全部歌曲'),
+    CollectionKind.favorites => tr('我喜欢'),
+    CollectionKind.recent => tr('最近播放'),
+    CollectionKind.playlist => playlist?.name ?? tr('歌单'),
   };
 
   IconData get icon => switch (widget.kind) {
@@ -91,12 +92,16 @@ class _TrackCollectionPageState extends State<TrackCollectionPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('删除歌单？'),
-        content: Text('“${target.name}”将被删除，歌曲文件和收藏不受影响。'),
+        title:       Text(tr('删除歌单？')),
+        content: Text(
+          tr('“{name}”将被删除，歌曲文件和收藏不受影响。', {
+            'name': target.name,
+          }),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child:       Text(tr('取消')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -104,7 +109,7 @@ class _TrackCollectionPageState extends State<TrackCollectionPage> {
               foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除'),
+            child:       Text(tr('删除')),
           ),
         ],
       ),
@@ -120,10 +125,10 @@ class _TrackCollectionPageState extends State<TrackCollectionPage> {
     listenable: Listenable.merge([player, player.engine]),
     builder: (context, _) {
       if (widget.kind == CollectionKind.playlist && playlist == null) {
-        return const EmptyState(
+        return       EmptyState(
           icon: Icons.queue_music_rounded,
-          title: '歌单不存在',
-          description: '它可能已被删除或在其他设备上同步移除。',
+          title: tr('歌单不存在'),
+          description: tr('它可能已被删除或在其他设备上同步移除。'),
         );
       }
       final all = tracks;
@@ -146,12 +151,12 @@ class _TrackCollectionPageState extends State<TrackCollectionPage> {
           if (all.isEmpty)
             SliverFillRemaining(hasScrollBody: false, child: _empty())
           else if (indices.isEmpty)
-            const SliverFillRemaining(
+                  SliverFillRemaining(
               hasScrollBody: false,
               child: EmptyState(
                 icon: Icons.search_off_rounded,
-                title: '没有匹配的歌曲',
-                description: '换个关键词试试。',
+                title: tr('没有匹配的歌曲'),
+                description: tr('换个关键词试试。'),
               ),
             )
           else
@@ -199,7 +204,9 @@ class _TrackCollectionPageState extends State<TrackCollectionPage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          widget.kind == CollectionKind.playlist ? '歌单' : '资料库',
+          widget.kind == CollectionKind.playlist
+              ? tr('歌单')
+              : tr('资料库'),
           style: text.labelLarge?.copyWith(color: colors.onSurfaceVariant),
         ),
         const SizedBox(height: NekoSpace.xs),
@@ -211,7 +218,7 @@ class _TrackCollectionPageState extends State<TrackCollectionPage> {
         ),
         const SizedBox(height: NekoSpace.sm),
         Text(
-          all.isEmpty ? '暂无歌曲' : '${all.length} 首歌曲',
+          all.isEmpty ? tr('暂无歌曲') : '${all.length} 首歌曲',
           style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
         ),
         const SizedBox(height: NekoSpace.lg),
@@ -223,14 +230,14 @@ class _TrackCollectionPageState extends State<TrackCollectionPage> {
             FilledButton.icon(
               onPressed: all.isEmpty ? null : () => unawaited(playAll(all)),
               icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text('播放'),
+              label:       Text(tr('播放')),
             ),
             OutlinedButton.icon(
               onPressed: all.isEmpty
                   ? null
                   : () => unawaited(playAll(all, shuffle: true)),
               icon: const Icon(Icons.shuffle_rounded, size: 18),
-              label: const Text('随机播放'),
+              label:       Text(tr('随机播放')),
             ),
             if (widget.kind == CollectionKind.local && widget.onImport != null)
               OutlinedButton.icon(
@@ -238,11 +245,11 @@ class _TrackCollectionPageState extends State<TrackCollectionPage> {
                     ? null
                     : widget.onImport,
                 icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text(widget.importing || player.busy ? '正在导入…' : '导入音乐'),
+                label: Text(widget.importing || player.busy ? tr('正在导入…') : tr('导入音乐')),
               ),
             if (widget.kind == CollectionKind.playlist)
               IconButton(
-                tooltip: '删除歌单',
+                tooltip: tr('删除歌单'),
                 onPressed: deletePlaylist,
                 icon: const Icon(Icons.delete_outline_rounded),
               ),
@@ -254,9 +261,9 @@ class _TrackCollectionPageState extends State<TrackCollectionPage> {
       width: compact ? double.infinity : 240,
       child: TextField(
         onChanged: (value) => setState(() => query = value),
-        decoration: const InputDecoration(
+        decoration:       InputDecoration(
           prefixIcon: Icon(Icons.search_rounded, size: 20),
-          hintText: '在列表中查找',
+          hintText: tr('在列表中查找'),
         ),
       ),
     );
@@ -284,30 +291,30 @@ class _TrackCollectionPageState extends State<TrackCollectionPage> {
   Widget _empty() => switch (widget.kind) {
     CollectionKind.local => EmptyState(
       icon: Icons.library_music_outlined,
-      title: '音乐库还是空的',
-      description: '导入电脑上的音乐文件，或在“发现”中搜索在线歌曲。文件会保留在原位置。',
+      title: tr('音乐库还是空的'),
+      description: tr('导入电脑上的音乐文件，或在“发现”中搜索在线歌曲。文件会保留在原位置。'),
       action: widget.onImport == null
           ? null
           : FilledButton.icon(
               onPressed: widget.onImport,
               icon: const Icon(Icons.add_rounded),
-              label: const Text('导入音乐'),
+              label:       Text(tr('导入音乐')),
             ),
     ),
-    CollectionKind.favorites => const EmptyState(
+    CollectionKind.favorites =>       EmptyState(
       icon: Icons.favorite_border_rounded,
-      title: '还没有喜欢的歌',
-      description: '点歌曲旁的爱心，就会收进这里。',
+      title: tr('还没有喜欢的歌'),
+      description: tr('点歌曲旁的爱心，就会收进这里。'),
     ),
-    CollectionKind.recent => const EmptyState(
+    CollectionKind.recent =>       EmptyState(
       icon: Icons.history_rounded,
-      title: '最近没有播放记录',
-      description: '播放过的歌曲会按时间出现在这里。',
+      title: tr('最近没有播放记录'),
+      description: tr('播放过的歌曲会按时间出现在这里。'),
     ),
-    CollectionKind.playlist => const EmptyState(
+    CollectionKind.playlist =>       EmptyState(
       icon: Icons.playlist_add_rounded,
-      title: '歌单还是空的',
-      description: '在任意歌曲的“⋯”菜单中选择“添加到歌单”。',
+      title: tr('歌单还是空的'),
+      description: tr('在任意歌曲的“⋯”菜单中选择“添加到歌单”。'),
     ),
   };
 }

@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.plugins
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.content.Context
 import android.util.Base64
 import kotlinx.coroutines.*
@@ -23,10 +25,10 @@ internal object PluginHttp {
         .callTimeout(15, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build()
 
     suspend fun get(url: String): String {
-        require(validPluginUrl(url)) { "请输入有效的 HTTP(S) 地址" }
+        require(validPluginUrl(url)) { tr("请输入有效的 HTTP(S) 地址") }
         return execute(Request.Builder().url(url).build()).use { response ->
-            if (!response.isSuccessful) throw IOException("音源服务器返回 HTTP ${response.code}")
-            val body = response.body ?: throw IOException("音源服务器返回空内容")
+            if (!response.isSuccessful) throw IOException(tr("音源服务器返回 HTTP {code}", "code" to response.code))
+            val body = response.body ?: throw IOException(tr("音源服务器返回空内容"))
             withContext(Dispatchers.IO) { body.byteStream().use { it.readPluginBytes() }.toString(Charsets.UTF_8) }
         }
     }
@@ -40,8 +42,8 @@ internal object PluginHttp {
             val next = response.header("Location")?.let { current.url.resolve(it) }
             val code = response.code
             response.close()
-            require(next != null && next.username.isEmpty() && next.password.isEmpty()) { "音源重定向地址无效" }
-            require(!current.url.isHttps || next.isHttps) { "音源请求拒绝降级为 HTTP" }
+            require(next != null && next.username.isEmpty() && next.password.isEmpty()) { tr("音源重定向地址无效") }
+            require(!current.url.isHttps || next.isHttps) { tr("音源请求拒绝降级为 HTTP") }
             val builder = current.newBuilder().url(next)
             if (current.url.scheme != next.scheme || current.url.host != next.host || current.url.port != next.port) {
                 builder.removeHeader("Authorization").removeHeader("Cookie").removeHeader("Proxy-Authorization")
@@ -51,7 +53,7 @@ internal object PluginHttp {
             }
             current = builder.build()
         }
-        throw IOException("音源重定向次数过多")
+        throw IOException(tr("音源重定向次数过多"))
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -60,7 +62,7 @@ internal object PluginHttp {
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, exception: IOException) {
-                if (!continuation.isCancelled) continuation.resumeWithException(IOException("音源网络请求失败"))
+                if (!continuation.isCancelled) continuation.resumeWithException(IOException(tr("音源网络请求失败")))
             }
             override fun onResponse(call: Call, response: Response) {
                 continuation.resume(response) { response.close() }
@@ -75,7 +77,7 @@ internal fun InputStream.readPluginBytes(): ByteArray {
     while (true) {
         val count = read(buffer)
         if (count < 0) break
-        require(output.size() + count <= PluginHttp.MAX_BYTES) { "音源内容超过 5 MiB 限制" }
+        require(output.size() + count <= PluginHttp.MAX_BYTES) { tr("音源内容超过 5 MiB 限制") }
         output.write(buffer, 0, count)
     }
     return output.toByteArray()
@@ -91,7 +93,7 @@ class PluginRuntime(private val context: Context) {
             withTimeout(20_000) {
                 val native = withContext(nativeDispatcher) { NativePluginVm() }
                 val handle = withContext(nativeDispatcher) { native.create() }
-                check(handle != 0L) { "无法创建脚本环境" }
+                check(handle != 0L) { tr("无法创建脚本环境") }
                 try {
                     evaluate(native, handle, bootstrap)
                     val options = buildJsonObject {
@@ -111,15 +113,15 @@ class PluginRuntime(private val context: Context) {
             }
         } catch (failure: TimeoutCancellationException) {
             currentCoroutineContext().ensureActive()
-            throw IOException("音源脚本执行超过 20 秒")
+            throw IOException(tr("音源脚本执行超过 20 秒"))
         } catch (failure: LinkageError) {
-            throw IOException("当前安装包缺少音源脚本运行库")
+            throw IOException(tr("当前安装包缺少音源脚本运行库"))
         }
     }
 
     private suspend fun evaluate(native: NativePluginVm, handle: Long, script: String): String {
         val result = withContext(nativeDispatcher) { Json.parseToJsonElement(native.eval(handle, script)).jsonObject }
-        if (result["ok"] != JsonPrimitive(true)) throw IOException("音源脚本执行失败，请检查脚本兼容性")
+        if (result["ok"] != JsonPrimitive(true)) throw IOException(tr("音源脚本执行失败，请检查脚本兼容性"))
         return result.string("value")
     }
 
@@ -138,7 +140,7 @@ class PluginRuntime(private val context: Context) {
             val requests = (state["requests"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
             requestCount += requests.size
             pendingCount += requests.size
-            require(requestCount <= 64) { "音源脚本请求次数过多" }
+            require(requestCount <= 64) { tr("音源脚本请求次数过多") }
             requests.forEach { request ->
                 jobs.add(launch {
                     val reply = try {
@@ -148,27 +150,27 @@ class PluginRuntime(private val context: Context) {
                     } catch (_: Exception) {
                         false to JsonPrimitive("Host request failed")
                     }
-                    val id = request["id"] ?: throw IOException("音源宿主请求缺少标识")
+                    val id = request["id"] ?: throw IOException(tr("音源宿主请求缺少标识"))
                     replies.send(HostReply(id, reply.first, reply.second))
                 })
             }
             when (state.string("state")) {
                 "done" -> return@coroutineScope PluginInvocation(state["value"] ?: JsonNull, storage)
-                "error" -> throw IOException("音源脚本调用失败，请检查配置或更新音源")
+                "error" -> throw IOException(tr("音源脚本调用失败，请检查配置或更新音源"))
                 "pending" -> {
-                    require(pendingCount > 0) { "音源脚本没有可处理的请求" }
+                    require(pendingCount > 0) { tr("音源脚本没有可处理的请求") }
                     val reply = replies.receive()
                     pendingCount--
                     evaluate(native, handle, "NekoPlugin.deliver(${reply.id},${reply.success},${reply.value});''")
                 }
-                else -> throw IOException("音源运行库返回未知状态")
+                else -> throw IOException(tr("音源运行库返回未知状态"))
             }
         } } finally {
             jobs.forEach { it.cancel() }
             replies.close()
         }
         @Suppress("UNREACHABLE_CODE")
-        error("音源脚本未完成")
+        error(tr("音源脚本未完成"))
     }
 
     private suspend fun hostRequest(request: JsonObject): JsonElement = withContext(Dispatchers.IO) {
@@ -207,7 +209,7 @@ class PluginRuntime(private val context: Context) {
                     }
                 }
             }
-            else -> throw IOException("不支持的音源宿主请求")
+            else -> throw IOException(tr("不支持的音源宿主请求"))
         }
     }
 

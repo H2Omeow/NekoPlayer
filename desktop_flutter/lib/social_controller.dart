@@ -1,3 +1,5 @@
+import './i18n/app_language.dart';
+import './i18n/tr.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -89,13 +91,13 @@ class SocialController extends ChangeNotifier {
     } on MusicSearchException catch (failure) {
       error = failure.message;
     } on HandshakeException {
-      error = '本站 TLS 证书验证失败。';
+      error = tr('本站 TLS 证书验证失败。');
     } on IOException {
-      error = '无法连接本站，请检查网络。';
+      error = tr('无法连接本站，请检查网络。');
     } on FormatException {
-      error = '本站响应格式异常。';
+      error = tr('本站响应格式异常。');
     } catch (_) {
-      error = '操作未完成，请稍后重试。';
+      error = tr('操作未完成，请稍后重试。');
     }
     return null;
   }
@@ -273,7 +275,7 @@ class SocialController extends ChangeNotifier {
   Future<void> search(String query) async {
     final clean = query.trim();
     if (clean.length < 2) {
-      error = '至少输入 2 个字符。';
+      error = tr('至少输入 2 个字符。');
       _notify();
       return;
     }
@@ -320,7 +322,7 @@ class SocialController extends ChangeNotifier {
       for (final item in searchResults)
         if (item.id == target.id) updated else item,
     ];
-    onSnack?.call(following ? '已关注' : '已取消关注');
+    onSnack?.call(following ? tr('已关注') : tr('已取消关注'));
     _notify();
   }
 
@@ -328,7 +330,7 @@ class SocialController extends ChangeNotifier {
     final blocked = !target.blocked;
     await _guard(() => repository.block(target.id, blocked));
     if (profile?.id == target.id) profile = target.copyWith(blocked: blocked);
-    onSnack?.call(blocked ? '已拉黑' : '已取消拉黑');
+    onSnack?.call(blocked ? tr('已拉黑') : tr('已取消拉黑'));
     _notify();
   }
 
@@ -344,7 +346,7 @@ class SocialController extends ChangeNotifier {
     final result = await _guard(() => repository.savePreferences(policy));
     if (result != null) {
       preferences = result;
-      onSnack?.call('私信设置已保存');
+      onSnack?.call(tr('私信设置已保存'));
       _notify();
     }
   }
@@ -378,13 +380,13 @@ class SocialController extends ChangeNotifier {
       return;
     }
     if (result.revoked) {
-      error = '分享已失效。';
+      error = tr('分享已失效。');
       _notify();
       return;
     }
     final track = result.track;
     if (track == null) {
-      error = '分享中的歌曲无法在当前版本播放。';
+      error = tr('分享中的歌曲无法在当前版本播放。');
       _notify();
       return;
     }
@@ -415,13 +417,17 @@ class SocialController extends ChangeNotifier {
         );
         request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
         request.headers.set(HttpHeaders.acceptHeader, 'text/event-stream');
+        request.headers.set(
+          HttpHeaders.acceptLanguageHeader,
+          AppLanguage.currentTag,
+        );
         final response = await request.close();
         if (response.statusCode == 401) {
           client.close(force: true);
           return;
         }
         if (response.statusCode != 200) {
-          throw const MusicSearchException('实时连接失败。');
+          throw       MusicSearchException(tr('实时连接失败。'));
         }
         var event = 'message';
         final data = <String>[];
@@ -466,7 +472,7 @@ class SocialController extends ChangeNotifier {
       return;
     }
     if (event == 'follow') {
-      onSnack?.call('有新粉丝关注了你');
+      onSnack?.call(tr('有新粉丝关注了你'));
       return;
     }
     if (event != 'message') return;
@@ -483,16 +489,18 @@ class SocialController extends ChangeNotifier {
     } else {
       unawaited(refreshConversations(silent: true));
       if (!message.owned) {
-        final sender = message.sender?.displayName ?? '新消息';
+        final sender = message.sender?.displayName ?? tr('新消息');
         final body = message.deleted
             ? ''
             : message.kind == 'song'
-            ? '[歌曲] ${message.song['nm'] ?? '分享'}'
+            ? tr('[歌曲] {title}', {
+                'title': message.song['nm'] ?? tr('分享'),
+              })
             : message.text;
         onSnack?.call('$sender：$body');
         onNotify?.call(
           sender,
-          body.isEmpty ? '发来一条消息' : body,
+          body.isEmpty ? tr('发来一条消息') : body,
           'nekoplayer://chat?peer=${Uri.encodeComponent(decoded['peerId']?.toString() ?? message.senderId)}',
         );
       }
@@ -513,6 +521,6 @@ class SocialController extends ChangeNotifier {
 
 String platformLabel(Track track) {
   final provider = track.online?.provider;
-  if (provider == null) return '音乐';
+  if (provider == null) return tr('音乐');
   return provider.label;
 }

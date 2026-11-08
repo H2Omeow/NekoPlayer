@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.social
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -26,7 +28,7 @@ class SocialRepository {
         call {
             val resp = api.createConversation(CreateConversationRequest(peerId))
             check(resp.code)
-            resp.conversation ?: throw SocialException("无法创建会话")
+            resp.conversation ?: throw SocialException(tr("无法创建会话"))
         }
 
     suspend fun messages(conversationId: String, afterSeq: Long? = null): SocialMessagesResp =
@@ -45,7 +47,7 @@ class SocialRepository {
         call { api.searchUsers(query).also { check(it.code) }.users }
 
     suspend fun profile(id: String): SocialProfile =
-        call { api.profile(id).also { check(it.code) }.profile ?: throw SocialException("用户不存在") }
+        call { api.profile(id).also { check(it.code) }.profile ?: throw SocialException(tr("用户不存在")) }
 
     suspend fun userShares(id: String): List<SocialShare> =
         call { api.userShares(id).also { check(it.code) }.shares }
@@ -65,13 +67,13 @@ class SocialRepository {
     suspend fun feed(): List<SocialShare> = call { api.feed().also { check(it.code) }.shares }
 
     suspend fun createShare(request: ShareRequest): SocialShare =
-        call { api.createShare(request).also { check(it.code) }.share ?: throw SocialException("分享创建失败") }
+        call { api.createShare(request).also { check(it.code) }.share ?: throw SocialException(tr("分享创建失败")) }
 
     suspend fun share(token: String): SocialShare =
-        call { api.share(token).also { check(it.code) }.share ?: throw SocialException("分享不存在") }
+        call { api.share(token).also { check(it.code) }.share ?: throw SocialException(tr("分享不存在")) }
 
     suspend fun revokeShare(token: String): SocialShare =
-        call { api.revokeShare(token).also { check(it.code) }.share ?: throw SocialException("分享不存在") }
+        call { api.revokeShare(token).also { check(it.code) }.share ?: throw SocialException(tr("分享不存在")) }
 
     suspend fun preferences(): SocialPreferences =
         call { api.preferences().also { check(it.code) }.preferences }
@@ -82,7 +84,7 @@ class SocialRepository {
     suspend fun unread(): Int = call { api.unread().also { check(it.code) }.unread }
 
     private fun check(code: Int) {
-        if (code != 0) throw SocialException("请求失败（$code）", code)
+        if (code != 0) throw SocialException(tr("请求失败（{code}）", "code" to code), code)
     }
 
     private suspend fun <T> call(block: suspend () -> T): T {
@@ -95,16 +97,16 @@ class SocialRepository {
             val body = text?.let { runCatching { json.decodeFromString<SocialErrorMessage>(it) }.getOrNull() }
             val message = when {
                 body?.msg?.isNotBlank() == true -> body.msg
-                e.code() == 401 -> "登录已失效，请重新登录"
-                e.code() == 403 -> "没有权限执行该操作"
-                e.code() == 404 -> "内容不存在"
-                e.code() == 410 -> "分享已失效"
-                e.code() == 429 -> "操作过于频繁，请稍后再试"
-                else -> "请求失败（HTTP ${e.code()}）"
+                e.code() == 401 -> tr("登录已失效，请重新登录")
+                e.code() == 403 -> tr("没有权限执行该操作")
+                e.code() == 404 -> tr("内容不存在")
+                e.code() == 410 -> tr("分享已失效")
+                e.code() == 429 -> tr("操作过于频繁，请稍后再试")
+                else -> tr("请求失败（HTTP {code}）", "code" to e.code())
             }
             throw SocialException(message, e.code())
         } catch (e: IOException) {
-            throw SocialException("网络连接失败，请检查网络")
+            throw SocialException(tr("网络连接失败，请检查网络"))
         }
     }
 }
@@ -116,15 +118,15 @@ class SocialSseConnection internal constructor(private val call: okhttp3.Call) :
         call.execute().use { response: Response ->
             if (!response.isSuccessful) {
                 throw SocialException(
-                    if (response.code == 401) "登录已失效" else "实时连接失败（${response.code}）",
+                    if (response.code == 401) tr("登录已失效") else tr("实时连接失败（{code}）", "code" to response.code),
                     response.code
                 )
             }
-            val source = response.body?.source() ?: throw SocialException("实时连接无响应")
+            val source = response.body?.source() ?: throw SocialException(tr("实时连接无响应"))
             var event = "message"
             val data = StringBuilder()
             while (!call.isCanceled()) {
-                val line = source.readUtf8Line() ?: throw IOException("实时连接已断开")
+                val line = source.readUtf8Line() ?: throw IOException(tr("实时连接已断开"))
                 if (line.isEmpty()) {
                     if (data.isNotEmpty()) {
                         onEvent(event, data.toString())
@@ -155,7 +157,7 @@ class SocialSseConnection internal constructor(private val call: okhttp3.Call) :
     companion object {
         fun open(): SocialSseConnection {
             val token = CookieStore.appTokenValue()
-            if (token.isEmpty()) throw SocialException("请先登录", 401)
+            if (token.isEmpty()) throw SocialException(tr("请先登录"), 401)
             val url = (ApiFactory.BASE + "social/events").toHttpUrl()
             val client = ApiFactory.client().newBuilder()
                 .readTimeout(0, TimeUnit.MILLISECONDS)

@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:math';
 
 import '../domain/library.dart';
@@ -66,7 +67,7 @@ class ResolvingQueue {
 
   Future<void> _load(Track track) async {
     if (track.online != null && source == null) {
-      throw const MusicSearchException('在线播放服务未初始化。');
+      throw       MusicSearchException(tr('在线播放服务未初始化。'));
     }
     final audio = track.online == null
         ? ResolvedAudio(Uri.file(track.path), '')

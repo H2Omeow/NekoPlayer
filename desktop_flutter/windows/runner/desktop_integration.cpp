@@ -96,6 +96,35 @@ struct DesktopIntegration::State {
   bool quitting = false;
   // Share / chat URL shown in the last balloon; forwarded to Dart on click.
   std::string notification_uri;
+  std::string tray_tooltip_text = "NekoPlayer — 点击显示播放器";
+  std::string tray_show_text = "显示播放器";
+  std::string tray_toggle_text = "播放 / 暂停";
+  std::string tray_previous_text = "上一首";
+  std::string tray_next_text = "下一首";
+  std::string tray_quit_text = "退出";
+  std::string lyrics_window_title = "NekoPlayer 桌面歌词";
+
+  void ApplyLabels(const EncodableMap& values) {
+    const auto* found = Find(values, "labels");
+    const auto* labels = found == nullptr ? nullptr : std::get_if<EncodableMap>(found);
+    if (labels == nullptr) return;
+    const auto read = [&](const char* key, std::string& target) {
+      std::string value = Text(*labels, key);
+      if (!value.empty()) target = value;
+    };
+    read("tooltip", tray_tooltip_text);
+    read("show", tray_show_text);
+    read("toggle", tray_toggle_text);
+    read("previous", tray_previous_text);
+    read("next", tray_next_text);
+    read("quit", tray_quit_text);
+    read("lyricsTitle", lyrics_window_title);
+    if (tray_available) {
+      wcsncpy_s(tray.szTip, Wide(tray_tooltip_text).c_str(), _TRUNCATE);
+      Shell_NotifyIconW(NIM_MODIFY, &tray);
+    }
+    if (lyrics_window != nullptr) SetWindowTextW(lyrics_window, Wide(lyrics_window_title).c_str());
+  }
 
 
   int OverlayHeight() const {
@@ -154,7 +183,7 @@ struct DesktopIntegration::State {
     tray.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
     tray.uCallbackMessage = kTrayAction;
     tray.hIcon = LoadIconW(GetModuleHandle(nullptr), MAKEINTRESOURCEW(IDI_APP_ICON));
-    wcscpy_s(tray.szTip, L"NekoPlayer — 点击显示播放器");
+    wcsncpy_s(tray.szTip, Wide(tray_tooltip_text).c_str(), _TRUNCATE);
     tray_available = Shell_NotifyIconW(NIM_ADD, &tray) != FALSE;
     if (tray_available) {
       tray.uVersion = NOTIFYICON_VERSION_4;
@@ -176,12 +205,12 @@ struct DesktopIntegration::State {
   void TrayMenu() {
     const HMENU menu = CreatePopupMenu();
     if (menu == nullptr) return;
-    AppendMenuW(menu, MF_STRING, 1, L"显示播放器");
-    AppendMenuW(menu, MF_STRING, 2, L"播放 / 暂停");
-    AppendMenuW(menu, MF_STRING, 3, L"上一首");
-    AppendMenuW(menu, MF_STRING, 4, L"下一首");
+    AppendMenuW(menu, MF_STRING, 1, Wide(tray_show_text).c_str());
+    AppendMenuW(menu, MF_STRING, 2, Wide(tray_toggle_text).c_str());
+    AppendMenuW(menu, MF_STRING, 3, Wide(tray_previous_text).c_str());
+    AppendMenuW(menu, MF_STRING, 4, Wide(tray_next_text).c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, 5, L"退出");
+    AppendMenuW(menu, MF_STRING, 5, Wide(tray_quit_text).c_str());
     POINT location{};
     GetCursorPos(&location);
     SetForegroundWindow(main_window);
@@ -438,7 +467,7 @@ struct DesktopIntegration::State {
       GetMonitorInfo(monitor, &info);
       const int width = std::min(760L, info.rcWork.right - info.rcWork.left);
       const int height = OverlayHeight();
-      lyrics_window = CreateWindowEx(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED, kLyricsClass, L"NekoPlayer 桌面歌词", WS_POPUP,
+      lyrics_window = CreateWindowEx(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED, kLyricsClass, Wide(lyrics_window_title).c_str(), WS_POPUP,
         info.rcWork.left + (info.rcWork.right - info.rcWork.left - width) / 2, info.rcWork.bottom - 50 - height, width, height, nullptr, nullptr, registration.hInstance, this);
     }
     if (lyrics_window == nullptr) return;
@@ -496,6 +525,7 @@ DesktopIntegration::DesktopIntegration(flutter::BinaryMessenger* messenger, HWND
         result->Success(EncodableValue(EncodableMap{{EncodableValue("media"), EncodableValue(media)}, {EncodableValue("lyrics"), EncodableValue(true)}, {EncodableValue("positioning"), EncodableValue(true)}, {EncodableValue("tray"), EncodableValue(state_->tray_available)}}));
       } else if (call.method_name() == "configureTray") {
         const auto* values = call.arguments() == nullptr ? nullptr : std::get_if<EncodableMap>(call.arguments());
+        if (values != nullptr) state_->ApplyLabels(*values);
         state_->close_to_tray = values != nullptr && Boolean(*values, "closeToTray") && state_->tray_available;
         result->Success(EncodableValue(state_->close_to_tray));
       } else if (call.method_name() == "state") {

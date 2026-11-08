@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.components
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -70,7 +72,7 @@ fun SongRow(
         Row(
             Modifier
                 .weight(1f)
-                .clickableRow(rowLabel = "${song.nm}，${song.ar}", actionLabel = "播放", onClick = onPlay)
+                .clickableRow(rowLabel = "${song.nm}，${song.ar}", actionLabel = tr("播放"), onClick = onPlay)
                 .padding(vertical = NekoSpace.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -124,7 +126,7 @@ fun FavoriteButton(
     }
     IconButton(
         onClick = onClick,
-        modifier = modifier.toggleSemantics("收藏", if (isFav) "已收藏" else "未收藏")
+        modifier = modifier.toggleSemantics(tr("收藏"), if (isFav) tr("已收藏") else tr("未收藏"))
     ) {
         Icon(
             if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
@@ -145,28 +147,28 @@ private fun SongMenu(onAdd: (() -> Unit)?, onAddToPlaylist: (() -> Unit)?, onSha
         IconButton(onClick = { open = true }) {
             Icon(
                 Icons.Filled.MoreVert,
-                contentDescription = "歌曲操作",
+                contentDescription = tr("歌曲操作"),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             if (onAdd != null) {
                 DropdownMenuItem(
-                    text = { Text("加入播放队列") },
+                    text = { Text(tr("加入播放队列")) },
                     leadingIcon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, null) },
                     onClick = { open = false; onAdd() }
                 )
             }
             if (onAddToPlaylist != null) {
                 DropdownMenuItem(
-                    text = { Text("加入歌单…") },
+                    text = { Text(tr("加入歌单…")) },
                     leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, null) },
                     onClick = { open = false; onAddToPlaylist() }
                 )
             }
             if (onShare != null) {
                 DropdownMenuItem(
-                    text = { Text("分享…") },
+                    text = { Text(tr("分享…")) },
                     leadingIcon = { Icon(Icons.Filled.Share, null) },
                     onClick = { open = false; onShare() }
                 )
@@ -178,8 +180,8 @@ private fun SongMenu(onAdd: (() -> Unit)?, onAddToPlaylist: (() -> Unit)?, onSha
 fun songKey(song: Song): String = song.source + ":" + song.hash.ifBlank { song.id.toString() }
 
 fun songSourceLabel(song: Song): String = when {
-    song.source == "netease" -> "网易云"
-    song.source == "kugou" -> "酷狗"
-    song.source.startsWith("animemusic-") -> "内置插件·${AnimemusicRepository.label(song.providerSource)}"
+    song.source == "netease" -> tr("网易云")
+    song.source == "kugou" -> tr("酷狗")
+    song.source.startsWith("animemusic-") -> tr("内置插件·{source}", "source" to AnimemusicRepository.label(song.providerSource))
     else -> song.source
 }

@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.repo
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -138,12 +140,12 @@ object Downloader {
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val uri = resolver.insert(collection, values) ?: error("无法创建媒体文件")
+        val uri = resolver.insert(collection, values) ?: error(tr("无法创建媒体文件"))
 
         try {
             resolver.openOutputStream(uri)?.use { outputStream ->
                 downloadToStream(url, outputStream, onProgress)
-            } ?: error("无法写入")
+            } ?: error(tr("无法写入"))
 
             values.clear()
             values.put(MediaStore.MediaColumns.IS_PENDING, 0)
@@ -165,15 +167,15 @@ object Downloader {
         onProgress: (Float) -> Unit
     ): String {
         val treeUri = Uri.parse(treeUriStr)
-        val dir = DocumentFile.fromTreeUri(context, treeUri) ?: error("无法访问下载目录")
+        val dir = DocumentFile.fromTreeUri(context, treeUri) ?: error(tr("无法访问下载目录"))
         val existing = dir.findFile(fileName)
         existing?.delete()
-        val file = dir.createFile(mime, fileName) ?: error("无法在自定义目录创建文件")
+        val file = dir.createFile(mime, fileName) ?: error(tr("无法在自定义目录创建文件"))
 
         try {
             context.contentResolver.openOutputStream(file.uri)?.use { outputStream ->
                 downloadToStream(url, outputStream, onProgress)
-            } ?: error("无法写入")
+            } ?: error(tr("无法写入"))
             return file.uri.toString()
         } catch (e: Exception) {
             file.delete()
@@ -209,7 +211,7 @@ object Downloader {
         val req = Request.Builder().url(url).build()
         ApiFactory.client().newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) error("HTTP ${resp.code}")
-            val body = resp.body ?: error("空响应")
+            val body = resp.body ?: error(tr("空响应"))
             val total = body.contentLength().takeIf { it > 0 }
             val inputStream = body.byteStream()
 
@@ -233,7 +235,7 @@ object Downloader {
         val req = Request.Builder().url(url).build()
         ApiFactory.client().newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) error("HTTP ${resp.code}")
-            val body = resp.body ?: error("空响应")
+            val body = resp.body ?: error(tr("空响应"))
             val total = body.contentLength().takeIf { it > 0 }
             val buffer = body.source()
             val out = java.io.ByteArrayOutputStream()
@@ -261,8 +263,8 @@ object Downloader {
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val uri = resolver.insert(collection, values) ?: error("无法创建媒体文件")
-        resolver.openOutputStream(uri)?.use { it.write(bytes) } ?: error("无法写入")
+        val uri = resolver.insert(collection, values) ?: error(tr("无法创建媒体文件"))
+        resolver.openOutputStream(uri)?.use { it.write(bytes) } ?: error(tr("无法写入"))
         values.clear(); values.put(MediaStore.MediaColumns.IS_PENDING, 0)
         resolver.update(uri, values, null, null)
         return uri.toString()
@@ -272,18 +274,18 @@ object Downloader {
     @Deprecated("使用 downloadStreamSafQ 替代")
     private fun writeSafQ(context: Context, treeUriStr: String, fileName: String, mime: String, bytes: ByteArray): String {
         val treeUri = Uri.parse(treeUriStr)
-        val dir = DocumentFile.fromTreeUri(context, treeUri) ?: error("无法访问下载目录")
+        val dir = DocumentFile.fromTreeUri(context, treeUri) ?: error(tr("无法访问下载目录"))
         val existing = dir.findFile(fileName)
-        val file = existing ?: dir.createFile(mime, fileName) ?: error("无法在自定义目录创建文件")
-        context.contentResolver.openOutputStream(file.uri)?.use { it.write(bytes) } ?: error("无法写入")
+        val file = existing ?: dir.createFile(mime, fileName) ?: error(tr("无法在自定义目录创建文件"))
+        context.contentResolver.openOutputStream(file.uri)?.use { it.write(bytes) } ?: error(tr("无法写入"))
         return file.uri.toString()
     }
 
     private fun writeSafQText(context: Context, treeUriStr: String, fileName: String, text: String): String {
         val treeUri = Uri.parse(treeUriStr)
-        val dir = DocumentFile.fromTreeUri(context, treeUri) ?: error("无法访问下载目录")
+        val dir = DocumentFile.fromTreeUri(context, treeUri) ?: error(tr("无法访问下载目录"))
         val existing = dir.findFile(fileName)
-        val file = existing ?: dir.createFile("text/plain", fileName) ?: error("无法创建 lrc 文件")
+        val file = existing ?: dir.createFile("text/plain", fileName) ?: error(tr("无法创建 lrc 文件"))
         context.contentResolver.openOutputStream(file.uri)?.use { it.write(text.toByteArray()) }
         return file.uri.toString()
     }

@@ -1,10 +1,13 @@
+import '../i18n/tr.dart';
+
 enum CommentSource {
   site('本站'),
   netease('网易云'),
   kugou('酷狗');
 
-  const CommentSource(this.label);
-  final String label;
+  const CommentSource(this.rawLabel);
+  final String rawLabel;
+  String get label => tr(rawLabel);
 }
 
 class SongComment {

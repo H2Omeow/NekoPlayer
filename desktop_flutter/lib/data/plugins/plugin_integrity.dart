@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
@@ -10,5 +11,5 @@ void verifyPluginChecksum(String script, Object? expected) {
       (RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(expected)
           ? digest.toString() == expected.toLowerCase()
           : expected == 'sha256-${base64Encode(digest.bytes)}');
-  if (!valid) throw const FormatException('音源脚本 SHA256 校验失败，已停止导入。');
+  if (!valid) throw       FormatException(tr('音源脚本 SHA256 校验失败，已停止导入。'));
 }

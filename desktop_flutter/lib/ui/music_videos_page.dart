@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -65,7 +66,7 @@ class _MusicVideosPageState extends State<MusicVideosPage> {
         setState(
           () => error = failure is MusicSearchException
               ? failure.message
-              : 'MV 暂时无法播放，请检查网络与播放设备。',
+              : tr('MV 暂时无法播放，请检查网络与播放设备。'),
         );
       }
     } finally {
@@ -84,7 +85,7 @@ class _MusicVideosPageState extends State<MusicVideosPage> {
   Widget build(BuildContext context) {
     final gutter = pageGutter(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('音乐 MV')),
+      appBar: AppBar(title:       Text(tr('音乐 MV'))),
       body: ListenableBuilder(
         listenable: search,
         builder: (context, _) => CustomScrollView(
@@ -101,11 +102,11 @@ class _MusicVideosPageState extends State<MusicVideosPage> {
                       textInputAction: TextInputAction.search,
                       onSubmitted: search.search,
                       decoration: InputDecoration(
-                        hintText: '搜索 MV、歌手',
+                        hintText: tr('搜索 MV、歌手'),
                         counterText: '',
                         prefixIcon: const Icon(Icons.search_rounded),
                         suffixIcon: IconButton(
-                          tooltip: '搜索 MV',
+                          tooltip: tr('搜索 MV'),
                           onPressed: () => search.search(input.text),
                           icon: const Icon(Icons.arrow_forward_rounded),
                         ),
@@ -137,12 +138,12 @@ class _MusicVideosPageState extends State<MusicVideosPage> {
               ),
             ),
             if (search.videos.isEmpty)
-              const SliverFillRemaining(
+                    SliverFillRemaining(
                 hasScrollBody: false,
                 child: EmptyState(
                   icon: Icons.smart_display_outlined,
-                  title: '搜索音乐 MV',
-                  description: '由内置 Animemusic 插件提供，无需登录本站。播放视频时会暂停音乐。',
+                  title: tr('搜索音乐 MV'),
+                  description: tr('由内置 Animemusic 插件提供，无需登录本站。播放视频时会暂停音乐。'),
                 ),
               )
             else ...[
@@ -169,7 +170,7 @@ class _MusicVideosPageState extends State<MusicVideosPage> {
                       ? Center(
                           child: TextButton(
                             onPressed: search.loading ? null : search.loadMore,
-                            child: const Text('加载更多'),
+                            child:       Text(tr('加载更多')),
                           ),
                         )
                       : null,
@@ -294,7 +295,7 @@ class _VideoPlaybackPageState extends State<_VideoPlaybackPage> {
     logs = attachMpvLog(player, 'mpv-video');
     errors = player.stream.error.listen((message) {
       CrashLog.error('mpv-video', 'playback error: $message');
-      if (mounted) setState(() => error = '视频解码失败，请检查视频地址与播放依赖。');
+      if (mounted) setState(() => error = tr('视频解码失败，请检查视频地址与播放依赖。'));
     });
     ready =
         (() async {
@@ -307,7 +308,7 @@ class _VideoPlaybackPageState extends State<_VideoPlaybackPage> {
             error: failure,
             stack: stack,
           );
-          if (mounted) setState(() => error = '视频无法播放，请稍后重试。');
+          if (mounted) setState(() => error = tr('视频无法播放，请稍后重试。'));
         });
   }
 

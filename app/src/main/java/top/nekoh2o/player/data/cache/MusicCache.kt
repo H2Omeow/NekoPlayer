@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.cache
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.content.Context
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
@@ -37,7 +39,7 @@ object MusicCache {
         upstreamFactory: DataSource.Factory
     ): DataSource.Factory {
         val cache = checkNotNull(instance) {
-            "MusicCache 尚未初始化，请先调用 MusicCache.init(context)"
+            tr("MusicCache 尚未初始化，请先调用 MusicCache.init(context)")
         }
 
         return CacheDataSource.Factory()

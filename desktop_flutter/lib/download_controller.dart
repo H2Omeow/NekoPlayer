@@ -1,3 +1,4 @@
+import './i18n/tr.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -115,7 +116,7 @@ class DownloadController extends ChangeNotifier {
       }
     } catch (_) {
       _readable = false;
-      error = '下载记录读取失败，已保护原数据，暂不创建新任务。';
+      error = tr('下载记录读取失败，已保护原数据，暂不创建新任务。');
     }
     _notify();
   }
@@ -128,7 +129,7 @@ class DownloadController extends ChangeNotifier {
     if (_disposed || !_readable) return;
     directory = paths.normalize(paths.absolute(directory));
     if (!await Directory(directory).exists()) {
-      error = '下载目录不存在。';
+      error = tr('下载目录不存在。');
       _notify();
       return;
     }
@@ -223,7 +224,7 @@ class DownloadController extends ChangeNotifier {
       _persist();
       _notify();
     } catch (_) {
-      error = '无法移除下载记录或文件，请检查权限；不会删除无法确认归属的文件。';
+      error = tr('无法移除下载记录或文件，请检查权限；不会删除无法确认归属的文件。');
       _notify();
     }
   }
@@ -266,7 +267,7 @@ class DownloadController extends ChangeNotifier {
                 .toLowerCase();
           }
           if (!formats.contains(format)) {
-            throw const MusicSearchException('平台未提供受支持的音频文件格式。');
+            throw       MusicSearchException(tr('平台未提供受支持的音频文件格式。'));
           }
           task.path ??= paths.join(
             task.directory,
@@ -295,7 +296,7 @@ class DownloadController extends ChangeNotifier {
           task.phase = DownloadPhase.failed;
           task.error = failure is MusicSearchException
               ? failure.message
-              : '下载失败，请检查网络、磁盘空间与访问权限；可以重试续传。';
+              : tr('下载失败，请检查网络、磁盘空间与访问权限；可以重试续传。');
         } finally {
           _active = null;
           _cancellation = null;
@@ -339,12 +340,12 @@ class DownloadController extends ChangeNotifier {
       await file.writeAsBytes(bytes, flush: true);
       task.lyricsOwned = true;
     } catch (_) {
-      task.error = '音频已下载完成，但歌词未能保存；没有覆盖任何已有歌词文件。';
+      task.error = tr('音频已下载完成，但歌词未能保存；没有覆盖任何已有歌词文件。');
       if (owned) {
         try {
           await file.delete();
         } catch (_) {
-          task.error = '音频已完成，但歌词写入及清理失败，请检查下载目录权限。';
+          task.error = tr('音频已完成，但歌词写入及清理失败，请检查下载目录权限。');
         }
       }
     }
@@ -372,7 +373,7 @@ class DownloadController extends ChangeNotifier {
       'tasks': _tasks.map((task) => task.toJson()).toList(),
     });
     _writes = _writes.then((_) => store.write(encoded)).catchError((Object _) {
-      error = '下载记录保存失败，请检查磁盘空间。';
+      error = tr('下载记录保存失败，请检查磁盘空间。');
       _notify();
     });
   }

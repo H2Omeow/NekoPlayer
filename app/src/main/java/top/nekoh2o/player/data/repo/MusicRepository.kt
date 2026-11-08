@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.repo
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import top.nekoh2o.player.data.model.LyricLine
 import top.nekoh2o.player.data.model.PersonalizedItem
 import top.nekoh2o.player.data.model.Song
@@ -32,11 +34,11 @@ class MusicRepository {
         val detail = runCatching { api.songDetail(ids) }.getOrNull()
         return if (detail?.code == 200 && detail.songs.isNotEmpty()) {
             detail.songs.map {
-                Song(it.id, it.name, it.ar.firstOrNull()?.name ?: "未知", it.al?.picUrl)
+                Song(it.id, it.name, it.ar.firstOrNull()?.name ?: tr("未知"), it.al?.picUrl)
             }
         } else {
             base.map {
-                Song(it.id, it.name, it.artists.firstOrNull()?.name ?: "未知",
+                Song(it.id, it.name, it.artists.firstOrNull()?.name ?: tr("未知"),
                     it.artists.firstOrNull()?.img)
             }
         }
@@ -67,13 +69,13 @@ class MusicRepository {
         val daily = rec?.data?.dailySongs
         if (rec?.code == 200 && !daily.isNullOrEmpty()) {
             return daily.take(20).map {
-                Song(it.id, it.name, it.ar.firstOrNull()?.name ?: "未知", it.al?.picUrl)
+                Song(it.id, it.name, it.ar.firstOrNull()?.name ?: tr("未知"), it.al?.picUrl)
             }
         }
         val top = runCatching { api.topSong(0, 20) }.getOrNull()
         if (top?.code == 200) {
             return top.data.map {
-                Song(it.id, it.name, it.ar.firstOrNull()?.name ?: "未知", it.al?.picUrl)
+                Song(it.id, it.name, it.ar.firstOrNull()?.name ?: tr("未知"), it.al?.picUrl)
             }
         }
         return emptyList()
@@ -83,7 +85,7 @@ class MusicRepository {
         val resp = runCatching { api.playlistDetail(id) }.getOrNull() ?: return emptyList()
         if (resp.code != 200) return emptyList()
         return resp.playlist?.tracks?.take(30)?.map {
-            Song(it.id, it.name, it.ar.firstOrNull()?.name ?: "未知", it.al?.picUrl)
+            Song(it.id, it.name, it.ar.firstOrNull()?.name ?: tr("未知"), it.al?.picUrl)
         } ?: emptyList()
     }
 
@@ -94,7 +96,7 @@ class MusicRepository {
         val resp = runCatching { api.songDetail(idsStr) }.getOrNull() ?: return emptyList()
         return if (resp.code == 200 && resp.songs.isNotEmpty()) {
             resp.songs.map {
-                Song(it.id, it.name, it.ar.firstOrNull()?.name ?: "未知", it.al?.picUrl)
+                Song(it.id, it.name, it.ar.firstOrNull()?.name ?: tr("未知"), it.al?.picUrl)
             }
         } else emptyList()
     }
@@ -160,7 +162,7 @@ class MusicRepository {
         val resp = runCatching { api.artistTopSong(artistId) }.getOrNull()
         if (resp?.code != 200) return emptyList()
         return resp.songs.map {
-            Song(it.id, it.name, it.ar.firstOrNull()?.name ?: "未知", it.al?.picUrl)
+            Song(it.id, it.name, it.ar.firstOrNull()?.name ?: tr("未知"), it.al?.picUrl)
         }
     }
 
@@ -170,7 +172,7 @@ class MusicRepository {
         if (resp?.code != 200) return emptyList()
         val picUrl = resp.album?.picUrl
         return resp.songs.map {
-            Song(it.id, it.name, it.ar.firstOrNull()?.name ?: "未知", it.al?.picUrl ?: picUrl)
+            Song(it.id, it.name, it.ar.firstOrNull()?.name ?: tr("未知"), it.al?.picUrl ?: picUrl)
         }
     }
 

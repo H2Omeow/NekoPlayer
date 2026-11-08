@@ -1,3 +1,4 @@
+import './i18n/tr.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -95,7 +96,7 @@ class AppearanceController extends ChangeNotifier {
       fontFamily = null;
       fontError = null;
       readable = false;
-      error = '外观设置读取失败，已保留原数据；本次修改不会覆盖它。';
+      error = tr('外观设置读取失败，已保留原数据；本次修改不会覆盖它。');
     }
     if (fontPath != null) {
       try {
@@ -103,7 +104,7 @@ class AppearanceController extends ChangeNotifier {
         fontError = null;
       } catch (_) {
         fontFamily = null;
-        fontError = '自定义字体加载失败，已使用默认字体。';
+        fontError = tr('自定义字体加载失败，已使用默认字体。');
       }
     }
     if (!_disposed) notifyListeners();
@@ -111,15 +112,15 @@ class AppearanceController extends ChangeNotifier {
 
   Future<String> _registerFont(File file) async {
     if (!await file.exists()) {
-      throw const MusicSearchException('字体文件不存在。');
+      throw       MusicSearchException(tr('字体文件不存在。'));
     }
     final length = await file.length();
     if (length <= 0 || length > maxFontBytes) {
-      throw const MusicSearchException('字体文件不可读或超过 64MB。');
+      throw       MusicSearchException(tr('字体文件不可读或超过 64MB。'));
     }
     final extension = paths.extension(file.path).toLowerCase();
     if (extension != '.ttf' && extension != '.otf') {
-      throw const MusicSearchException('请选择 TTF 或 OTF 字体文件。');
+      throw       MusicSearchException(tr('请选择 TTF 或 OTF 字体文件。'));
     }
     final bytes = await file.readAsBytes();
     final family = 'NekoCustom${++_fontGeneration}';
@@ -222,7 +223,7 @@ class AppearanceController extends ChangeNotifier {
           ),
         )
         .catchError((Object _) {
-          error = '设置已应用，但保存失败。';
+          error = tr('设置已应用，但保存失败。');
           if (!_disposed) notifyListeners();
         });
   }
@@ -230,7 +231,7 @@ class AppearanceController extends ChangeNotifier {
   Future<void> localWallpaper(String path) async {
     final file = File(path);
     if (!await file.exists() || await file.length() > 16 * 1024 * 1024) {
-      throw const MusicSearchException('壁纸文件不可读或超过 16MB。');
+      throw       MusicSearchException(tr('壁纸文件不可读或超过 16MB。'));
     }
     update(wallpaperPath: path, showWallpaper: true);
   }
@@ -256,7 +257,7 @@ class AppearanceController extends ChangeNotifier {
       );
       if (_disposed || generation != _wallpaperGeneration) return;
       if (timedOut) throw TimeoutException('Wallpaper deadline exceeded');
-      if (images.isEmpty) throw const MusicSearchException('本站暂时没有横屏壁纸。');
+      if (images.isEmpty) throw       MusicSearchException(tr('本站暂时没有横屏壁纸。'));
       final candidates = List.of(images)..shuffle(Random.secure());
       List<int>? bytes;
       MusicSearchException? rejected;
@@ -279,7 +280,7 @@ class AppearanceController extends ChangeNotifier {
       );
       if (type != FileSystemEntityType.notFound &&
           type != FileSystemEntityType.directory) {
-        throw const MusicSearchException('壁纸缓存目录不可用，已保留原背景。');
+        throw       MusicSearchException(tr('壁纸缓存目录不可用，已保留原背景。'));
       }
       await directory.create(recursive: true);
       final file = File(
@@ -295,7 +296,7 @@ class AppearanceController extends ChangeNotifier {
       if (!_disposed && generation == _wallpaperGeneration) {
         error = failure is MusicSearchException
             ? failure.message
-            : '壁纸加载失败，已保留原背景。';
+            : tr('壁纸加载失败，已保留原背景。');
       }
     } finally {
       deadline.cancel();
@@ -305,7 +306,7 @@ class AppearanceController extends ChangeNotifier {
         try {
           await downloaded.delete();
         } on FileSystemException {
-          if (!_disposed) error ??= '未使用的壁纸缓存暂时无法清理。';
+          if (!_disposed) error ??= tr('未使用的壁纸缓存暂时无法清理。');
         }
       }
       busy = false;
@@ -323,12 +324,12 @@ class AppearanceController extends ChangeNotifier {
         !(response.headers.contentType?.mimeType.startsWith('image/') ??
             false)) {
       await response.drain<void>().catchError((_) {});
-      throw const MusicSearchException('壁纸服务返回的内容无效。');
+      throw       MusicSearchException(tr('壁纸服务返回的内容无效。'));
     }
     final bytes = <int>[];
     await for (final chunk in response.timeout(const Duration(seconds: 20))) {
       if (bytes.length + chunk.length > limit) {
-        throw const MusicSearchException('壁纸超过 16MB，已停止加载。');
+        throw       MusicSearchException(tr('壁纸超过 16MB，已停止加载。'));
       }
       bytes.addAll(chunk);
     }
@@ -348,7 +349,7 @@ class AppearanceController extends ChangeNotifier {
         }
       }
     } on FileSystemException {
-      if (!_disposed) error ??= '旧壁纸缓存暂时无法清理，当前背景仍可使用。';
+      if (!_disposed) error ??= tr('旧壁纸缓存暂时无法清理，当前背景仍可使用。');
     }
   }
 

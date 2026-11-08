@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.plugins
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.content.Context
 import kotlinx.serialization.json.*
 import top.nekoh2o.player.data.model.LyricLine
@@ -13,7 +15,7 @@ class LxAdapter(context: Context) : CommonJsAdapter(context) {
     override suspend fun search(source: PluginSource, keyword: String, page: Int): PluginSearchPage {
         val platform = if (source.platform == "qq") "tx" else source.platform
         val catalog = PluginStore.sources().firstOrNull { it.plugin.format == "animemusic/1" && it.platform == platform }
-            ?: throw IOException("LX 仅提供解析；请启用对应 Animemusic 来源以搜索歌曲")
+            ?: throw IOException(tr("LX 仅提供解析；请启用对应 Animemusic 来源以搜索歌曲"))
         val result = AnimemusicAdapter().search(catalog, keyword, page)
         return result.copy(songs = result.songs.map { song ->
             val raw = song.rawPluginItem()

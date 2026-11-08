@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -31,48 +32,48 @@ class LibraryActions {
   }) => [
     if (queueIndex == null)
       SongAction(
-        '加入播放队列',
+        tr('加入播放队列'),
         Icons.playlist_play_rounded,
         () => unawaited(player.enqueue(track)),
       ),
     SongAction(
-      '添加到歌单…',
+      tr('添加到歌单…'),
       Icons.playlist_add_rounded,
       () => unawaited(showPlaylistPicker(context, player, track)),
     ),
     if (track.online != null && onDownload != null)
       SongAction(
-        '下载',
+        tr('下载'),
         Icons.download_rounded,
         () => onDownload!(track.online!),
       ),
     if (track.online != null && onComments != null)
       SongAction(
-        '查看评论',
+        tr('查看评论'),
         Icons.chat_bubble_outline_rounded,
         () => onComments!(track.online!),
       ),
     if (track.online != null && onShare != null)
       SongAction(
-        '分享…',
+        tr('分享…'),
         Icons.ios_share_rounded,
         () => onShare!(track),
       ),
     if (queueIndex != null) ...[
       SongAction(
-        '上移',
+        tr('上移'),
         Icons.arrow_upward_rounded,
         () => unawaited(player.moveInQueue(queueIndex, queueIndex - 1)),
         enabled: queueIndex > 0,
       ),
       SongAction(
-        '下移',
+        tr('下移'),
         Icons.arrow_downward_rounded,
         () => unawaited(player.moveInQueue(queueIndex, queueIndex + 1)),
         enabled: queueIndex < player.queue.length - 1,
       ),
       SongAction(
-        '从队列移除',
+        tr('从队列移除'),
         Icons.remove_circle_outline_rounded,
         () => unawaited(player.removeFromQueue(queueIndex)),
         destructive: true,
@@ -80,7 +81,7 @@ class LibraryActions {
     ],
     if (playlistId != null)
       SongAction(
-        '从歌单移除',
+        tr('从歌单移除'),
         Icons.remove_circle_outline_rounded,
         () => player.removeFromPlaylist(playlistId, track),
         destructive: true,
@@ -104,7 +105,7 @@ class LibraryActions {
   }) => SongRow(
     key: key,
     title: track.title,
-    subtitle: track.artist.isEmpty ? '未知歌手' : track.artist,
+    subtitle: track.artist.isEmpty ? tr('未知歌手') : track.artist,
     album: track.online?.album,
     artwork: track.online?.artwork,
     artworkSeed: track.title,

@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,26 +50,26 @@ fun KugouCookieEditor(vm: PlayerViewModel) {
 
     Column(verticalArrangement = Arrangement.spacedBy(NekoSpace.md)) {
         Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm), verticalAlignment = Alignment.CenterVertically) {
-            listOf("原版", "概念版").forEachIndexed { index, title ->
+            listOf(tr("原版"), tr("概念版")).forEachIndexed { index, title ->
                 NekoChip(title, platform == index, { if (!busy) platform = index })
             }
             Spacer(Modifier.weight(1f))
             if (platform != state.kgAccount.platform) {
-                TextButton(enabled = !busy, onClick = { vm.kgSwitchPlatform(platform) }) { Text("使用此版本") }
+                TextButton(enabled = !busy, onClick = { vm.kgSwitchPlatform(platform) }) { Text(tr("使用此版本")) }
             } else {
-                Text("当前使用", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Text(tr("当前使用"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             }
         }
         Text(
-            "需包含 token 和 userid；若有 dfid、KUGOU_API_* 设备字段请一并保留，网页追踪 Cookie 无法替代登录凭据。" +
-                "两个版本分别保存。Cookie 包含账号凭据，请勿分享。",
+            tr("需包含 token 和 userid；若有 dfid、KUGOU_API_* 设备字段请一并保留，网页追踪 Cookie 无法替代登录凭据。") +
+                tr("两个版本分别保存。Cookie 包含账号凭据，请勿分享。"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         OutlinedTextField(value = draft, onValueChange = { draft = it; error = null; message = "" },
-            enabled = !busy, label = { Text(if (platform == 0) "酷狗原版 Cookie" else "酷狗概念版 Cookie") },
+            enabled = !busy, label = { Text(if (platform == 0) tr("酷狗原版 Cookie") else tr("酷狗概念版 Cookie")) },
             supportingText = {
-                Text(if (saved.isEmpty()) "当前版本未保存 Cookie" else "已保存 ${saved.length} 个字符")
+                Text(if (saved.isEmpty()) tr("当前版本未保存 Cookie") else tr("已保存 {count} 个字符", "count" to saved.length))
             },
             modifier = Modifier.fillMaxWidth().height(180.dp), maxLines = 6,
             visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -78,7 +80,7 @@ fun KugouCookieEditor(vm: PlayerViewModel) {
         ) {
             Checkbox(checked = visible, onCheckedChange = null)
             Spacer(Modifier.width(NekoSpace.sm))
-            Text("显示 Cookie 内容", style = MaterialTheme.typography.bodyMedium)
+            Text(tr("显示 Cookie 内容"), style = MaterialTheme.typography.bodyMedium)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
             Button(enabled = !busy && draft.isNotBlank(), modifier = Modifier.weight(1f), onClick = {
@@ -87,17 +89,17 @@ fun KugouCookieEditor(vm: PlayerViewModel) {
                     try {
                         saved = vm.saveKgCookie(draft, platform)
                         draft = saved
-                        message = "Cookie 已保存，账号有效性以酷狗返回结果为准"
+                        message = tr("Cookie 已保存，账号有效性以酷狗返回结果为准")
                     } catch (e: CancellationException) { throw e
                     } catch (e: Exception) { error = kugouLoginError(e)
                     } finally { busy = false }
                 }
-            }) { Text("保存") }
+            }) { Text(tr("保存")) }
             OutlinedButton(enabled = !busy && saved.isNotEmpty(), colors = NekoDefaults.outlinedButtonColors(), onClick = {
-                clipboard.setText(AnnotatedString(saved)); message = "已复制当前版本保存的 Cookie"
-            }) { Text("复制") }
+                clipboard.setText(AnnotatedString(saved)); message = tr("已复制当前版本保存的 Cookie")
+            }) { Text(tr("复制")) }
             OutlinedButton(enabled = !busy && saved.isNotEmpty(), colors = NekoDefaults.outlinedButtonColors(),
-                onClick = { confirmClear = true }) { Text("清除") }
+                onClick = { confirmClear = true }) { Text(tr("清除")) }
         }
         if (saved.split(';').any { it.trim().startsWith("token=") }) {
             TextButton(enabled = !busy, colors = NekoDefaults.textButtonColors(), onClick = {
@@ -106,12 +108,12 @@ fun KugouCookieEditor(vm: PlayerViewModel) {
                     try {
                         saved = vm.logoutKgCookie(platform)
                         draft = saved
-                        message = "已退出当前版本账号，设备 Cookie 已保留"
+                        message = tr("已退出当前版本账号，设备 Cookie 已保留")
                     } catch (e: CancellationException) { throw e
                     } catch (e: Exception) { error = kugouLoginError(e)
                     } finally { busy = false }
                 }
-            }) { Text("退出登录（保留设备）") }
+            }) { Text(tr("退出登录（保留设备）")) }
         }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (message.isNotEmpty()) InlineNotice(message)
@@ -119,18 +121,18 @@ fun KugouCookieEditor(vm: PlayerViewModel) {
     }
 
     if (confirmClear) AlertDialog(onDismissRequest = { confirmClear = false },
-        title = { Text("清除" + if (platform == 0) "酷狗原版 Cookie" else "酷狗概念版 Cookie") },
-        text = { Text("将清除该版本的登录及设备 Cookie，下次请求会重新初始化设备。另一版本不受影响。") },
+        title = { Text(tr("清除{target}", "target" to (if (platform == 0) tr("酷狗原版 Cookie") else tr("酷狗概念版 Cookie")))) },
+        text = { Text(tr("将清除该版本的登录及设备 Cookie，下次请求会重新初始化设备。另一版本不受影响。")) },
         confirmButton = { TextButton(onClick = {
             confirmClear = false; busy = true; error = null; message = ""
             scope.launch {
                 try {
                     vm.clearKgCookie(platform)
-                    saved = ""; draft = ""; message = "当前版本的 Cookie 已清除"
+                    saved = ""; draft = ""; message = tr("当前版本的 Cookie 已清除")
                 } catch (e: CancellationException) { throw e
                 } catch (e: Exception) { error = kugouLoginError(e)
                 } finally { busy = false }
             }
-        }) { Text("清除") } },
-        dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("取消") } })
+        }) { Text(tr("清除")) } },
+        dismissButton = { TextButton(onClick = { confirmClear = false }) { Text(tr("取消")) } })
 }

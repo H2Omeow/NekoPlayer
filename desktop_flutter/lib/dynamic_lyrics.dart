@@ -1,3 +1,4 @@
+import './i18n/tr.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -93,7 +94,7 @@ class DynamicLyricsServer {
   }
 
   Future<Uri> start() {
-    if (_disposed) throw StateError('动态歌词窗口已关闭');
+    if (_disposed) throw StateError(tr('动态歌词窗口已关闭'));
     return _starting ??= _start().catchError((Object error) {
       _starting = null;
       throw error;
@@ -104,7 +105,7 @@ class DynamicLyricsServer {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     if (_disposed) {
       await server.close(force: true);
-      throw StateError('动态歌词窗口已关闭');
+      throw StateError(tr('动态歌词窗口已关闭'));
     }
     _server = server;
     server.listen((request) async {

@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -165,10 +166,10 @@ Future<Map<String, dynamic>> executePlugin(
         final requests = (state['requests'] as List)
             .cast<Map<String, dynamic>>();
         if (requests.isEmpty && active.isEmpty) {
-          throw const FormatException('音源脚本未完成操作，且未发起可处理的请求。');
+          throw       FormatException(tr('音源脚本未完成操作，且未发起可处理的请求。'));
         }
         if ((requestCount += requests.length) > 64) {
-          throw const FormatException('音源脚本请求次数过多。');
+          throw       FormatException(tr('音源脚本请求次数过多。'));
         }
         for (final request in requests) {
           final id = (request['id'] as num).toInt();
@@ -178,7 +179,7 @@ Future<Map<String, dynamic>> executePlugin(
             try {
               final payload = request['payload'] as Map<String, dynamic>;
               final remaining = const Duration(seconds: 25) - clock.elapsed;
-              if (remaining <= Duration.zero) throw TimeoutException('插件执行超时。');
+              if (remaining <= Duration.zero) throw TimeoutException(tr('插件执行超时。'));
               value = await (switch (request['kind']) {
                 'http' => sendPluginHttp(payload),
                 'delay' => Future<Object?>.delayed(
@@ -189,11 +190,11 @@ Future<Map<String, dynamic>> executePlugin(
                   ),
                   () => null,
                 ),
-                _ => throw const FormatException('插件发起了不支持的宿主调用。'),
+                _ => throw       FormatException(tr('插件发起了不支持的宿主调用。')),
               }).timeout(remaining);
             } catch (error) {
               success = false;
-              value = error is FormatException ? error.message : '插件网络请求失败或超时。';
+              value = error is FormatException ? error.message : tr('插件网络请求失败或超时。');
             }
             return <String, dynamic>{
               'id': id,
@@ -208,7 +209,7 @@ Future<Map<String, dynamic>> executePlugin(
           'NekoPlugin.deliver(${reply['id']},${reply['success']},${jsonEncode(reply['value'])});',
         );
       }
-      throw TimeoutException('音源脚本执行超时。');
+      throw TimeoutException(tr('音源脚本执行超时。'));
     }
 
     final metadata = await finish();

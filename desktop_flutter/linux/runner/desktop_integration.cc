@@ -42,6 +42,14 @@ struct DesktopIntegration {
   gboolean indicator = FALSE;
   gboolean indicator_connected = FALSE;
   GtkWidget* tray_menu = nullptr;
+  GtkWidget* tray_items[5] = {};
+  std::string tray_tooltip_text = "NekoPlayer — 点击显示播放器";
+  std::string tray_show_text = "显示播放器";
+  std::string tray_toggle_text = "播放 / 暂停";
+  std::string tray_previous_text = "上一首";
+  std::string tray_next_text = "下一首";
+  std::string tray_quit_text = "退出";
+  std::string lyrics_window_title = "NekoPlayer 桌面歌词";
   gulong close_handler = 0;
   gboolean close_to_tray = FALSE;
   gboolean quitting = FALSE;
@@ -177,6 +185,38 @@ static gboolean main_delete(GtkWidget* window, GdkEvent*, gpointer data) {
   return FALSE;
 }
 
+static void read_tray_labels(DesktopIntegration* self, FlValue* values) {
+  if (values == nullptr || fl_value_get_type(values) != FL_VALUE_TYPE_MAP) return;
+  auto* labels = fl_value_lookup_string(values, "labels");
+  if (labels == nullptr || fl_value_get_type(labels) != FL_VALUE_TYPE_MAP) return;
+  auto read = [&](const char* key, std::string& target) {
+    auto* value = fl_value_lookup_string(labels, key);
+    if (value != nullptr && fl_value_get_type(value) == FL_VALUE_TYPE_STRING) {
+      const char* text = fl_value_get_string(value);
+      if (text != nullptr && *text != '\0') target = text;
+    }
+  };
+  read("tooltip", self->tray_tooltip_text);
+  read("show", self->tray_show_text);
+  read("toggle", self->tray_toggle_text);
+  read("previous", self->tray_previous_text);
+  read("next", self->tray_next_text);
+  read("quit", self->tray_quit_text);
+  read("lyricsTitle", self->lyrics_window_title);
+}
+
+static void apply_tray_labels(DesktopIntegration* self) {
+  if (self->tray != nullptr && !self->indicator) {
+    gtk_status_icon_set_tooltip_text(GTK_STATUS_ICON(self->tray), self->tray_tooltip_text.c_str());
+  }
+  const char* labels[] = {self->tray_show_text.c_str(), self->tray_toggle_text.c_str(),
+      self->tray_previous_text.c_str(), self->tray_next_text.c_str(), self->tray_quit_text.c_str()};
+  for (int index = 0; index < 5; ++index) {
+    if (self->tray_items[index] != nullptr) gtk_menu_item_set_label(GTK_MENU_ITEM(self->tray_items[index]), labels[index]);
+  }
+  if (self->lyrics_window != nullptr) gtk_window_set_title(GTK_WINDOW(self->lyrics_window), self->lyrics_window_title.c_str());
+}
+
 static void start_tray(DesktopIntegration* self) {
   if (self->tray != nullptr) return;
   self->quitting = FALSE;
@@ -193,14 +233,16 @@ static void start_tray(DesktopIntegration* self) {
     if (!self->positioning) return;
     self->tray = G_OBJECT(gtk_status_icon_new_from_icon_name("multimedia-player"));
     gtk_status_icon_set_title(GTK_STATUS_ICON(self->tray), "NekoPlayer");
-    gtk_status_icon_set_tooltip_text(GTK_STATUS_ICON(self->tray), "NekoPlayer — 点击显示播放器");
+    gtk_status_icon_set_tooltip_text(GTK_STATUS_ICON(self->tray), self->tray_tooltip_text.c_str());
   }
   self->tray_menu = gtk_menu_new();
   g_object_ref_sink(self->tray_menu);
-  const char* labels[] = {"显示播放器", "播放 / 暂停", "上一首", "下一首", "退出"};
+  const char* labels[] = {self->tray_show_text.c_str(), self->tray_toggle_text.c_str(),
+      self->tray_previous_text.c_str(), self->tray_next_text.c_str(), self->tray_quit_text.c_str()};
   GCallback callbacks[] = {G_CALLBACK(tray_show), G_CALLBACK(tray_toggle), G_CALLBACK(tray_previous), G_CALLBACK(tray_next), G_CALLBACK(tray_quit)};
   for (int index = 0; index < 5; ++index) {
     GtkWidget* item = gtk_menu_item_new_with_label(labels[index]);
+    self->tray_items[index] = item;
     gtk_menu_shell_append(GTK_MENU_SHELL(self->tray_menu), item);
     g_signal_connect(item, "activate", callbacks[index], self);
   }
@@ -231,6 +273,7 @@ static void stop_tray(DesktopIntegration* self) {
   g_clear_object(&self->tray);
   g_clear_object(&self->tray_watcher);
   self->indicator = self->indicator_connected = FALSE;
+  for (auto*& item : self->tray_items) item = nullptr;
   if (self->tray_menu != nullptr) {
     gtk_widget_destroy(self->tray_menu);
     g_clear_object(&self->tray_menu);
@@ -387,7 +430,7 @@ static void resize_lyrics(DesktopIntegration* self) {
 static void create_lyrics(DesktopIntegration* self) {
   self->lyrics_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   auto* window = GTK_WINDOW(self->lyrics_window);
-  gtk_window_set_title(window, "NekoPlayer 桌面歌词");
+  gtk_window_set_title(window, self->lyrics_window_title.c_str());
   gtk_window_set_decorated(window, FALSE);
   gtk_window_set_keep_above(window, TRUE);
   gtk_window_set_skip_taskbar_hint(window, TRUE);
@@ -610,6 +653,8 @@ static void channel_call(FlMethodChannel*, FlMethodCall* call, gpointer data) {
     fl_value_set_string_take(result, "positioning", fl_value_new_bool(self->positioning));
     fl_value_set_string_take(result, "tray", fl_value_new_bool(tray_available(self)));
   } else if (method == "configureTray") {
+    read_tray_labels(self, fl_method_call_get_args(call));
+    apply_tray_labels(self);
     self->close_to_tray = boolean(fl_method_call_get_args(call), "closeToTray") && tray_available(self);
     g_autoptr(FlValue) enabled = fl_value_new_bool(self->close_to_tray);
     fl_method_call_respond_success(call, enabled, nullptr);

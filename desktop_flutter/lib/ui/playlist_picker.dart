@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'package:flutter/material.dart';
 
 import '../domain/library.dart';
@@ -46,7 +47,7 @@ class _PlaylistPickerState extends State<_PlaylistPicker> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.player,
     builder: (context, _) => AlertDialog(
-      title: const Text('添加到歌单'),
+      title:       Text(tr('添加到歌单')),
       scrollable: true,
       content: SizedBox(
         width: 420,
@@ -62,7 +63,7 @@ class _PlaylistPickerState extends State<_PlaylistPicker> {
             ),
             const SizedBox(height: 12),
             if (widget.player.playlists.isEmpty)
-              const Text('还没有歌单，可以在下方新建。')
+                    Text(tr('还没有歌单，可以在下方新建。'))
             else
               ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 280),
@@ -83,7 +84,7 @@ class _PlaylistPickerState extends State<_PlaylistPicker> {
                       ),
                       title: Text(playlist.name),
                       subtitle: Text(
-                        contains ? '已在歌单中' : '${playlist.paths.length} 首',
+                        contains ? tr('已在歌单中') : '${playlist.paths.length} 首',
                       ),
                       trailing: contains
                           ? Icon(
@@ -100,15 +101,15 @@ class _PlaylistPickerState extends State<_PlaylistPicker> {
             TextField(
               controller: name,
               maxLength: 100,
-              decoration: const InputDecoration(
-                hintText: '新歌单名称',
+              decoration:       InputDecoration(
+                hintText: tr('新歌单名称'),
                 prefixIcon: Icon(Icons.add_rounded),
               ),
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => create(),
             ),
             Text(
-              '只修改本机歌单，不会改动平台账号，也不会开始播放。',
+              tr('只修改本机歌单，不会改动平台账号，也不会开始播放。'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -117,13 +118,13 @@ class _PlaylistPickerState extends State<_PlaylistPicker> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child:       Text(tr('取消')),
         ),
         ListenableBuilder(
           listenable: name,
           builder: (context, _) => FilledButton(
             onPressed: name.text.trim().isEmpty ? null : create,
-            child: const Text('新建并加入'),
+            child:       Text(tr('新建并加入')),
           ),
         ),
       ],

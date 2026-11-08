@@ -1,5 +1,7 @@
 package top.nekoh2o.player.audio
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.media.audiofx.AudioEffect
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
@@ -27,23 +29,23 @@ class SystemAudioEffectsManager(private val audioSessionId: Int) {
     fun initialize(): Boolean {
         release(publish = false)
         if (audioSessionId <= 0) return false
-        equalizer = createEffect("均衡器", { Equalizer(0, audioSessionId) }) {
+        equalizer = createEffect(tr("均衡器"), { Equalizer(0, audioSessionId) }) {
             check(it.numberOfBands > 0 && it.bandLevelRange.size >= 2)
             check(it.setEnabled(true) == AudioEffect.SUCCESS)
         }
-        bassBoost = createEffect("低音增强", { BassBoost(0, audioSessionId) }) {
+        bassBoost = createEffect(tr("低音增强"), { BassBoost(0, audioSessionId) }) {
             check(it.strengthSupported)
             check(it.setEnabled(false) == AudioEffect.SUCCESS)
         }
-        virtualizer = createEffect("3D 环绕", { Virtualizer(0, audioSessionId) }) {
+        virtualizer = createEffect(tr("3D 环绕"), { Virtualizer(0, audioSessionId) }) {
             check(it.strengthSupported)
             check(it.setEnabled(false) == AudioEffect.SUCCESS)
         }
-        loudness = createEffect("响度增强", { LoudnessEnhancer(audioSessionId) }) {
+        loudness = createEffect(tr("响度增强"), { LoudnessEnhancer(audioSessionId) }) {
             check(it.setEnabled(false) == AudioEffect.SUCCESS)
         }
         // PresetReverb 是辅助效果；session 0 创建，由 AudioTrack 的 aux send 接入。
-        reverb = createEffect("混响", { PresetReverb(0, 0) }) {
+        reverb = createEffect(tr("混响"), { PresetReverb(0, 0) }) {
             it.preset = PresetReverb.PRESET_MEDIUMHALL
             check(it.setEnabled(false) == AudioEffect.SUCCESS)
         }
@@ -53,7 +55,7 @@ class SystemAudioEffectsManager(private val audioSessionId: Int) {
 
     fun applySettings(settings: AudioEffectSettings) {
         val safe = settings.normalized()
-        equalizer = applyEffect("均衡器", equalizer) { eq ->
+        equalizer = applyEffect(tr("均衡器"), equalizer) { eq ->
             check(eq.setEnabled(true) == AudioEffect.SUCCESS)
             for (band in 0 until eq.numberOfBands.toInt()) {
                 val gainDb = interpolateEqGain(eq.getCenterFreq(band.toShort()) / 1000f, safe.eqBands)
@@ -62,19 +64,19 @@ class SystemAudioEffectsManager(private val audioSessionId: Int) {
                 ).toShort())
             }
         }
-        bassBoost = applyEffect("低音增强", bassBoost) {
+        bassBoost = applyEffect(tr("低音增强"), bassBoost) {
             it.setStrength((safe.bassBoost * 10).toShort())
             check(it.setEnabled(safe.bassBoost > 0) == AudioEffect.SUCCESS)
         }
-        virtualizer = applyEffect("3D 环绕", virtualizer) {
+        virtualizer = applyEffect(tr("3D 环绕"), virtualizer) {
             it.setStrength((safe.virtualizer * 10).toShort())
             check(it.setEnabled(safe.virtualizer > 0) == AudioEffect.SUCCESS)
         }
-        loudness = applyEffect("响度增强", loudness) {
+        loudness = applyEffect(tr("响度增强"), loudness) {
             it.setTargetGain(safe.loudnessGain * 6)
             check(it.setEnabled(safe.loudnessGain > 0) == AudioEffect.SUCCESS)
         }
-        reverb = applyEffect("混响", reverb) {
+        reverb = applyEffect(tr("混响"), reverb) {
             check(it.setEnabled(safe.reverbWet > 0) == AudioEffect.SUCCESS)
         }
         reverbSendLevel = if (reverb != null) safe.reverbWet / 100f else 0f

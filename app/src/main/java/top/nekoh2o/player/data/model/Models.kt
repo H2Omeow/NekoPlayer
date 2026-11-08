@@ -403,5 +403,7 @@ data class AppSettings(
     // 自定义字体的原始文件名（用于设置页显示）
     val customFontName: String = "",
     // 社区后台消息推送（前台服务 + SSE，默认开启）
-    val socialPushEnabled: Boolean = true
+    val socialPushEnabled: Boolean = true,
+    // 界面语言：system / zh-CN / zh-TW / en / ja
+    val language: String = "system"
 )

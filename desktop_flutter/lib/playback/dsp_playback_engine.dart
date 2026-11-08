@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
@@ -29,7 +30,7 @@ class DspPlaybackEngine extends PlaybackEngine {
               !RegExp(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$").hasMatch(entry.key) ||
               entry.value.contains(RegExp(r'[\r\n]')),
         )) {
-          throw const FormatException('音频请求头无效。');
+          throw       FormatException(tr('音频请求头无效。'));
         }
         final previous = _headers;
         _headers = audio.headers;
@@ -178,7 +179,7 @@ class DspPlaybackEngine extends PlaybackEngine {
         );
         _error = failure is MusicSearchException
             ? failure.message
-            : '专业 DSP 播放失败，请检查 FFmpeg、系统音频设备和音源权限。';
+            : tr('专业 DSP 播放失败，请检查 FFmpeg、系统音频设备和音源权限。');
         _buffering = false;
         if (!_disposed) notifyListeners();
         rethrow;
@@ -282,7 +283,7 @@ class DspPlaybackEngine extends PlaybackEngine {
       tail = ProcessTail(pendingProcess.stderr);
       stream = StreamIterator(pendingProcess.stdout);
       if (!await stream.moveNext().timeout(const Duration(seconds: 20))) {
-        throw const MusicSearchException('FFmpeg 未解码出音频；请确认音源可播放。');
+        throw       MusicSearchException(tr('FFmpeg 未解码出音频；请确认音源可播放。'));
       }
       final duration = _uri == uri && _duration > Duration.zero
           ? _duration
@@ -393,7 +394,7 @@ class DspPlaybackEngine extends PlaybackEngine {
           'ffmpeg exited with $code (partial frame bytes: ${carry.length})\n'
               'ffmpeg stderr tail: ${await tail.settled()}',
         );
-        throw const MusicSearchException('FFmpeg 解码中断，请重新播放。');
+        throw       MusicSearchException(tr('FFmpeg 解码中断，请重新播放。'));
       }
       while (sink.bufferedSamples > 0 &&
           !_disposed &&
@@ -424,7 +425,7 @@ class DspPlaybackEngine extends PlaybackEngine {
         }
         _error = failure is MusicSearchException
             ? failure.message
-            : '音频解码中断，请重试。';
+            : tr('音频解码中断，请重试。');
         _playing = false;
         _buffering = false;
         sink.pause(true);

@@ -1,3 +1,4 @@
+import './i18n/tr.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
@@ -138,7 +139,7 @@ class PlayerController extends ChangeNotifier {
   /// 云同步拉取：直接采用 [next]，不记为本机修改。
   Future<void> applyCloudLibrary(LibraryData next) async {
     if (!_storageReadable) {
-      throw const MusicSearchException('本地音乐库读取失败，未覆盖原数据。');
+      throw       MusicSearchException(tr('本地音乐库读取失败，未覆盖原数据。'));
     }
     tracks = next.tracks;
     favorites = next.favorites.toSet();
@@ -151,7 +152,7 @@ class PlayerController extends ChangeNotifier {
 
   Future<void> mergeCloud(Map<String, dynamic> remote) async {
     if (!_storageReadable) {
-      throw const MusicSearchException('本地音乐库读取失败，未合并或覆盖原数据。');
+      throw       MusicSearchException(tr('本地音乐库读取失败，未合并或覆盖原数据。'));
     }
     final merged = CloudLibrary.merge(snapshot, CloudLibrary.decode(remote));
     tracks = merged.tracks;
@@ -182,12 +183,12 @@ class PlayerController extends ChangeNotifier {
           (track) => track.online == null || track.path != track.online!.key,
         ) ||
         session.paths.any((path) => !byPath.containsKey(path))) {
-      throw const FormatException('待导入的播放队列无效。');
+      throw       FormatException(tr('待导入的播放队列无效。'));
     }
     final command = _commands.then((_) async {
       if (_disposed) throw StateError('Player disposed');
       if (!_storageReadable) {
-        throw const MusicSearchException('本地音乐库读取失败，未覆盖播放队列。');
+        throw       MusicSearchException(tr('本地音乐库读取失败，未覆盖播放队列。'));
       }
       await engine.clearQueue();
       final merged = {...byPath, for (final track in tracks) track.path: track};
@@ -206,7 +207,7 @@ class PlayerController extends ChangeNotifier {
     _commands = command.catchError((Object failure) {
       error = failure is MusicSearchException
           ? failure.message
-          : '播放队列导入未完成，请检查播放内核和存储空间。';
+          : tr('播放队列导入未完成，请检查播放内核和存储空间。');
       _notify();
     });
     await command;
@@ -239,7 +240,7 @@ class PlayerController extends ChangeNotifier {
       }
     } catch (_) {
       _storageReadable = false;
-      error = '音乐库读取失败，已保留原数据；本次会话的修改不会覆盖它。';
+      error = tr('音乐库读取失败，已保留原数据；本次会话的修改不会覆盖它。');
     }
     await perform(() async {
       await engine.setVolume(volume);
@@ -281,7 +282,7 @@ class PlayerController extends ChangeNotifier {
       } catch (failure) {
         error = failure is MusicSearchException
             ? failure.message
-            : engine.error ?? '操作未完成，请检查音频文件与播放设备。';
+            : engine.error ?? tr('操作未完成，请检查音频文件与播放设备。');
         _notify();
       }
     });
@@ -310,13 +311,13 @@ class PlayerController extends ChangeNotifier {
         imported[path] = Track(
           path: path,
           title: separator < 0 ? name : name.substring(separator + 3),
-          artist: separator < 0 ? '本地音乐' : name.substring(0, separator),
+          artist: separator < 0 ? tr('本地音乐') : name.substring(0, separator),
         );
       }
       tracks = imported.values.toList();
       _persist();
     } catch (_) {
-      error = '部分文件无法读取，请检查访问权限。';
+      error = tr('部分文件无法读取，请检查访问权限。');
     } finally {
       busy = false;
       _notify();
@@ -327,7 +328,7 @@ class PlayerController extends ChangeNotifier {
       perform(() async {
         final downloadedPath = task.path;
         if (task.phase != DownloadPhase.completed || downloadedPath == null) {
-          throw const MusicSearchException('下载尚未完成，请完成下载后再播放或导入。');
+          throw       MusicSearchException(tr('下载尚未完成，请完成下载后再播放或导入。'));
         }
         final path = paths.normalize(paths.absolute(downloadedPath));
         if (!extensions.contains(
@@ -335,7 +336,7 @@ class PlayerController extends ChangeNotifier {
             ) ||
             await FileSystemEntity.type(path, followLinks: false) !=
                 FileSystemEntityType.file) {
-          throw const MusicSearchException('下载文件不存在或无法读取，请重新下载。');
+          throw       MusicSearchException(tr('下载文件不存在或无法读取，请重新下载。'));
         }
         final track = Track(
           path: path,
@@ -357,11 +358,11 @@ class PlayerController extends ChangeNotifier {
 
   Future<void> _play(List<Track> list, int index) async {
     if (list.length > PlaybackSession.maxQueueLength) {
-      throw const MusicSearchException('播放队列最多 100000 项。');
+      throw       MusicSearchException(tr('播放队列最多 100000 项。'));
     }
     if (list.isEmpty || index < 0 || index >= list.length) return;
     if (list[index].online == null && !await File(list[index].path).exists()) {
-      error = '文件已移动或删除，请重新导入。';
+      error = tr('文件已移动或删除，请重新导入。');
       _notify();
       return;
     }
@@ -470,7 +471,7 @@ class PlayerController extends ChangeNotifier {
 
   Future<void> enqueue(Track track) => perform(() async {
     if (queue.length >= PlaybackSession.maxQueueLength) {
-      throw const MusicSearchException('播放队列最多 100000 项。');
+      throw       MusicSearchException(tr('播放队列最多 100000 项。'));
     }
     final session = _pendingSession;
     if (session != null) {
@@ -684,10 +685,10 @@ class PlayerController extends ChangeNotifier {
     bool? twoLines,
   }) async {
     if (!_storageReadable) {
-      throw const MusicSearchException('本地音乐库读取失败，未覆盖播放设置。');
+      throw       MusicSearchException(tr('本地音乐库读取失败，未覆盖播放设置。'));
     }
     if (speed != null && (!speed.isFinite || speed < .5 || speed > 2)) {
-      throw const FormatException('播放速度无效。');
+      throw       FormatException(tr('播放速度无效。'));
     }
     if (speed != null) await engine.setRate(speed);
     if (quality != null) await engine.setPreferredQuality(quality);
@@ -793,7 +794,7 @@ class PlayerController extends ChangeNotifier {
     final encoded = snapshot.encode();
     final write = _writes.then((_) => store.write(encoded));
     _writes = write.catchError((Object failure) {
-      error = '保存音乐库失败，请检查磁盘空间与访问权限。';
+      error = tr('保存音乐库失败，请检查磁盘空间与访问权限。');
       _notify();
     });
     return write;

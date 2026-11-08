@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.plugins
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import kotlinx.coroutines.withTimeout
 import top.nekoh2o.player.PlayerApp
 import top.nekoh2o.player.data.model.Song
@@ -9,7 +11,7 @@ import java.io.IOException
 class PluginMusicRepository {
     private suspend fun source(id: String): PluginSource {
         PluginStore.awaitReady()
-        return PluginStore.source(id) ?: throw IOException("音源已关闭或删除，请在音源管理中检查")
+        return PluginStore.source(id) ?: throw IOException(tr("音源已关闭或删除，请在音源管理中检查"))
     }
 
     private fun adapter(source: PluginSource): PluginAdapter = when (source.plugin.format) {

@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -13,36 +15,36 @@ import top.nekoh2o.player.ui.PlayerViewModel
 @Composable
 fun QrLoginDialog(vm: PlayerViewModel, onDismiss: () -> Unit) {
     var qrBase64 by remember { mutableStateOf<String?>(null) }
-    var message by remember { mutableStateOf("正在获取二维码...") }
+    var message by remember { mutableStateOf(tr("正在获取二维码...")) }
     var done by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val key = vm.qrKeyOnce()
-        if (key == null) { message = "获取二维码失败"; return@LaunchedEffect }
+        if (key == null) { message = tr("获取二维码失败"); return@LaunchedEffect }
         val img = vm.qrCreateOnce(key)
-        if (img == null) { message = "二维码生成失败"; return@LaunchedEffect }
+        if (img == null) { message = tr("二维码生成失败"); return@LaunchedEffect }
         qrBase64 = img
-        message = "请使用网易云音乐 App 扫码"
+        message = tr("请使用网易云音乐 App 扫码")
         // 轮询
         while (!done) {
             delay(2000)
             when (vm.qrCheckOnce(key)) {
-                803 -> { message = "登录成功"; done = true }
-                802 -> message = "已扫码，请在手机确认"
-                800 -> { message = "二维码已过期，请重开"; done = true }
+                803 -> { message = tr("登录成功"); done = true }
+                802 -> message = tr("已扫码，请在手机确认")
+                800 -> { message = tr("二维码已过期，请重开"); done = true }
             }
         }
     }
 
     LaunchedEffect(done) {
-        if (done && message == "登录成功") {
+        if (done && message == tr("登录成功")) {
             delay(800); onDismiss()
         }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("网易云扫码登录") },
+        title = { Text(tr("网易云扫码登录")) },
         text = {
             Column(
                 Modifier.fillMaxWidth(),
@@ -54,7 +56,7 @@ fun QrLoginDialog(vm: PlayerViewModel, onDismiss: () -> Unit) {
                     Surface(color = androidx.compose.ui.graphics.Color.White, shape = MaterialTheme.shapes.medium) {
                         androidx.compose.foundation.Image(
                             bitmap = bmp.asImageBitmap(),
-                            contentDescription = "二维码",
+                            contentDescription = tr("二维码"),
                             modifier = Modifier.padding(12.dp).size(200.dp)
                         )
                     }
@@ -65,7 +67,7 @@ fun QrLoginDialog(vm: PlayerViewModel, onDismiss: () -> Unit) {
                 Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("关闭")) } }
     )
 }
 

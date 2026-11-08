@@ -1,5 +1,7 @@
 package top.nekoh2o.player.playback
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import top.nekoh2o.player.data.net.CookieStore
 
 import android.content.Intent
@@ -87,9 +89,9 @@ class PlaybackService : MediaSessionService() {
                         return@Factory dataSpec.buildUpon().setKey(cached).build()
                     }
                 }
-                throw java.io.IOException(e.message ?: "歌曲音质查询失败", e)
+                throw java.io.IOException(e.message ?: tr("歌曲音质查询失败"), e)
             }
-            if (audio == null) throw java.io.IOException("当前账号没有该歌曲的可播放音质")
+            if (audio == null) throw java.io.IOException(tr("当前账号没有该歌曲的可播放音质"))
             val qualityKey = key + ":quality:" + audio.quality.id
             dataSpec.buildUpon().setUri(Uri.parse(audio.url)).setKey(qualityKey)
                 .setHttpRequestHeaders(dataSpec.httpRequestHeaders + audio.headers).build()

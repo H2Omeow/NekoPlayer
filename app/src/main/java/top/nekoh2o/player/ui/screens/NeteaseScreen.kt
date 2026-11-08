@@ -1,5 +1,8 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -75,7 +78,7 @@ fun NeteaseScreen(vm: PlayerViewModel, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        DetailTopBar("网易云音乐", onBack)
+        DetailTopBar(tr("网易云音乐"), onBack)
         Column(Modifier.fillMaxSize()) {
             NcAccountCard(ncAccount, loading) {
                 showQrLogin = true
@@ -85,7 +88,7 @@ fun NeteaseScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 ChipRow(
                     items = listOf(0, 1, 2),
                     selected = currentTab,
-                    label = { listOf("歌单", "红心", "播放记录")[it] },
+                    label = { listOf(tr("歌单"), tr("红心"), tr("播放记录"))[it] },
                     onSelect = { currentTab = it },
                     modifier = Modifier.padding(vertical = NekoSpace.sm)
                 )
@@ -126,26 +129,26 @@ private fun NcAccountCard(
             when {
                 loading -> {
                     CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
-                    Text("正在读取账号…", style = MaterialTheme.typography.bodyMedium)
+                    Text(tr("正在读取账号…"), style = MaterialTheme.typography.bodyMedium)
                 }
                 account == null -> {
                     Artwork(null, size = 56.dp, shape = CircleShape, placeholder = Icons.Filled.Person)
                     Column(Modifier.weight(1f)) {
-                        Text("未登录", style = MaterialTheme.typography.titleMedium)
+                        Text(tr("未登录"), style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Cookie 缺失或已失效",
+                            tr("Cookie 缺失或已失效"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Button(onClick = onRelogin) { Text("扫码登录") }
+                    Button(onClick = onRelogin) { Text(tr("扫码登录")) }
                 }
                 else -> {
                     val vip = account.account?.vipType ?: 0
                     Artwork(account.profile?.avatarUrl, size = 56.dp, shape = CircleShape, thumbnail = null, placeholder = Icons.Filled.Person)
                     Column(Modifier.weight(1f)) {
                         Text(
-                            account.profile?.nickname ?: "网易云用户",
+                            account.profile?.nickname ?: tr("网易云用户"),
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -156,7 +159,7 @@ private fun NcAccountCard(
                             if (vip > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                         )
                     }
-                    TextButton(onClick = onRelogin, colors = NekoDefaults.textButtonColors()) { Text("重新登录") }
+                    TextButton(onClick = onRelogin, colors = NekoDefaults.textButtonColors()) { Text(tr("重新登录")) }
                 }
             }
         }
@@ -187,7 +190,7 @@ private fun NcPlaylistTab(
     if (loading || playlists.isEmpty()) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
             if (loading) CircularProgressIndicator()
-            else EmptyState(Icons.AutoMirrored.Filled.QueueMusic, "没有歌单")
+            else EmptyState(Icons.AutoMirrored.Filled.QueueMusic, tr("没有歌单"))
         }
         return
     }
@@ -210,7 +213,7 @@ private fun NcPlaylistTab(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        "${playlist.trackCount} 首",
+                        tr("{count} 首", "count" to playlist.trackCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -222,7 +225,7 @@ private fun NcPlaylistTab(
                         }
                     }
                 ) {
-                    Icon(Icons.Filled.CloudDownload, "导入到本地", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Filled.CloudDownload, tr("导入到本地"), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -254,7 +257,7 @@ private fun NcLikeSongsTab(
         if (songs.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
                 if (loading) CircularProgressIndicator()
-                else EmptyState(Icons.Filled.FavoriteBorder, "没有红心歌曲")
+                else EmptyState(Icons.Filled.FavoriteBorder, tr("没有红心歌曲"))
             }
         } else {
             Row(
@@ -262,7 +265,7 @@ private fun NcLikeSongsTab(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("共 ${songs.size} 首", style = MaterialTheme.typography.bodyMedium)
+                Text(tr("共 {count} 首", "count" to songs.size), style = MaterialTheme.typography.bodyMedium)
                 TextButton(
                     onClick = {
                         scope.launch {
@@ -273,7 +276,7 @@ private fun NcLikeSongsTab(
                 ) {
                     Icon(Icons.Filled.CloudDownload, null)
                     Spacer(Modifier.width(4.dp))
-                    Text("全部导入到收藏")
+                    Text(tr("全部导入到收藏"))
                 }
             }
             LazyColumn(Modifier.fillMaxSize()) {
@@ -312,7 +315,7 @@ private fun NcPlayRecordTab(
         if (records.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
                 if (loading) CircularProgressIndicator()
-                else EmptyState(Icons.Filled.History, "最近一周没有播放记录")
+                else EmptyState(Icons.Filled.History, tr("最近一周没有播放记录"))
             }
         } else {
             Row(
@@ -320,7 +323,7 @@ private fun NcPlayRecordTab(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("最近一周 ${records.size} 首", style = MaterialTheme.typography.bodyMedium)
+                Text(tr("最近一周 {count} 首", "count" to records.size), style = MaterialTheme.typography.bodyMedium)
                 TextButton(
                     onClick = {
                         scope.launch {
@@ -331,13 +334,13 @@ private fun NcPlayRecordTab(
                 ) {
                     Icon(Icons.Filled.CloudDownload, null)
                     Spacer(Modifier.width(4.dp))
-                    Text("全部导入到历史")
+                    Text(tr("全部导入到历史"))
                 }
             }
             LazyColumn(Modifier.fillMaxSize()) {
                 items(records, key = { it.song.id }) { record ->
                     val song = record.song.toSong()
-                    SongRow(song, onPlay = { vm.playNow(song) }, subtitle = "${song.ar} · 播放 ${record.playCount} 次")
+                    SongRow(song, onPlay = { vm.playNow(song) }, subtitle = tr("{artist} · 播放 {count} 次", "artist" to song.ar, "count" to record.playCount))
                 }
             }
         }
@@ -346,14 +349,14 @@ private fun NcPlayRecordTab(
 
 // 辅助函数
 private fun vipTypeName(vipType: Int): String = when (vipType) {
-    0 -> "普通用户"
-    1 -> "黑胶 VIP"
-    11 -> "超级 VIP"
+    0 -> tr("普通用户")
+    1 -> tr("黑胶 VIP")
+    11 -> tr("超级 VIP")
     else -> "VIP"
 }
 
 private fun formatVipExpire(timestamp: Long): String {
-    val date = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.CHINA)
+    val date = java.text.SimpleDateFormat("yyyy-MM-dd", NekoI18n.currentLocale())
         .format(java.util.Date(timestamp))
     return date
 }

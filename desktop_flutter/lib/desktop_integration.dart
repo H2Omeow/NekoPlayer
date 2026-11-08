@@ -5,6 +5,8 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'i18n/tr.dart';
+
 import 'playback/playback_engine.dart';
 import 'data/library_store.dart';
 import 'player_controller.dart';
@@ -70,7 +72,7 @@ class DesktopIntegration extends ChangeNotifier {
       opacity = alpha.clamp(.25, 1);
     } catch (_) {
       _settingsReadable = false;
-      error = '桌面歌词设置读取失败，已保留原数据；本次修改不会覆盖它。';
+      error = tr('桌面歌词设置读取失败，已保留原数据；本次修改不会覆盖它。');
     }
   }
 
@@ -89,7 +91,7 @@ class DesktopIntegration extends ChangeNotifier {
     });
     _writes = _writes.then((_) => store.write(encoded)).catchError((Object _) {
       if (_disposed) return;
-      error = '桌面歌词设置保存失败，请检查磁盘空间与访问权限。';
+      error = tr('桌面歌词设置保存失败，请检查磁盘空间与访问权限。');
       notifyListeners();
     });
   }
@@ -112,15 +114,16 @@ class DesktopIntegration extends ChangeNotifier {
       lyricsAvailable = result?['lyrics'] == true;
       positioningAvailable = result?['positioning'] == true;
       trayAvailable = result?['tray'] == true;
+      if (trayAvailable) unawaited(refreshTrayLabels());
       player.addListener(_changed);
       // Position, play state and lyrics advance on the engine, not through
       // PlayerController notifications.
       player.engine.addListener(_changed);
       _changed();
     } on MissingPluginException {
-      error = '当前运行环境没有桌面系统集成。';
+      error = tr('当前运行环境没有桌面系统集成。');
     } catch (_) {
-      error = '系统集成初始化失败，不影响普通播放。';
+      error = tr('系统集成初始化失败，不影响普通播放。');
     }
     if (!_disposed) notifyListeners();
   }
@@ -249,18 +252,42 @@ class DesktopIntegration extends ChangeNotifier {
     }
   }
 
+  Map<String, String> _trayLabels() => {
+    'tooltip': tr('NekoPlayer — 点击显示播放器'),
+    'show': tr('显示播放器'),
+    'toggle': tr('播放 / 暂停'),
+    'previous': tr('上一首'),
+    'next': tr('下一首'),
+    'quit': tr('退出'),
+    'lyricsTitle': tr('NekoPlayer 桌面歌词'),
+  };
+
+  /// Re-sends localized tray and lyrics-window labels after a language change.
+  Future<void> refreshTrayLabels() async {
+    if (_disposed || !trayAvailable) return;
+    try {
+      await channel.invokeMethod<bool>('configureTray', {
+        'closeToTray': closeToTray,
+        'labels': _trayLabels(),
+      });
+    } catch (_) {
+      // Labels are best effort; the previous language remains usable.
+    }
+  }
+
   Future<void> configureTray(bool enabled) async {
     if (_disposed || (enabled && !trayAvailable)) return;
     try {
       final result = await channel.invokeMethod<bool>('configureTray', {
         'closeToTray': enabled,
+        'labels': _trayLabels(),
       });
       if (_disposed) return;
       closeToTray = enabled && result == true && trayAvailable;
-      if (enabled && !closeToTray) error = '系统托盘当前不可用，关闭窗口仍会正常退出。';
+      if (enabled && !closeToTray) error = tr('系统托盘当前不可用，关闭窗口仍会正常退出。');
     } catch (_) {
       if (_disposed) return;
-      error = '托盘设置失败，未启用关闭到托盘。';
+      error = tr('托盘设置失败，未启用关闭到托盘。');
     }
     notifyListeners();
   }
@@ -331,7 +358,7 @@ class DesktopIntegration extends ChangeNotifier {
       }
     } catch (_) {
       if (!_disposed) {
-        error = '系统控制或桌面歌词更新失败；普通播放仍可用。';
+        error = tr('系统控制或桌面歌词更新失败；普通播放仍可用。');
         notifyListeners();
       }
     } finally {

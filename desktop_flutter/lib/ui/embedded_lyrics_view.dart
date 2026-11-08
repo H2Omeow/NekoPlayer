@@ -4,7 +4,62 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../dynamic_lyrics.dart';
+import '../i18n/tr.dart';
 import '../native_lyrics_view.dart';
+
+
+const _directLyricsReasons = [
+  '未找到 libwebkit2gtk-4.1，请安装 libwebkit2gtk-4.1-0 后重启',
+  'libwebkit2gtk-4.1 版本过旧，缺少必要接口',
+  '只允许加载本机动态歌词页面',
+  '无法创建 WebKitGTK 视图',
+  '此版本未包含 WebView2 组件',
+  '未安装 Microsoft Edge WebView2 运行时（Windows 11 已内置，Windows 10 可从微软官网安装）',
+  '无法获取 WebView2 内核',
+  '已取消',
+  '动态歌词渲染进程已退出',
+  '动态歌词页面加载失败',
+];
+
+/// Maps stable native lyrics failures to the active UI language. Unknown
+/// technical messages pass through unchanged.
+String localizeLyricsReason(String reason) {
+  Match? match;
+  if ((match = RegExp(
+    r'^未找到 libwebkit2gtk-4\.1，请安装 libwebkit2gtk-4\.1-0 后重启（(.*)）$',
+  ).firstMatch(reason)) != null) {
+    return tr('未找到 libwebkit2gtk-4.1，请安装 libwebkit2gtk-4.1-0 后重启（{detail}）', {
+      'detail': match!.group(1),
+    });
+  }
+  if ((match = RegExp(
+    r'^无法初始化 WebView2 环境（0x([0-9A-Fa-f]+)）$',
+  ).firstMatch(reason)) != null) {
+    return tr('无法初始化 WebView2 环境（0x{code}）', {'code': match!.group(1)});
+  }
+  if ((match = RegExp(r'^无法启动 WebView2（0x([0-9A-Fa-f]+)）$').firstMatch(reason)) !=
+      null) {
+    return tr('无法启动 WebView2（0x{code}）', {'code': match!.group(1)});
+  }
+  if ((match = RegExp(
+    r'^无法创建 WebView2 视图（0x([0-9A-Fa-f]+)）$',
+  ).firstMatch(reason)) != null) {
+    return tr('无法创建 WebView2 视图（0x{code}）', {'code': match!.group(1)});
+  }
+  if ((match = RegExp(r'^无法打开动态歌词页面（0x([0-9A-Fa-f]+)）$').firstMatch(reason)) !=
+      null) {
+    return tr('无法打开动态歌词页面（0x{code}）', {'code': match!.group(1)});
+  }
+  if ((match = RegExp(r'^WebView2 错误代码 (\d+)$').firstMatch(reason)) != null) {
+    return tr('WebView2 错误代码 {code}', {'code': match!.group(1)});
+  }
+  if ((match = RegExp(r'^动态歌词页面加载失败：(.+)$').firstMatch(reason)) != null) {
+    return tr('动态歌词页面加载失败：{reason}', {
+      'reason': localizeLyricsReason(match!.group(1)!),
+    });
+  }
+  return _directLyricsReasons.contains(reason) ? tr(reason) : reason;
+}
 
 /// Renders the dynamic lyrics page in a native web view placed over this
 /// widget's area, and falls back to a hint when the platform lacks one.
@@ -96,10 +151,10 @@ class _EmbeddedLyricsViewState extends State<EmbeddedLyricsView> {
       final uri = await widget.start();
       session = await native.open(embeddedLyricsUri(uri));
     } on LyricsViewException catch (error) {
-      _fail(attempt, error.reason);
+      _fail(attempt, localizeLyricsReason(error.reason));
       return;
     } catch (_) {
-      _fail(attempt, '无法启动动态歌词服务');
+      _fail(attempt, tr('无法启动动态歌词服务'));
       return;
     }
     if (_disposed || attempt != _attempt) {
@@ -112,7 +167,11 @@ class _EmbeddedLyricsViewState extends State<EmbeddedLyricsView> {
         _release();
         _fail(
           _attempt,
-          event.message.isEmpty ? '动态歌词页面加载失败' : '动态歌词页面加载失败：${event.message}',
+          event.message.isEmpty
+              ? tr('动态歌词页面加载失败')
+              : tr('动态歌词页面加载失败：{reason}', {
+                  'reason': localizeLyricsReason(event.message),
+                }),
         );
       }
     });
@@ -199,7 +258,7 @@ class _EmbeddedLyricsViewState extends State<EmbeddedLyricsView> {
               const Icon(Icons.auto_awesome_outlined, size: 40),
               const SizedBox(height: 12),
               Text(
-                '无法在应用内显示动态歌词',
+                tr('无法在应用内显示动态歌词'),
                 style: Theme.of(context).textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
@@ -211,12 +270,12 @@ class _EmbeddedLyricsViewState extends State<EmbeddedLyricsView> {
                 runSpacing: 8,
                 alignment: WrapAlignment.center,
                 children: [
-                  OutlinedButton(onPressed: _retry, child: const Text('重试')),
+                  OutlinedButton(onPressed: _retry, child:       Text(tr('重试'))),
                   if (widget.onOpenInBrowser != null)
                     FilledButton.icon(
                       onPressed: widget.onOpenInBrowser,
                       icon: const Icon(Icons.open_in_browser),
-                      label: const Text('在浏览器中打开'),
+                      label:       Text(tr('在浏览器中打开')),
                     ),
                 ],
               ),

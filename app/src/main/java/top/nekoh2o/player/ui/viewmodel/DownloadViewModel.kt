@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.viewmodel
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
@@ -46,16 +48,16 @@ class DownloadViewModel(app: Application) : AndroidViewModel(app) {
         onError: (String) -> Unit
     ) {
         if (DownloadIndex.isDownloaded(song)) {
-            onError("已下载过该歌曲")
+            onError(tr("已下载过该歌曲"))
             return
         }
 
         val audio = try { top.nekoh2o.player.data.repo.SongQualityRepository().resolveDownload(song, quality) }
         catch (e: kotlinx.coroutines.CancellationException) { throw e }
-        catch (e: Exception) { onError(e.message ?: "音质核验失败"); return }
+        catch (e: Exception) { onError(e.message ?: tr("音质核验失败")); return }
         val url = audio?.url
         if (url == null) {
-            onError("当前账号无法下载所选音质，请刷新音质列表")
+            onError(tr("当前账号无法下载所选音质，请刷新音质列表"))
             return
         }
 
@@ -70,7 +72,7 @@ class DownloadViewModel(app: Application) : AndroidViewModel(app) {
         val result = runCatching {
             Downloader.download(getApplication(), song, url, audio.quality.id, lrcText, dirUri)
         }.getOrElse {
-            onError("下载失败：${it.message}")
+            onError(tr("下载失败：{reason}", "reason" to it.message))
             return
         }
 

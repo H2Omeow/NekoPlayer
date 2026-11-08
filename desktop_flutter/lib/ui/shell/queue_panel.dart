@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -18,16 +19,16 @@ class QueuePanel extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('清空播放队列？'),
-        content: const Text('会停止当前播放；歌曲、收藏和歌单都不受影响。'),
+        title:       Text(tr('清空播放队列？')),
+        content:       Text(tr('会停止当前播放；歌曲、收藏和歌单都不受影响。')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child:       Text(tr('取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('清空'),
+            child:       Text(tr('清空')),
           ),
         ],
       ),
@@ -53,15 +54,15 @@ class QueuePanel extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Expanded(child: Text('播放队列', style: text.titleLarge)),
+                Expanded(child: Text(tr('播放队列'), style: text.titleLarge)),
                 if (queue.isNotEmpty)
                   TextButton(
                     onPressed: () => unawaited(clear(context)),
-                    child: const Text('清空'),
+                    child:       Text(tr('清空')),
                   ),
                 if (onClose != null)
                   IconButton(
-                    tooltip: '收起播放队列',
+                    tooltip: tr('收起播放队列'),
                     onPressed: onClose,
                     icon: const Icon(Icons.close_rounded, size: 20),
                   ),
@@ -71,17 +72,17 @@ class QueuePanel extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: NekoSpace.lg),
             child: Text(
-              queue.isEmpty ? '队列为空' : '${queue.length} 首 · 拖动可调整顺序',
+              queue.isEmpty ? tr('队列为空') : '${queue.length} 首 · 拖动可调整顺序',
               style: text.bodySmall,
             ),
           ),
           const SizedBox(height: NekoSpace.sm),
           Expanded(
             child: queue.isEmpty
-                ? const EmptyState(
+                ?       EmptyState(
                     icon: Icons.queue_music_rounded,
-                    title: '还没有待播歌曲',
-                    description: '播放列表或在歌曲菜单中选择“加入播放队列”。',
+                    title: tr('还没有待播歌曲'),
+                    description: tr('播放列表或在歌曲菜单中选择“加入播放队列”。'),
                   )
                 : ReorderableListView.builder(
                     padding: const EdgeInsets.fromLTRB(

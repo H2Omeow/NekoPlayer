@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.graphics.BitmapFactory
 import android.os.SystemClock
 import android.util.Base64
@@ -80,7 +82,7 @@ fun KugouLoginScreen(vm: PlayerViewModel, onBack: () -> Unit) {
             while (polling) {
                 if (SystemClock.elapsedRealtime() >= qrDeadline) {
                     polling = false
-                    message = "二维码已过期，请刷新"
+                    message = tr("二维码已过期，请刷新")
                     break
                 }
                 delay(2000)
@@ -89,9 +91,9 @@ fun KugouLoginScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                     failures = 0
                     error = null
                     when (result.status) {
-                        0 -> { polling = false; message = "二维码已过期，请刷新" }
-                        1 -> message = "等待使用酷狗 App 扫码"
-                        2 -> message = "已扫码，请在酷狗 App 中确认登录"
+                        0 -> { polling = false; message = tr("二维码已过期，请刷新") }
+                        1 -> message = tr("等待使用酷狗 App 扫码")
+                        2 -> message = tr("已扫码，请在酷狗 App 中确认登录")
                         4 -> { polling = false; finish() }
                     }
                 } catch (e: CancellationException) { throw e
@@ -121,22 +123,22 @@ fun KugouLoginScreen(vm: PlayerViewModel, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        DetailTopBar("登录酷狗音乐", onBack)
+        DetailTopBar(tr("登录酷狗音乐"), onBack)
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(PageContentPadding),
             verticalArrangement = Arrangement.spacedBy(NekoSpace.lg)
         ) {
-            SettingsSection(description = "两个版本的登录凭据分别保存，扫码时请使用对应版本的酷狗 App。") {
-                SettingsControlTile(title = "版本") {
+            SettingsSection(description = tr("两个版本的登录凭据分别保存，扫码时请使用对应版本的酷狗 App。")) {
+                SettingsControlTile(title = tr("版本")) {
                     Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
-                        listOf("原版", "概念版").forEachIndexed { index, title ->
+                        listOf(tr("原版"), tr("概念版")).forEachIndexed { index, title ->
                             NekoChip(title, platform == index, { if (!busy) platform = index })
                         }
                     }
                 }
-                SettingsControlTile(title = "登录方式") {
+                SettingsControlTile(title = tr("登录方式")) {
                     Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
-                        listOf("短信验证码", "App 扫码").forEachIndexed { index, title ->
+                        listOf(tr("短信验证码"), tr("App 扫码")).forEachIndexed { index, title ->
                             NekoChip(title, method == index, { if (!busy) method = index })
                         }
                     }
@@ -144,11 +146,11 @@ fun KugouLoginScreen(vm: PlayerViewModel, onBack: () -> Unit) {
             }
             if (method == 0) {
                 OutlinedTextField(value = phone, onValueChange = { phone = it.filter(Char::isDigit).take(11) },
-                    label = { Text("大陆手机号") }, enabled = !busy, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    label = { Text(tr("大陆手机号")) }, enabled = !busy, singleLine = true, modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), colors = NekoDefaults.textFieldColors())
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = code, onValueChange = { code = it.filter(Char::isDigit).take(8) },
-                        label = { Text("验证码") }, enabled = !busy, singleLine = true, modifier = Modifier.weight(1f),
+                        label = { Text(tr("验证码")) }, enabled = !busy, singleLine = true, modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), colors = NekoDefaults.textFieldColors())
                     Button(enabled = !busy && seconds == 0 && phone.length == 11, onClick = {
                         busy = true; error = null
@@ -156,15 +158,15 @@ fun KugouLoginScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                             try {
                                 vm.kgSendCode(phone.trim(), platform)
                                 deadline = SystemClock.elapsedRealtime() + 60000
-                                message = "验证码已发送"
+                                message = tr("验证码已发送")
                             } catch (e: CancellationException) { throw e
                             } catch (e: Exception) { error = kugouLoginError(e)
                             } finally { busy = false }
                         }
-                    }) { Text(if (seconds > 0) seconds.toString() + "s" else "发送验证码") }
+                    }) { Text(if (seconds > 0) seconds.toString() + "s" else tr("发送验证码")) }
                 }
                 Button(onClick = { submit() }, enabled = !busy && phone.length == 11 && code.length in 4..8, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (busy) "处理中…" else "登录")
+                    Text(if (busy) tr("处理中…") else tr("登录"))
                 }
             } else {
                 val bitmap = remember(qr?.image) {
@@ -180,36 +182,36 @@ fun KugouLoginScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(NekoRadius.card),
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     ) {
-                        Image(bitmap, "酷狗登录二维码", Modifier.padding(NekoSpace.md).size(220.dp))
+                        Image(bitmap, tr("酷狗登录二维码"), Modifier.padding(NekoSpace.md).size(220.dp))
                     }
-                    else Text("二维码图片无法显示，请刷新", color = MaterialTheme.colorScheme.error)
+                    else Text(tr("二维码图片无法显示，请刷新"), color = MaterialTheme.colorScheme.error)
                 }
                 Button(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
-                    qr = null; polling = false; busy = true; error = null; message = "正在获取二维码"
+                    qr = null; polling = false; busy = true; error = null; message = tr("正在获取二维码")
                     scope.launch {
                         try {
                             qr = vm.kgCreateLoginQR(platform)
                             qrDeadline = SystemClock.elapsedRealtime() + 180000
                             polling = true
-                            message = "请使用" + if (platform == 1) "酷狗概念版扫码并确认" else "酷狗音乐 App 扫码并确认"
+                            message = tr("请使用{target}扫码并确认", "target" to tr(if (platform == 1) "酷狗概念版" else "酷狗音乐 App"))
                         } catch (e: CancellationException) { throw e
                         } catch (e: Exception) { error = kugouLoginError(e); message = ""
                         } finally { busy = false }
                     }
-                }) { Text(if (busy) "获取中…" else if (qr == null) "获取二维码" else "刷新二维码") }
+                }) { Text(if (busy) tr("获取中…") else if (qr == null) tr("获取二维码") else tr("刷新二维码")) }
                 if (polling) CircularProgressIndicator(Modifier.size(24.dp).align(Alignment.CenterHorizontally))
             }
             if (message.isNotEmpty()) InlineNotice(message)
             error?.let { InlineNotice(it, error = true) }
         }
     }
-    if (accounts.isNotEmpty()) AlertDialog(onDismissRequest = { accounts = emptyList() }, title = { Text("选择酷狗账号") }, text = {
+    if (accounts.isNotEmpty()) AlertDialog(onDismissRequest = { accounts = emptyList() }, title = { Text(tr("选择酷狗账号")) }, text = {
         Column {
             accounts.forEach { account ->
                 TextButton(onClick = { submit(account.userid) }) {
-                    Text(account.nickname.ifBlank { "酷狗账号" } + "（" + account.userid + "）")
+                    Text(account.nickname.ifBlank { tr("酷狗账号") } + "（" + account.userid + "）")
                 }
             }
         }
-    }, confirmButton = {}, dismissButton = { TextButton(onClick = { accounts = emptyList() }) { Text("取消") } })
+    }, confirmButton = {}, dismissButton = { TextButton(onClick = { accounts = emptyList() }) { Text(tr("取消")) } })
 }

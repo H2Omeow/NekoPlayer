@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -68,13 +69,13 @@ class _SocialPageState extends State<SocialPage> {
             child: Row(
               children: [
                 _TabChip(
-                  label: social.unread > 0 ? '消息 ${social.unread}' : '消息',
+                  label: social.unread > 0 ? '消息 ${social.unread}' : tr('消息'),
                   selected: tab == 0,
                   onTap: () => setState(() => tab = 0),
                 ),
                 const SizedBox(width: NekoSpace.sm),
                 _TabChip(
-                  label: '关注动态',
+                  label: tr('关注动态'),
                   selected: tab == 1,
                   onTap: () {
                     setState(() => tab = 1);
@@ -83,7 +84,7 @@ class _SocialPageState extends State<SocialPage> {
                 ),
                 const SizedBox(width: NekoSpace.sm),
                 _TabChip(
-                  label: '发现',
+                  label: tr('发现'),
                   selected: tab == 2,
                   onTap: () => setState(() => tab = 2),
                 ),
@@ -126,15 +127,15 @@ class _SocialPageState extends State<SocialPage> {
             color: NekoPalette.of(context).accent,
           ),
           const SizedBox(height: NekoSpace.lg),
-          Text('登录后使用社区', style: Theme.of(context).textTheme.titleLarge),
+          Text(tr('登录后使用社区'), style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: NekoSpace.sm),
           Text(
-            '关注喜欢的人、发送私信，把正在听的歌分享给朋友。',
+            tr('关注喜欢的人、发送私信，把正在听的歌分享给朋友。'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: NekoSpace.xl),
-          FilledButton(onPressed: widget.onLogin, child: const Text('登录 NekoPlayer 账号')),
+          FilledButton(onPressed: widget.onLogin, child:       Text(tr('登录 NekoPlayer 账号'))),
         ],
       ),
     ),
@@ -146,8 +147,8 @@ class _SocialPageState extends State<SocialPage> {
       return _empty(
         context,
         Icons.forum_outlined,
-        '还没有私信',
-        social.busy ? '正在加载…' : '在「发现」里找到朋友，开始聊天吧。',
+        tr('还没有私信'),
+        social.busy ? tr('正在加载…') : tr('在「发现」里找到朋友，开始聊天吧。'),
       );
     }
     return ListView.separated(
@@ -161,7 +162,7 @@ class _SocialPageState extends State<SocialPage> {
             borderRadius: BorderRadius.circular(NekoRadius.control),
           ),
           leading: _Avatar(profile: conversation.peer, size: 44),
-          title: Text(conversation.peer?.displayName ?? '用户'),
+          title: Text(conversation.peer?.displayName ?? tr('用户')),
           subtitle: Text(
             _preview(conversation.lastMessage),
             maxLines: 1,
@@ -194,7 +195,7 @@ class _SocialPageState extends State<SocialPage> {
       Row(
         children: [
           IconButton(
-            tooltip: '返回会话列表',
+            tooltip: tr('返回会话列表'),
             onPressed: social.closeChat,
             icon: const Icon(Icons.arrow_back_rounded),
           ),
@@ -207,7 +208,7 @@ class _SocialPageState extends State<SocialPage> {
                 _Avatar(profile: conversation.peer, size: 34),
                 const SizedBox(width: NekoSpace.sm),
                 Text(
-                  conversation.peer?.displayName ?? '用户',
+                  conversation.peer?.displayName ?? tr('用户'),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],
@@ -217,7 +218,7 @@ class _SocialPageState extends State<SocialPage> {
           if (social.sseConnected)
             Padding(
               padding: const EdgeInsets.only(right: NekoSpace.lg),
-              child: Text('实时', style: Theme.of(context).textTheme.labelSmall),
+              child: Text(tr('实时'), style: Theme.of(context).textTheme.labelSmall),
             ),
         ],
       ),
@@ -245,7 +246,7 @@ class _SocialPageState extends State<SocialPage> {
         child: Row(
           children: [
             IconButton(
-              tooltip: '分享当前歌曲',
+              tooltip: tr('分享当前歌曲'),
               onPressed: () {
                 final track = widget.player.current;
                 if (track != null) widget.onOpenShare?.call(track);
@@ -259,13 +260,13 @@ class _SocialPageState extends State<SocialPage> {
                 maxLines: 4,
                 maxLength: 2000,
                 buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
-                decoration: const InputDecoration(hintText: '输入消息…', border: OutlineInputBorder()),
+                decoration:       InputDecoration(hintText: tr('输入消息…'), border: OutlineInputBorder()),
                 onSubmitted: (_) => _send(context),
               ),
             ),
             const SizedBox(width: NekoSpace.sm),
             IconButton.filled(
-              tooltip: '发送',
+              tooltip: tr('发送'),
               onPressed: () => _send(context),
               icon: const Icon(Icons.send_rounded),
             ),
@@ -304,8 +305,8 @@ class _SocialPageState extends State<SocialPage> {
       return _empty(
         context,
         Icons.people_outline_rounded,
-        '还没有关注动态',
-        '去「发现」关注喜欢的人，这里会出现他们分享的歌曲。',
+        tr('还没有关注动态'),
+        tr('去「发现」关注喜欢的人，这里会出现他们分享的歌曲。'),
       );
     }
     return ListView.builder(
@@ -331,9 +332,9 @@ class _SocialPageState extends State<SocialPage> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(share.sharer?.displayName ?? '用户'),
+                          Text(share.sharer?.displayName ?? tr('用户')),
                           Text(
-                            '${_shortTime(share.createdAt)} · ${share.platform}',
+                            '${_shortTime(share.createdAt)} · ${tr(share.platform)}',
                             style: Theme.of(context).textTheme.labelSmall,
                           ),
                         ],
@@ -354,13 +355,13 @@ class _SocialPageState extends State<SocialPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            share.song['nm']?.toString() ?? '未知歌曲',
+                            share.song['nm']?.toString() ?? tr('未知歌曲'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
                           Text(
-                            share.song['ar']?.toString() ?? '未知歌手',
+                            share.song['ar']?.toString() ?? tr('未知歌手'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -386,11 +387,11 @@ class _SocialPageState extends State<SocialPage> {
                       onPressed: share.track == null
                           ? null
                           : () => unawaited(_play(share.track!, share.progress)),
-                      child: const Text('播放'),
+                      child:       Text(tr('播放')),
                     ),
                     TextButton(
                       onPressed: () => _openSharePage(share.token),
-                      child: const Text('查看分享'),
+                      child:       Text(tr('查看分享')),
                     ),
                   ],
                 ),
@@ -418,8 +419,8 @@ class _SocialPageState extends State<SocialPage> {
             Expanded(
               child: TextField(
                 controller: search,
-                decoration: const InputDecoration(
-                  hintText: '搜索用户名或昵称',
+                decoration:       InputDecoration(
+                  hintText: tr('搜索用户名或昵称'),
                   prefixIcon: Icon(Icons.search_rounded),
                   border: OutlineInputBorder(),
                 ),
@@ -429,7 +430,7 @@ class _SocialPageState extends State<SocialPage> {
             const SizedBox(width: NekoSpace.sm),
             FilledButton(
               onPressed: social.searching ? null : () => unawaited(social.search(search.text)),
-              child: const Text('搜索'),
+              child:       Text(tr('搜索')),
             ),
           ],
         ),
@@ -440,8 +441,8 @@ class _SocialPageState extends State<SocialPage> {
             ? _empty(
                 context,
                 Icons.person_search_rounded,
-                '发现用户',
-                '输入至少 2 个字符，找到朋友后可以关注或私信。',
+                tr('发现用户'),
+                tr('输入至少 2 个字符，找到朋友后可以关注或私信。'),
               )
             : ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: NekoSpace.md),
@@ -457,10 +458,10 @@ class _SocialPageState extends State<SocialPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: profile.isSelf
-                        ? const Text('这是你')
+                        ?       Text(tr('这是你'))
                         : OutlinedButton(
                             onPressed: () => unawaited(social.toggleFollow(profile)),
-                            child: Text(profile.isFollowing ? '已关注' : '关注'),
+                            child: Text(profile.isFollowing ? tr('已关注') : tr('关注')),
                           ),
                     onTap: () => unawaited(social.loadProfile(profile.id)),
                   );
@@ -553,7 +554,7 @@ class _MessageBubble extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: NekoSpace.xs),
         child: Center(
           child: Text(
-            message.owned ? '你撤回了一条消息' : '对方撤回了一条消息',
+            message.owned ? tr('你撤回了一条消息') : tr('对方撤回了一条消息'),
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ),
@@ -590,12 +591,12 @@ class _MessageBubble extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  message.song['nm']?.toString() ?? '未知歌曲',
+                                  message.song['nm']?.toString() ?? tr('未知歌曲'),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  message.song['ar']?.toString() ?? '未知歌手',
+                                  message.song['ar']?.toString() ?? tr('未知歌手'),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: Theme.of(context).textTheme.bodySmall,
@@ -604,12 +605,12 @@ class _MessageBubble extends StatelessWidget {
                                   children: [
                                     TextButton(
                                       onPressed: () => unawaited(player.play([message.track!], 0)),
-                                      child: const Text('播放'),
+                                      child:       Text(tr('播放')),
                                     ),
                                     if ((message.shareToken ?? '').isNotEmpty)
                                       TextButton(
                                         onPressed: () => _openSharePage(message.shareToken!),
-                                        child: const Text('查看'),
+                                        child:       Text(tr('查看')),
                                       ),
                                   ],
                                 ),
@@ -640,7 +641,7 @@ class _MessageBubble extends StatelessWidget {
                   InkWell(
                     onTap: onWithdraw,
                     child: Text(
-                      '撤回',
+                      tr('撤回'),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: colors.primary,
                       ),
@@ -693,21 +694,21 @@ class _ProfileDialog extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('${profile.followers} 粉丝'),
+                  Text(tr('{count} 粉丝', {'count': profile.followers})),
                   const SizedBox(width: NekoSpace.xl),
-                  Text('${profile.following} 关注'),
+                  Text(tr('{count} 关注', {'count': profile.following})),
                 ],
               ),
               const SizedBox(height: NekoSpace.lg),
               if (profile.isSelf)
                 Column(
                   children: [
-                    const Text('私信接收范围'),
+                          Text(tr('私信接收范围')),
                     const SizedBox(height: NekoSpace.sm),
                     SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'everyone', label: Text('所有人')),
-                        ButtonSegment(value: 'following', label: Text('我关注的人')),
+                      segments:       [
+                        ButtonSegment(value: 'everyone', label: Text(tr('所有人'))),
+                        ButtonSegment(value: 'following', label: Text(tr('我关注的人'))),
                       ],
                       selected: {social.preferences.dmPolicy},
                       onSelectionChanged: (value) =>
@@ -723,7 +724,7 @@ class _ProfileDialog extends StatelessWidget {
                   children: [
                     FilledButton(
                       onPressed: () => unawaited(social.toggleFollow(profile)),
-                      child: Text(profile.isFollowing ? '已关注' : '关注'),
+                      child: Text(profile.isFollowing ? tr('已关注') : tr('关注')),
                     ),
                     OutlinedButton(
                       onPressed: () {
@@ -731,12 +732,12 @@ class _ProfileDialog extends StatelessWidget {
                         Navigator.of(context).pop();
                         unawaited(social.openChat(profile.id));
                       },
-                      child: const Text('私信'),
+                      child:       Text(tr('私信')),
                     ),
                     OutlinedButton(
                       onPressed: () => unawaited(social.toggleBlock(profile)),
                       style: OutlinedButton.styleFrom(foregroundColor: colors.error),
-                      child: Text(profile.blocked ? '取消拉黑' : '拉黑'),
+                      child: Text(profile.blocked ? tr('取消拉黑') : tr('拉黑')),
                     ),
                   ],
                 ),
@@ -749,7 +750,7 @@ class _ProfileDialog extends StatelessWidget {
               social.closeProfile();
               Navigator.of(context).pop();
             },
-            child: const Text('关闭'),
+            child:       Text(tr('关闭')),
           ),
         ],
       );
@@ -785,7 +786,7 @@ Future<void> showSongShareDialog(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
-        title: const Text('分享歌曲'),
+        title:       Text(tr('分享歌曲')),
         content: SizedBox(
           width: 430,
           child: SingleChildScrollView(
@@ -817,40 +818,40 @@ Future<void> showSongShareDialog(
                   controller: message,
                   maxLength: 200,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: '写一句留言（可选）',
+                  decoration:       InputDecoration(
+                    hintText: tr('写一句留言（可选）'),
                     border: OutlineInputBorder(),
                   ),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('显示分享者身份'),
+                  title:       Text(tr('显示分享者身份')),
                   value: showSharer,
                   onChanged: (value) => setState(() => showSharer = value),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('包含封面'),
+                  title:       Text(tr('包含封面')),
                   value: cover,
                   onChanged: (value) => setState(() => cover = value),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('包含专辑名'),
+                  title:       Text(tr('包含专辑名')),
                   value: album,
                   onChanged: (value) => setState(() => album = value),
                 ),
                 if (isCurrent && lyric.isNotEmpty)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('包含当前歌词片段'),
+                    title:       Text(tr('包含当前歌词片段')),
                     value: lyricEnabled,
                     onChanged: (value) => setState(() => lyricEnabled = value),
                   ),
                 if (isCurrent)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('包含播放进度'),
+                    title:       Text(tr('包含播放进度')),
                     value: progressEnabled,
                     onChanged: (value) => setState(() => progressEnabled = value),
                   ),
@@ -861,7 +862,7 @@ Future<void> showSongShareDialog(
                   ),
                 if (result != null) ...[
                   const SizedBox(height: NekoSpace.sm),
-                  Text('分享链接已生成', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                  Text(tr('分享链接已生成'), style: TextStyle(color: Theme.of(context).colorScheme.primary)),
                   const SizedBox(height: NekoSpace.xs),
                   SelectableText(result!.url, style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: NekoSpace.sm),
@@ -873,12 +874,12 @@ Future<void> showSongShareDialog(
                           await Clipboard.setData(ClipboardData(text: result!.url));
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('已复制链接')),
+                                    SnackBar(content: Text(tr('已复制链接'))),
                             );
                           }
                         },
                         icon: const Icon(Icons.copy_rounded),
-                        label: const Text('复制'),
+                        label:       Text(tr('复制')),
                       ),
                       OutlinedButton.icon(
                         onPressed: () => launchUrl(
@@ -886,7 +887,7 @@ Future<void> showSongShareDialog(
                           mode: LaunchMode.externalApplication,
                         ),
                         icon: const Icon(Icons.open_in_new_rounded),
-                        label: const Text('打开分享页'),
+                        label:       Text(tr('打开分享页')),
                       ),
                       if (social.active != null)
                         OutlinedButton.icon(
@@ -895,7 +896,7 @@ Future<void> showSongShareDialog(
                             if (ok && context.mounted) Navigator.of(context).pop();
                           },
                           icon: const Icon(Icons.send_rounded),
-                          label: const Text('发到当前会话'),
+                          label:       Text(tr('发到当前会话')),
                         ),
                     ],
                   ),
@@ -907,7 +908,7 @@ Future<void> showSongShareDialog(
         actions: [
           TextButton(
             onPressed: busy ? null : () => Navigator.of(context).pop(),
-            child: const Text('关闭'),
+            child:       Text(tr('关闭')),
           ),
           if (result == null)
             FilledButton(
@@ -940,7 +941,9 @@ Future<void> showSongShareDialog(
                       setState(() {
                         busy = false;
                         result = share;
-                        failure = share == null ? social.error ?? '分享创建失败' : null;
+                        failure = share == null
+                            ? social.error ?? tr('分享创建失败')
+                            : null;
                       });
                     },
               child: busy
@@ -949,7 +952,7 @@ Future<void> showSongShareDialog(
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('生成分享链接'),
+                  :       Text(tr('生成分享链接')),
             ),
         ],
       ),
@@ -959,10 +962,14 @@ Future<void> showSongShareDialog(
 }
 
 String _preview(SocialMessage? message) {
-  if (message == null) return '开始聊天';
-  if (message.deleted) return '[消息已撤回]';
-  if (message.kind == 'song') return '[歌曲] ${message.song['nm'] ?? '分享'}';
-  return message.text.isEmpty ? '[消息]' : message.text;
+  if (message == null) return tr('开始聊天');
+  if (message.deleted) return tr('[消息已撤回]');
+  if (message.kind == 'song') {
+    return tr('[歌曲] {title}', {
+      'title': message.song['nm'] ?? tr('分享'),
+    });
+  }
+  return message.text.isEmpty ? tr('[消息]') : message.text;
 }
 
 String _shortTime(int timestamp) {

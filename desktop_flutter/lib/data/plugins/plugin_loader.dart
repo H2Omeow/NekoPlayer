@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'dart:convert';
 
 import '../../domain/music_plugin.dart';
@@ -14,7 +15,7 @@ class PluginLoader {
     String? format,
   }) async {
     if (utf8.encode(script).length > 5 * 1024 * 1024) {
-      throw const FormatException('音源脚本超过 5 MiB。');
+      throw       FormatException(tr('音源脚本超过 5 MiB。'));
     }
     if (RegExp(r'\b(?:const|let|var)\s+META\s*=').hasMatch(script)) {
       Map<String, dynamic>? meta;
@@ -37,7 +38,7 @@ Map<String, dynamic> parsePluginMeta(String script) {
   if (assignment == null ||
       assignment.end >= script.length ||
       script[assignment.end] != '{') {
-    throw const FormatException('插件缺少有效 META。');
+    throw       FormatException(tr('插件缺少有效 META。'));
   }
   var depth = 0;
   var quoted = false;
@@ -62,5 +63,5 @@ Map<String, dynamic> parsePluginMeta(String script) {
       break;
     }
   }
-  throw const FormatException('插件 META 必须是完整的 JSON 对象。');
+  throw FormatException(tr('插件 META 必须是完整的 JSON 对象。'));
 }

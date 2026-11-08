@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../i18n/tr.dart';
+
 enum Section {
   home('首页', Icons.home_outlined, Icons.home_rounded),
   discover('发现', Icons.explore_outlined, Icons.explore_rounded),
@@ -13,8 +15,9 @@ enum Section {
   playlist('歌单', Icons.queue_music_outlined, Icons.queue_music_rounded),
   settings('设置', Icons.settings_outlined, Icons.settings_rounded);
 
-  const Section(this.label, this.icon, this.selectedIcon);
-  final String label;
+  const Section(this.rawLabel, this.icon, this.selectedIcon);
+  final String rawLabel;
+  String get label => tr(rawLabel);
   final IconData icon;
   final IconData selectedIcon;
 }

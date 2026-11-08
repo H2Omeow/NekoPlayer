@@ -1,6 +1,7 @@
 package top.nekoh2o.player.data.net
 
 import android.content.Context
+import top.nekoh2o.player.i18n.NekoI18n
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CompletableDeferred
@@ -37,6 +38,12 @@ object ApiFactory {
 
         httpClient = OkHttpClient.Builder()
             .cookieJar(cookieJar)
+            // 让本站社区/云同步/评论接口按界面语言返回错误信息。
+            .addInterceptor { chain ->
+                val req = chain.request()
+                if (req.header("Accept-Language") != null) chain.proceed(req)
+                else chain.proceed(req.newBuilder().header("Accept-Language", NekoI18n.activeLanguageTag()).build())
+            }
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .writeTimeout(20, TimeUnit.SECONDS)

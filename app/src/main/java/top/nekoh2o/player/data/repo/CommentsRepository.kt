@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.repo
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.*
@@ -48,7 +50,7 @@ class CommentsRepository {
             "kugou" -> {
                 KugouRepository().ensureInitialized()
                 val mix=song.albumAudioId.takeIf { it>0 } ?: KugouRepository().getSongDetail(song.hash)?.albumAudioId?.takeIf { it>0 }
-                    ?: throw IOException("该歌曲缺少评论资源标识，请重新搜索")
+                    ?: throw IOException(tr("该歌曲缺少评论资源标识，请重新搜索"))
                 val args=mutableMapOf("mixsongid" to mix.toString(),"pagesize" to "20","page" to (offset/20+1).toString())
                 if(parent!=null) { args["tid"]=parent.id;args["special_id"]=specialId }
                 val root=kg.get(if(parent==null) "comment/music" else "comment/floor",CookieStore.kgPlatformValue(),args).kugouBody()
@@ -64,7 +66,7 @@ class CommentsRepository {
         }
     }
     suspend fun send(source: String, song: Song, content: String, parent: SongComment?, page: CommentPage) {
-        require(content.trim().isNotEmpty() && content.length<=2000) { "评论需为 1–2000 个字符" }
+        require(content.trim().isNotEmpty() && content.length<=2000) { tr("评论需为 1–2000 个字符") }
         requireAccount(source)
         when(source) {
             "netease" -> {
@@ -73,7 +75,7 @@ class CommentsRepository {
                 nc.post("comment",args).checkedNc()
             }
             "kugou" -> {
-                require(page.specialId.isNotBlank()) { "无法识别酷狗评论资源，请刷新" }
+                require(page.specialId.isNotBlank()) { tr("无法识别酷狗评论资源，请刷新") }
                 val args=mutableMapOf("special_id" to page.specialId,"name" to page.resourceName.ifBlank { song.ar+" - "+song.nm },
                     "mixsongid" to song.albumAudioId.toString(),"content" to content.trim())
                 parent?.let {
@@ -90,30 +92,30 @@ class CommentsRepository {
         requireAccount(source)
         when(source) {
             "netease" -> nc.post("comment/like",mapOf("id" to song.id.toString(),"type" to "0","cid" to comment.id,"t" to if(comment.liked) "0" else "1")).checkedNc()
-            "kugou" -> throw IOException("酷狗点赞接口尚未验证，暂不开放")
+            "kugou" -> throw IOException(tr("酷狗点赞接口尚未验证，暂不开放"))
             else -> site("POST","comments/"+comment.id+"/like",body=buildJsonObject { put("liked",!comment.liked) })
         }
     }
     suspend fun delete(source: String, song: Song, comment: SongComment, page: CommentPage) {
-        requireAccount(source);require(comment.owned) { "只能删除本人评论" }
+        requireAccount(source);require(comment.owned) { tr("只能删除本人评论") }
         when(source) {
             "netease" -> nc.post("comment",mapOf("id" to song.id.toString(),"type" to "0","commentId" to comment.id,"t" to "0")).checkedNc()
-            "kugou" -> throw IOException("酷狗删除接口尚未验证，暂不开放")
+            "kugou" -> throw IOException(tr("酷狗删除接口尚未验证，暂不开放"))
             else -> site("DELETE","comments/"+comment.id)
         }
     }
     private fun requireAccount(source: String) {
-        require(when(source) { "netease" -> CookieStore.hasNcUserCookie(); "kugou" -> CookieStore.hasKgToken(); else -> CookieStore.appTokenValue().isNotBlank() }) { "请先登录对应平台账号" }
+        require(when(source) { "netease" -> CookieStore.hasNcUserCookie(); "kugou" -> CookieStore.hasKgToken(); else -> CookieStore.appTokenValue().isNotBlank() }) { tr("请先登录对应平台账号") }
     }
-    private fun JsonObject.checkedNc(): JsonObject { if(text("code")!="200") throw IOException(text("message","msg").ifBlank { "网易云操作失败，请检查登录和权限" });return this }
-    private fun JsonObject.checkedKgMutation(): JsonObject { if(text("status")!="1") throw IOException(text("message","msg").ifBlank { "酷狗未确认操作成功" });return this }
+    private fun JsonObject.checkedNc(): JsonObject { if(text("code")!="200") throw IOException(text("message","msg").ifBlank { tr("网易云操作失败，请检查登录和权限") });return this }
+    private fun JsonObject.checkedKgMutation(): JsonObject { if(text("status")!="1") throw IOException(text("message","msg").ifBlank { tr("酷狗未确认操作成功") });return this }
     private suspend fun site(method: String, path: String, query: Map<String,String> = emptyMap(), body: JsonObject? = null): JsonObject {
         val url=(ApiFactory.BASE+path).toHttpUrl().newBuilder();query.forEach { (k,v) -> url.addQueryParameter(k,v) }
         val request=Request.Builder().url(url.build()).method(method,if(method=="POST") body.toString().toRequestBody("application/json".toMediaType()) else null).build()
         val response=ApiFactory.client().newCall(request).awaitResponse()
         return response.use {
-            val root=runCatching { Json.parseToJsonElement(it.body?.string().orEmpty()).jsonObject }.getOrNull()?:throw IOException("本站评论服务响应异常")
-            if(!it.isSuccessful || root.text("code")!="200") throw IOException(root.text("message").ifBlank { "本站评论请求失败" })
+            val root=runCatching { Json.parseToJsonElement(it.body?.string().orEmpty()).jsonObject }.getOrNull()?:throw IOException(tr("本站评论服务响应异常"))
+            if(!it.isSuccessful || root.text("code")!="200") throw IOException(root.text("message").ifBlank { tr("本站评论请求失败") })
             root
         }
     }

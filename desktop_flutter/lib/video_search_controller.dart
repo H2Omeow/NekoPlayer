@@ -1,3 +1,4 @@
+import './i18n/tr.dart';
 import 'package:flutter/foundation.dart';
 
 import 'domain/online_music.dart';
@@ -68,7 +69,7 @@ class VideoSearchController extends ChangeNotifier {
       if (_disposed || generation != _generation) return;
       error = failure is MusicSearchException
           ? failure.message
-          : 'MV 搜索失败，请稍后重试。';
+          : tr('MV 搜索失败，请稍后重试。');
     } finally {
       if (!_disposed && generation == _generation) {
         loading = false;

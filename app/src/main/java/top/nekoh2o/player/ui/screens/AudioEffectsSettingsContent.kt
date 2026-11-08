@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.*
@@ -23,8 +25,8 @@ import top.nekoh2o.player.ui.theme.NekoSpace
 
 private fun AudioEffectEngine.description(): String? = when (this) {
     AudioEffectEngine.NONE -> null
-    AudioEffectEngine.SYSTEM -> "系统处理，功耗较低；可用效果与听感取决于设备"
-    AudioEffectEngine.NATIVE_CPP -> "本地 DSP，参数更丰富；CPU 占用较高"
+    AudioEffectEngine.SYSTEM -> tr("系统处理，功耗较低；可用效果与听感取决于设备")
+    AudioEffectEngine.NATIVE_CPP -> tr("本地 DSP，参数更丰富；CPU 占用较高")
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -36,10 +38,10 @@ fun AudioEffectsSettingsContent(vm: PlayerViewModel) {
     val native = settings.engine == AudioEffectEngine.NATIVE_CPP
     val capabilities = status.system
 
-    SettingsSection(title = "音效引擎") {
+    SettingsSection(title = tr("音效引擎")) {
         AudioEffectEngine.entries.forEach { engine ->
             SettingsTile(
-                title = engine.label,
+                title = tr(engine.label),
                 subtitle = engine.description(),
                 modifier = Modifier.selectable(
                     selected = settings.engine == engine,
@@ -54,25 +56,25 @@ fun AudioEffectsSettingsContent(vm: PlayerViewModel) {
 
     when {
         native -> status.nativeError?.let { InlineNotice(it, error = true) }
-        !status.systemInitialized -> InlineNotice("等待音频会话，设备能力尚未确认。")
-        !capabilities.any -> InlineNotice("当前音频会话没有可用的系统音效。", error = true)
+        !status.systemInitialized -> InlineNotice(tr("等待音频会话，设备能力尚未确认。"))
+        !capabilities.any -> InlineNotice(tr("当前音频会话没有可用的系统音效。"), error = true)
     }
     if (native) MasteringSettingsContent(settings, vm::setMasteringPreset, vm::setMasteringMix)
 
     if (native || capabilities.equalizer) {
-        SettingsSection(title = "均衡器") {
-            SettingsControlTile(title = "预设") {
+        SettingsSection(title = tr("均衡器")) {
+            SettingsControlTile(title = tr("预设")) {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth().padding(top = NekoSpace.xs),
                     horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm),
                     verticalArrangement = Arrangement.spacedBy(NekoSpace.sm)
                 ) {
                     EQPresets.presets.keys.forEach { name ->
-                        NekoChip(name, settings.eqPresetName == name, { vm.setEqPreset(name) })
+                        NekoChip(tr(name), settings.eqPresetName == name, { vm.setEqPreset(name) })
                     }
                 }
             }
-            SettingsControlTile(title = "自定义", value = "±15 dB") {
+            SettingsControlTile(title = tr("自定义"), value = "±15 dB") {
                 EqualizerVisualizer(
                     bands = settings.eqBands,
                     frequencies = EQPresets.frequencies,
@@ -82,19 +84,19 @@ fun AudioEffectsSettingsContent(vm: PlayerViewModel) {
         }
     }
 
-    SettingsSection(title = "效果") {
-        if (native || capabilities.bassBoost) EffectSlider("低音增强", "增强 80Hz 以下频段", settings.bassBoost, vm::setBassBoost)
-        if (native || capabilities.virtualizer) EffectSlider("3D 环绕", "拓宽立体声场", settings.virtualizer, vm::setVirtualizer)
-        if (native || capabilities.reverb) EffectSlider("空间混响", "模拟厅堂混响", settings.reverbWet, vm::setReverbWet)
+    SettingsSection(title = tr("效果")) {
+        if (native || capabilities.bassBoost) EffectSlider(tr("低音增强"), tr("增强 80Hz 以下频段"), settings.bassBoost, vm::setBassBoost)
+        if (native || capabilities.virtualizer) EffectSlider(tr("3D 环绕"), tr("拓宽立体声场"), settings.virtualizer, vm::setVirtualizer)
+        if (native || capabilities.reverb) EffectSlider(tr("空间混响"), tr("模拟厅堂混响"), settings.reverbWet, vm::setReverbWet)
         if (native) {
-            EffectSlider("混响空间", "", settings.reverbRoomSize, vm::setReverbRoomSize)
-            EffectSlider("混响阻尼", "", settings.reverbDamping, vm::setReverbDamping)
+            EffectSlider(tr("混响空间"), "", settings.reverbRoomSize, vm::setReverbRoomSize)
+            EffectSlider(tr("混响阻尼"), "", settings.reverbDamping, vm::setReverbDamping)
         }
-        if (native || capabilities.loudness) EffectSlider("响度增益", "整体音量提升", settings.loudnessGain, vm::setLoudnessGain)
+        if (native || capabilities.loudness) EffectSlider(tr("响度增益"), tr("整体音量提升"), settings.loudnessGain, vm::setLoudnessGain)
     }
 
     SettingsSection {
-        SettingsTile(title = "重置所有音效参数", destructive = true, onClick = vm::resetAudioEffects, trailing = {})
+        SettingsTile(title = tr("重置所有音效参数"), destructive = true, onClick = vm::resetAudioEffects, trailing = {})
     }
 }
 

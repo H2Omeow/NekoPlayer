@@ -372,4 +372,4 @@ data class KgHistoryItem(
 data class KgQrSession(val key: String, val image: String, val platform: Int)
 data class KgQrCheckResult(val status: Int, val account: KgLoginData? = null)
 data class KgLoginAccount(val userid: Long, val nickname: String)
-class KugouAccountSelection(val accounts: List<KgLoginAccount>) : Exception("请选择要登录的酷狗账号")
+class KugouAccountSelection(val accounts: List<KgLoginAccount>) : Exception(top.nekoh2o.player.i18n.NekoI18n.tr("请选择要登录的酷狗账号"))

@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.net.nativeapi
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import top.nekoh2o.player.data.net.ProviderPreferences
 import kotlinx.serialization.json.*
 import okhttp3.*
@@ -54,7 +56,7 @@ class NeteaseNativeInterceptor(private val prefs: ProviderPreferences) : Interce
             }
             "comment/music" -> { path="/api/v1/resource/comments/R_SO_4_"+number("id");data=obj("rid" to arg("id"),"limit" to number("limit",20),"offset" to number("offset"),"beforeTime" to number("before"));weapi=true }
             "comment" -> {
-                val action=mapOf("0" to "delete","1" to "add","2" to "reply")[arg("t")] ?: throw IOException("无效评论操作")
+                val action=mapOf("0" to "delete","1" to "add","2" to "reply")[arg("t")] ?: throw IOException(tr("无效评论操作"))
                 path="/api/resource/comments/"+action;data=obj("threadId" to ("R_SO_4_"+number("id")))
                 if(action!="add") data=JsonObject(data+("commentId" to JsonPrimitive(arg("commentId"))))
                 if(action!="delete") data=JsonObject(data+("content" to JsonPrimitive(arg("content"))))
@@ -62,7 +64,7 @@ class NeteaseNativeInterceptor(private val prefs: ProviderPreferences) : Interce
             }
             "comment/like" -> { path="/api/v1/comment/"+(if(arg("t")=="1") "like" else "unlike");data=obj("threadId" to ("R_SO_4_"+number("id")),"commentId" to arg("cid"));weapi=true }
             "comment/floor" -> { path="/api/resource/comment/floor/get";data=obj("parentCommentId" to arg("parentCommentId"),"threadId" to ("R_SO_4_"+number("id")),"time" to number("time",-1),"limit" to number("limit",20));weapi=true }
-            else -> throw IOException("尚未支持的网易云接口："+endpoint)
+            else -> throw IOException(tr("尚未支持的网易云接口：")+endpoint)
         }
         val cookies = (p["cookie"] ?: CookieStore.activeCookie()).split(';').mapNotNull { part ->
             val i=part.indexOf('=');if(i<=0) null else part.substring(0,i).trim() to part.substring(i+1).trim()
@@ -87,7 +89,7 @@ class NeteaseNativeInterceptor(private val prefs: ProviderPreferences) : Interce
             .header("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36")
             .header("Cookie",cookies.entries.joinToString("; ") { it.key+"="+it.value }).build()
         return chain.proceed(request).use { response ->
-            var result=try { Json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject } catch (_: Exception) { throw IOException("网易云响应格式异常（HTTP "+response.code+"）") }
+            var result=try { Json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject } catch (_: Exception) { throw IOException(tr("网易云响应格式异常（HTTP ")+response.code+"）") }
             when(endpoint) {
                 "login/qr/key" -> result=obj("code" to (result["code"]?:JsonPrimitive(200)),"data" to result)
                 "login/status" -> result=obj("data" to result)

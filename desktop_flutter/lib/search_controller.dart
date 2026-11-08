@@ -1,3 +1,4 @@
+import './i18n/tr.dart';
 import 'package:flutter/foundation.dart';
 
 import 'domain/online_music.dart';
@@ -85,7 +86,7 @@ class SearchController extends ChangeNotifier {
       if (_disposed || request != _request) return;
       error = failure is MusicSearchException
           ? failure.message
-          : '搜索未完成，请稍后重试。';
+          : tr('搜索未完成，请稍后重试。');
     } finally {
       if (!_disposed && request == _request) {
         loading = false;

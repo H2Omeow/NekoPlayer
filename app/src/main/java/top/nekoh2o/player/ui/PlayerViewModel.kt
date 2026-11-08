@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.app.Application
 import android.content.ComponentName
 import android.net.Uri
@@ -50,6 +52,7 @@ import top.nekoh2o.player.data.sync.LocalSyncData
 import top.nekoh2o.player.data.sync.SyncEngine
 import top.nekoh2o.player.data.sync.SyncSection
 import top.nekoh2o.player.data.store.SettingsStore
+import top.nekoh2o.player.i18n.NekoI18n
 import top.nekoh2o.player.lyric.LyricParser
 import top.nekoh2o.player.playback.FloatingLyricService
 import top.nekoh2o.player.playback.FloatingLyricState
@@ -237,7 +240,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                     if (plugins.selectedSource != _ui.value.musicSource) applyMusicSource(plugins.selectedSource)
                 }
             } catch (failure: CancellationException) { throw failure }
-            catch (_: Exception) { toast("音源数据读取失败，已保留原文件") }
+            catch (_: Exception) { toast(tr("音源数据读取失败，已保留原文件")) }
         }
     }
 
@@ -371,11 +374,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             recSongs = emptyList(),
             recPlaylists = emptyList()
         )
-        toast("已切换到${when {
-            source == "netease" -> "网易云音乐"
-            source == "kugou" -> "酷狗音乐"
+        toast(tr("已切换到{source}", "source" to when {
+            source == "netease" -> tr("网易云音乐")
+            source == "kugou" -> tr("酷狗音乐")
             else -> PluginStore.sourceName(source)
-        }}")
+        }))
         loadRecommend()
     }
 
@@ -433,8 +436,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun completeKgLogin(account: top.nekoh2o.player.data.model.KgLoginData, platform: Int) {
         CookieStore.setKgPlatform(platform)
         _ui.value = _ui.value.copy(kgAccount = KgAccountState(userId = account.userid,
-            nickname = account.username.ifBlank { "酷狗用户" }, isValid = true, platform = platform))
-        toast("酷狗登录成功")
+            nickname = account.username.ifBlank { tr("酷狗用户") }, isValid = true, platform = platform))
+        toast(tr("酷狗登录成功"))
         refreshKgAccount()
         markCredentialsChanged()
     }
@@ -442,7 +445,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun clearKgAccount() {
         viewModelScope.launch {
             logoutKgCookie(CookieStore.kgPlatformValue())
-            toast("已退出当前酷狗账号")
+            toast(tr("已退出当前酷狗账号"))
         }
     }
 
@@ -478,7 +481,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun kgReceiveVip(vipType: Int, days: Int) {
         viewModelScope.launch {
             val result = kgRepo.receiveVip(vipType, days)
-            toast(result ?: "领取失败")
+            toast(result ?: tr("领取失败"))
             if (result != null && !result.contains("失败")) {
                 refreshKgAccount()
             }
@@ -496,7 +499,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             )
             refreshKgAccount()
             markCredentialsChanged()
-            toast("已切换到${if (platform == 0) "原版" else "概念版"}")
+            toast(tr("已切换到{platform}", "platform" to tr(if (platform == 0) "原版" else "概念版")))
         }
     }
 
@@ -625,11 +628,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun addToQueue(song: Song) {
         val c = controller ?: return
         if (queue.isEmpty()) { playNow(song); return }
-        if (queue.any { it.id == song.id }) { toast("已在播放列表"); return }
+        if (queue.any { it.id == song.id }) { toast(tr("已在播放列表")); return }
         queue.add(song)
         c.addMediaItem(song.toMediaItem())
         syncFromController()
-        toast("已添加到播放列表")
+        toast(tr("已添加到播放列表"))
         saveCurrentPlaybackState()
     }
 
@@ -720,7 +723,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleFav(song: Song) {
         val nowFav = libraryVm.toggleFavorite(song)
         pushMineToState()
-        toast(if (nowFav) "已收藏" else "已取消收藏")
+        toast(if (nowFav) tr("已收藏") else tr("已取消收藏"))
     }
     fun isFav(song: Song) = libraryVm.isFavorite(song)
 
@@ -735,7 +738,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun addToPlaylist(index: Int, song: Song) {
         val ok = libraryVm.addToPlaylist(index, song)
         pushMineToState()
-        toast(if (ok) "已添加到歌单" else "歌曲已在歌单中")
+        toast(if (ok) tr("已添加到歌单") else tr("歌曲已在歌单中"))
     }
     fun removeFromPlaylist(plIndex: Int, songIndex: Int) {
         libraryVm.removeFromPlaylist(plIndex, songIndex)
@@ -745,7 +748,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     /** 播放全部：将一批歌曲替换当前队列并从第 0 首开始播放 */
     fun playAll(songs: List<Song>) {
         val c = controller ?: return
-        if (songs.isEmpty()) { toast("列表为空"); return }
+        if (songs.isEmpty()) { toast(tr("列表为空")); return }
         c.clearMediaItems()
         queue.clear()
         queue.addAll(songs)
@@ -760,7 +763,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     /** 从分享链接打开歌曲，并跳到分享者给出的播放进度。 */
     fun playSharedSong(song: Song, progressMs: Long) {
         if (controller == null) {
-            toast("播放器尚未就绪，请稍后再试")
+            toast(tr("播放器尚未就绪，请稍后再试"))
             return
         }
         playAll(listOf(song))
@@ -816,6 +819,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val updated = settingsVm.setSocialPushEnabled(v, _ui.value.settings)
         _ui.value = _ui.value.copy(settings = updated)
     }
+    fun setLanguage(tag: String) {
+        val updated = settingsVm.setLanguage(tag, _ui.value.settings)
+        NekoI18n.setLanguage(getApplication(), tag)
+        _ui.value = _ui.value.copy(settings = updated)
+    }
     fun setControlAlpha(v: Float) {
         val updated = settingsVm.setControlAlpha(v, _ui.value.settings)
         _ui.value = _ui.value.copy(settings = updated)
@@ -843,7 +851,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun setQuality(level: String) {
         viewModelScope.launch { CookieStore.setLevel(level) }
         _ui.value = _ui.value.copy(quality = level)
-        toast("音质已切换")
+        toast(tr("音质已切换"))
     }
 
     fun refreshWallpaper(isLandscape: Boolean = false) {
@@ -891,13 +899,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun clearSelectedCache() {
         val sel = _ui.value.selectedCacheKeys
         val count = cacheVm.removeCache(sel)
-        toast("已删除 $count 项缓存")
+        toast(tr("已删除 {count} 项缓存", "count" to count))
         refreshCacheList()
     }
 
     fun clearAllCache() {
         cacheVm.clearAllCache()
-        toast("已清空所有缓存")
+        toast(tr("已清空所有缓存"))
         refreshCacheList()
     }
 
@@ -910,7 +918,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         neteaseVm.saveNcCookie(cookie) {
             _ui.value = _ui.value.copy(ncCookie = cookie.trim())
             markCredentialsChanged()
-            toast("Cookie 已保存")
+            toast(tr("Cookie 已保存"))
         }
     }
 
@@ -918,19 +926,19 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         neteaseVm.clearNcCookie {
             _ui.value = _ui.value.copy(ncCookie = "")
             markCredentialsChanged()
-            toast("Cookie 已清除")
+            toast(tr("Cookie 已清除"))
         }
     }
     fun setSleepTimer(minutes: Int) {
         sleepJob?.cancel()
         _ui.value = _ui.value.copy(sleepMinutes = minutes)
-        if (minutes <= 0) { toast("已取消定时关闭"); return }
-        toast("将在 $minutes 分钟后暂停")
+        if (minutes <= 0) { toast(tr("已取消定时关闭")); return }
+        toast(tr("将在 {minutes} 分钟后暂停", "minutes" to minutes))
         sleepJob = viewModelScope.launch {
             delay(minutes * 60_000L)
             controller?.pause()
             _ui.value = _ui.value.copy(sleepMinutes = 0)
-            toast("定时关闭已触发")
+            toast(tr("定时关闭已触发"))
         }
     }
 
@@ -954,7 +962,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 downloadDirUri = _ui.value.settings.downloadDirUri,
                 onSuccess = {
                     _ui.value = _ui.value.copy(downloadedSongs = DownloadIndex.all())
-                    toast("已下载：${song.nm}")
+                    toast(tr("已下载：{title}", "title" to song.nm))
                 },
                 onError = { error ->
                     toast(error)
@@ -967,7 +975,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun removeDownloaded(song: Song) {
         downloadVm.removeDownloaded(song)
         _ui.value = _ui.value.copy(downloadedSongs = DownloadIndex.all())
-        toast("已删除")
+        toast(tr("已删除"))
     }
 
     /** 刷新已下载列表 */
@@ -1030,7 +1038,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
         } else {
-            toast("已豁免电池优化")
+            toast(tr("已豁免电池优化"))
         }
     }
 
@@ -1078,7 +1086,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         // 三次失败后提示
         android.util.Log.e("PlayerViewModel", "refreshLoginInternal() - all attempts failed")
         _ui.value = _ui.value.copy(user = null, loggedIn = false)
-        toast("网络异常或登录已失效，请重新登录")
+        toast(tr("网络异常或登录已失效，请重新登录"))
     }
 
     fun onSsoLoggedIn() = refreshLogin()
@@ -1120,7 +1128,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             CookieStore.clearAppToken()
             _ui.value = _ui.value.copy(user = null, loggedIn = false)
             cloudSync.onLoggedOut()
-            toast("已退出登录")
+            toast(tr("已退出登录"))
         }
     }
 
@@ -1134,7 +1142,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val valid = userRepo.checkNcLoginStatus()
             if (!valid) {
-                toast("网易云 Cookie 已失效，请重新登录")
+                toast(tr("网易云 Cookie 已失效，请重新登录"))
                 // 清除失效的网易云账号信息
                 _ui.value = _ui.value.copy(
                     ncAccount = NcAccountState(isValid = false)
@@ -1172,7 +1180,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun qrCheckOnce(key: String): Int {
         val code = neteaseVm.checkQrStatus(key)
         if (code == 803) {
-            _ui.value = _ui.value.copy(toast = "网易云登录成功")
+            _ui.value = _ui.value.copy(toast = tr("网易云登录成功"))
             markCredentialsChanged()
         }
         return code
@@ -1214,7 +1222,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val songs = neteaseVm.getPlaylistDetail(playlist.id)
             if (songs.isEmpty()) {
-                toast("歌单为空或获取失败")
+                toast(tr("歌单为空或获取失败"))
                 return@launch
             }
             // 创建新播放列表并添加歌曲
@@ -1222,7 +1230,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             songs.forEach { localPl.songs.add(it) }
             local.savePlaylists()
             pushMineToState()
-            toast("已导入歌单：${playlist.name}（${songs.size}首）")
+            toast(tr("已导入歌单：{name}（{count} 首）", "name" to playlist.name, "count" to songs.size))
         }
     }
 
@@ -1232,7 +1240,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun importNcLikeSongsToLocal(songs: List<Song>) {
         libraryVm.importNeteaseHeartToLocal(songs)
         pushMineToState()
-        toast("已导入 ${songs.size} 首红心歌曲到收藏")
+        toast(tr("已导入 {count} 首红心歌曲到收藏", "count" to songs.size))
     }
 
     /**
@@ -1241,7 +1249,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun importNcRecordToLocal(songs: List<Song>) {
         libraryVm.importNeteaseRecordToLocal(songs)
         pushMineToState()
-        toast("已导入 ${songs.size} 首播放记录到历史")
+        toast(tr("已导入 {count} 首播放记录到历史", "count" to songs.size))
     }
 
     // ==================== 提示 ====================

@@ -1,5 +1,7 @@
 package top.nekoh2o.player.social
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -95,12 +97,12 @@ class SocialPushService : Service() {
         val event = runCatching { json.decodeFromString<SocialMessageEvent>(data) }.getOrNull() ?: return
         val message = event.message ?: return
         if (message.owned) return
-        val sender = message.sender?.displayName ?: "新消息"
+        val sender = message.sender?.displayName ?: tr("新消息")
         val text = when {
             message.deleted -> return
-            message.kind == "song" -> "[歌曲] " + (message.song?.nm ?: "分享")
+            message.kind == "song" -> tr("[歌曲] {title}", "title" to (message.song?.nm ?: tr("分享")))
             message.text.isNotBlank() -> message.text
-            else -> "发来一条消息"
+            else -> tr("发来一条消息")
         }
         val target = "nekoplayer://chat?peer=" + Uri.encode(event.peerId.ifBlank { message.senderId })
         SocialNotifications.showMessage(this, message.id, sender, text, target)
@@ -149,14 +151,14 @@ object SocialNotifications {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_SERVICE, "社区后台连接", NotificationManager.IMPORTANCE_MIN).apply {
-                description = "保持社区私信实时连接"
+            NotificationChannel(CHANNEL_SERVICE, tr("社区后台连接"), NotificationManager.IMPORTANCE_MIN).apply {
+                description = tr("保持社区私信实时连接")
                 setShowBadge(false)
             }
         )
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_MESSAGES, "社区消息", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "私信和新粉丝通知"
+            NotificationChannel(CHANNEL_MESSAGES, tr("社区消息"), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = tr("私信和新粉丝通知")
             }
         )
     }
@@ -173,8 +175,8 @@ object SocialNotifications {
         )
         return NotificationCompat.Builder(context, CHANNEL_SERVICE)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("NekoPlayer 社区")
-            .setContentText("私信实时连接已开启")
+            .setContentTitle(tr("NekoPlayer 社区"))
+            .setContentText(tr("私信实时连接已开启"))
             .setOngoing(true)
             .setSilent(true)
             .setContentIntent(open)

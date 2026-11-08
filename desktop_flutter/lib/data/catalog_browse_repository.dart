@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import '../domain/online_music.dart';
 import 'account_music_repository.dart';
 import 'native_music_catalog.dart';
@@ -34,7 +35,7 @@ class CatalogBrowseRepository {
     if (page < 1) throw ArgumentError.value(page);
     final query = keyword.trim();
     if (query.isEmpty || query.length > 200) {
-      throw const MusicSearchException('请输入 1–200 字的搜索关键词。');
+      throw       MusicSearchException(tr('请输入 1–200 字的搜索关键词。'));
     }
     final body = await catalog.neteaseApi('/api/search/get', {
       's': query,
@@ -47,7 +48,7 @@ class CatalogBrowseRepository {
       'offset': (page - 1) * pageSize,
     });
     if (AccountMusicRepository.number(body['code']) != 200) {
-      throw const MusicSearchException('分类搜索失败，请稍后重试。');
+      throw       MusicSearchException(tr('分类搜索失败，请稍后重试。'));
     }
     final result = AccountMusicRepository.object(body['result']);
     final key = kind == CatalogKind.artist
@@ -105,7 +106,7 @@ class CatalogBrowseRepository {
   Future<AccountPage<OnlineSong>> songs(CatalogItem selection, int page) async {
     if (page < 1) throw ArgumentError.value(page);
     if (AccountMusicRepository.number(selection.id) <= 0) {
-      throw const MusicSearchException('分类内容 ID 无效。');
+      throw       MusicSearchException(tr('分类内容 ID 无效。'));
     }
     if (selection.kind == CatalogKind.playlist) {
       return music.playlistSongs(

@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -40,7 +41,7 @@ Future<Map<String, dynamic>> sendCatalogRequest(CatalogRequest request) async {
       final bytes = <int>[];
       await for (final chunk in response) {
         if (bytes.length + chunk.length > 2 * 1024 * 1024) {
-          throw const MusicSearchException('音乐平台响应过大，已停止读取。');
+          throw       MusicSearchException(tr('音乐平台响应过大，已停止读取。'));
         }
         bytes.addAll(chunk);
       }

@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.viewmodel
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -75,12 +77,12 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
         pluginPage = 1
 
         if (PluginStore.isPluginSource(musicSource)) {
-            if (searchType != SearchType.SONG) return SearchResult(error = "此音源仅支持单曲搜索")
+            if (searchType != SearchType.SONG) return SearchResult(error = tr("此音源仅支持单曲搜索"))
             return try {
                 val result = pluginRepo.search(musicSource, kw, pluginPage)
                 SearchResult(songs = result.songs, hasMore = result.hasMore)
             } catch (failure: CancellationException) { throw failure }
-            catch (failure: Exception) { SearchResult(error = failure.message ?: "音源搜索失败") }
+            catch (failure: Exception) { SearchResult(error = failure.message ?: tr("音源搜索失败")) }
         }
 
         return when (searchType) {
@@ -150,7 +152,7 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
         } catch (failure: CancellationException) { throw failure }
-        catch (failure: Exception) { SearchResult(error = failure.message ?: "加载音源失败") }
+        catch (failure: Exception) { SearchResult(error = failure.message ?: tr("加载音源失败")) }
         finally {
             searchLoading = false
         }

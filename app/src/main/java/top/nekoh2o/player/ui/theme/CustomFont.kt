@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.theme
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.content.Context
 import android.graphics.Typeface
 import android.net.Uri
@@ -25,7 +27,7 @@ object CustomFont {
             }
         }
         if (extension != "ttf" && extension != "otf") {
-            throw IllegalArgumentException("请选择 TTF 或 OTF 字体文件。")
+            throw IllegalArgumentException(tr("请选择 TTF 或 OTF 字体文件。"))
         }
         val base = displayName.substringBeforeLast('.')
             .replace(Regex("[^\\p{L}\\p{N}._-]+"), "_")
@@ -48,22 +50,22 @@ object CustomFont {
                         if (read < 0) break
                         total += read
                         if (total > MAX_BYTES) {
-                            throw IllegalArgumentException("字体文件超过 64MB。")
+                            throw IllegalArgumentException(tr("字体文件超过 64MB。"))
                         }
                         output.write(buffer, 0, read)
                     }
                 }
-            } ?: throw IllegalArgumentException("无法读取字体文件。")
-            if (total <= 0L) throw IllegalArgumentException("字体文件为空。")
+            } ?: throw IllegalArgumentException(tr("无法读取字体文件。"))
+            if (total <= 0L) throw IllegalArgumentException(tr("字体文件为空。"))
             if (!temporary.renameTo(target)) {
                 target.delete()
                 if (!temporary.renameTo(target)) {
-                    throw IllegalArgumentException("无法保存字体文件。")
+                    throw IllegalArgumentException(tr("无法保存字体文件。"))
                 }
             }
             // Reject files that the platform cannot parse before saving the path.
             if (Typeface.createFromFile(target) == null) {
-                throw IllegalArgumentException("字体文件无法解析，请换一个 TTF / OTF 文件。")
+                throw IllegalArgumentException(tr("字体文件无法解析，请换一个 TTF / OTF 文件。"))
             }
             context.filesDir.listFiles()
                 ?.filter { it.name.startsWith(PREFIX) && it != target }
@@ -72,7 +74,7 @@ object CustomFont {
         } catch (failure: IllegalArgumentException) {
             throw failure
         } catch (_: Exception) {
-            throw IllegalArgumentException("字体文件无法解析，请换一个 TTF / OTF 文件。")
+            throw IllegalArgumentException(tr("字体文件无法解析，请换一个 TTF / OTF 文件。"))
         } finally {
             temporary.delete()
         }

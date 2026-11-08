@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -44,9 +45,9 @@ class _CatalogBrowsePageState extends State<CatalogBrowsePage> {
   Timer? debounce;
 
   String label(CatalogKind value) => switch (value) {
-    CatalogKind.artist => '歌手',
-    CatalogKind.album => '专辑',
-    CatalogKind.playlist => '歌单',
+    CatalogKind.artist => tr('歌手'),
+    CatalogKind.album => tr('专辑'),
+    CatalogKind.playlist => tr('歌单'),
   };
 
   void suggest(String value) {
@@ -111,7 +112,7 @@ class _CatalogBrowsePageState extends State<CatalogBrowsePage> {
         setState(
           () => error = failure is MusicSearchException
               ? failure.message
-              : '分类内容读取失败，请重试。',
+              : tr('分类内容读取失败，请重试。'),
         );
       }
     } finally {
@@ -168,11 +169,11 @@ class _CatalogBrowsePageState extends State<CatalogBrowsePage> {
         onChanged: suggest,
         onSubmitted: (_) => search(),
         decoration: InputDecoration(
-          hintText: '搜索${label(kind)}',
+          hintText: tr('搜索{kind}', {'kind': label(kind)}),
           counterText: '',
           prefixIcon: const Icon(Icons.search_rounded),
           suffixIcon: IconButton(
-            tooltip: '搜索',
+            tooltip: tr('搜索'),
             onPressed: () => search(),
             icon: const Icon(Icons.arrow_forward_rounded),
           ),
@@ -191,7 +192,7 @@ class _CatalogBrowsePageState extends State<CatalogBrowsePage> {
             ),
           ChoiceChip(
             avatar: const Icon(Icons.auto_awesome_rounded),
-            label: const Text('推荐歌单'),
+            label:       Text(tr('推荐歌单')),
             selected: recommended,
             onSelected: (_) => search(recommendations: true),
           ),
@@ -225,7 +226,7 @@ class _CatalogBrowsePageState extends State<CatalogBrowsePage> {
             onPressed: busy
                 ? null
                 : () => search(reset: page == 0, recommendations: recommended),
-            child: const Text('重试'),
+            child:       Text(tr('重试')),
           ),
         ),
     ],
@@ -236,7 +237,7 @@ class _CatalogBrowsePageState extends State<CatalogBrowsePage> {
     final gutter = pageGutter(context);
     final text = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('歌手、专辑与歌单')),
+      appBar: AppBar(title:       Text(tr('歌手、专辑与歌单'))),
       body: Align(
         alignment: Alignment.topLeft,
         child: ConstrainedBox(
@@ -248,12 +249,12 @@ class _CatalogBrowsePageState extends State<CatalogBrowsePage> {
                 sliver: SliverToBoxAdapter(child: _header(context)),
               ),
               if (results.isEmpty && !busy && error == null)
-                const SliverFillRemaining(
+                      SliverFillRemaining(
                   hasScrollBody: false,
                   child: EmptyState(
                     icon: Icons.library_music_outlined,
-                    title: '输入关键词，或浏览推荐歌单',
-                    description: '分类内容来自网易云目录；歌曲能否播放仍取决于平台权限。',
+                    title: tr('输入关键词，或浏览推荐歌单'),
+                    description: tr('分类内容来自网易云目录；歌曲能否播放仍取决于平台权限。'),
                   ),
                 )
               else
@@ -271,7 +272,7 @@ class _CatalogBrowsePageState extends State<CatalogBrowsePage> {
                         return Center(
                           child: TextButton(
                             onPressed: busy ? null : () => search(reset: false),
-                            child: const Text('加载更多'),
+                            child:       Text(tr('加载更多')),
                           ),
                         );
                       }
@@ -299,7 +300,8 @@ class _CatalogBrowsePageState extends State<CatalogBrowsePage> {
                         subtitle: Text(
                           [
                             item.subtitle,
-                            if (item.count > 0) '${item.count} 首',
+                            if (item.count > 0)
+                              tr('{count} 首', {'count': item.count}),
                           ].where((value) => value.isNotEmpty).join(' · '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

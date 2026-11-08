@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.plugins
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import kotlinx.serialization.json.*
 import top.nekoh2o.player.data.model.LyricLine
 import top.nekoh2o.player.data.model.Song
@@ -27,7 +29,7 @@ internal fun pluginSong(source: PluginSource, item: JsonObject): Song? {
     val artist = item.string("artist", "singer", "author").ifBlank {
         (item["artists"] as? JsonArray)?.mapNotNull { (it as? JsonObject)?.string("name") }?.joinToString(" / ").orEmpty()
     }
-    return Song(ByteBuffer.wrap(digest).long, title, artist.ifBlank { "未知艺术家" },
+    return Song(ByteBuffer.wrap(digest).long, title, artist.ifBlank { tr("未知艺术家") },
         pc = item.string("artwork", "pic", "picUrl", "cover").takeIf { it.isNotBlank() }?.let { if (it.startsWith("//")) "https:$it" else it },
         source = source.id, hash = item.string("hash").ifBlank { mediaId }, albumId = item.string("albumId", "album_id", "album"),
         albumAudioId = item.string("album_audio_id", "albumAudioId").toLongOrNull() ?: 0,
@@ -50,6 +52,6 @@ internal fun qualityKey(value: String): String = when (value) {
 internal fun pluginQuality(id: String): AudioQuality {
     val normalized = qualityKey(id)
     val rank = listOf("128k", "192k", "320k", "flac", "flac24bit").indexOf(normalized).coerceAtLeast(0)
-    val label = mapOf("128k" to "标准 128k", "192k" to "较高 192k", "320k" to "高品质 320k", "flac" to "无损 FLAC", "flac24bit" to "Hi-Res")[normalized] ?: id
+    val label = mapOf("128k" to tr("标准 128k"), "192k" to tr("较高 192k"), "320k" to tr("高品质 320k"), "flac" to tr("无损 FLAC"), "flac24bit" to "Hi-Res")[normalized] ?: id
     return AudioQuality(id, label, rank)
 }

@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -30,7 +31,7 @@ class LegacyPlaybackPreferences {
       final value = values[key];
       if (value == null) return null;
       if (value != 'true' && value != 'false') {
-        throw FormatException('旧版设置 $key 不是有效布尔值。');
+        throw FormatException(tr('旧版设置 {key} 不是有效布尔值。', {'key': key}));
       }
       return value == 'true';
     }
@@ -39,11 +40,11 @@ class LegacyPlaybackPreferences {
     final rate = rawRate == null ? null : double.tryParse(rawRate);
     if (rawRate != null &&
         (rate == null || !rate.isFinite || rate < .5 || rate > 2)) {
-      throw const FormatException('旧版播放速度超出桌面端范围（0.5–2）。');
+      throw       FormatException(tr('旧版播放速度超出桌面端范围（0.5–2）。'));
     }
     final quality = values['audio_quality'] ?? values['quality_level'];
     if (quality != null && !RegExp(r'^[a-zA-Z0-9_]{1,40}$').hasMatch(quality)) {
-      throw const FormatException('旧版音质设置无效。');
+      throw       FormatException(tr('旧版音质设置无效。'));
     }
     return LegacyPlaybackPreferences(
       rate: rate,
@@ -72,7 +73,7 @@ class LegacyPlaybackQueue {
     if (raw == null) {
       if (values.containsKey('play_index') ||
           values.containsKey('play_position')) {
-        throw const FormatException('旧版播放状态缺少队列。');
+        throw       FormatException(tr('旧版播放状态缺少队列。'));
       }
       return null;
     }
@@ -80,7 +81,7 @@ class LegacyPlaybackQueue {
     if (rows is! List ||
         rows.length > PlaybackSession.maxQueueLength ||
         rows.any((row) => row is! Map<String, dynamic>)) {
-      throw const FormatException('旧版播放队列结构无效。');
+      throw       FormatException(tr('旧版播放队列结构无效。'));
     }
     if (rows.isEmpty) return null;
     final index = int.tryParse(values['play_index'] ?? '0');
@@ -91,7 +92,7 @@ class LegacyPlaybackQueue {
         position == null ||
         position < 0 ||
         position > PlaybackSession.maxPosition.inMilliseconds) {
-      throw const FormatException('旧版播放队列索引或进度无效。');
+      throw       FormatException(tr('旧版播放队列索引或进度无效。'));
     }
     final tracks = <Track>[];
     final originalIndices = <int>[];
@@ -104,7 +105,7 @@ class LegacyPlaybackQueue {
       originalIndices.add(ordinal);
     }
     if (tracks.isEmpty) {
-      throw const FormatException('旧版播放队列没有可识别的音源，未替换当前队列。');
+      throw       FormatException(tr('旧版播放队列没有可识别的音源，未替换当前队列。'));
     }
     var selected = originalIndices.indexOf(index);
     final selectionChanged = selected < 0;
@@ -159,7 +160,7 @@ class LegacyImport {
     bool includeEffects = false,
   }) async {
     if (paths.isEmpty || paths.length > 8) {
-      throw const FormatException('请选择 1–8 个旧版备份文件。');
+      throw       FormatException(tr('请选择 1–8 个旧版备份文件。'));
     }
     final values = <String, String>{};
     Map<String, dynamic>? library;
@@ -168,23 +169,23 @@ class LegacyImport {
       final bytes = BytesBuilder(copy: false);
       final file = File(path);
       if (await file.length() > maxFileBytes) {
-        throw const FormatException('单个备份不能超过 8MB。');
+        throw       FormatException(tr('单个备份不能超过 8MB。'));
       }
       await for (final chunk in file.openRead()) {
         total += chunk.length;
         if (total > 32 * 1024 * 1024 ||
             bytes.length + chunk.length > maxFileBytes) {
-          throw const FormatException('备份文件过大。');
+          throw       FormatException(tr('备份文件过大。'));
         }
         bytes.add(chunk);
       }
       final content = bytes.takeBytes();
       final extension = path.toLowerCase().split('.').last;
       if (extension == 'json') {
-        if (library != null) throw const FormatException('一次只能导入一份音乐库备份。');
+        if (library != null) throw FormatException(tr('一次只能导入一份音乐库备份。'));
         final decoded = jsonDecode(utf8.decode(content));
         if (decoded is! Map<String, dynamic>) {
-          throw const FormatException('备份 JSON 结构无效。');
+          throw       FormatException(tr('备份 JSON 结构无效。'));
         }
         final body = decoded['data'] is Map<String, dynamic>
             ? decoded['data'] as Map<String, dynamic>
@@ -193,7 +194,7 @@ class LegacyImport {
           for (final key in ['favorites', 'history', 'playlists'])
             if (body.containsKey(key)) key: body[key],
         };
-        if (library.isEmpty) throw const FormatException('JSON 中未找到旧版音乐库。');
+        if (library.isEmpty) throw       FormatException(tr('JSON 中未找到旧版音乐库。'));
         if (includeCredentials) {
           for (final key in ['ncCookie', 'kgToken', 'kgPlatform']) {
             if (body[key] != null) values[key] = body[key].toString();
@@ -202,7 +203,7 @@ class LegacyImport {
             final cookies = body['kgCookies'] as List;
             for (var index = 0; index < cookies.length && index < 2; index++) {
               if (cookies[index] is! String) {
-                throw const FormatException('酷狗会话格式异常。');
+                throw       FormatException(tr('酷狗会话格式异常。'));
               }
               values['cookies_$index'] = cookies[index] as String;
             }
@@ -227,22 +228,22 @@ class LegacyImport {
             : androidPreferences(utf8.decode(content));
         for (final entry in parsed.entries) {
           if (values.containsKey(entry.key)) {
-            throw const FormatException('多个备份包含重复配置，请分开导入。');
+            throw       FormatException(tr('多个备份包含重复配置，请分开导入。'));
           }
           values[entry.key] = entry.value;
         }
       } else {
-        throw const FormatException(
-          '仅支持旧版 .properties、Android .xml / DataStore .pb 或音乐库 .json。',
+        throw       FormatException(
+          tr('仅支持旧版 .properties、Android .xml / DataStore .pb 或音乐库 .json。'),
         );
       }
     }
     final rawLibrary = values['library'];
     if (rawLibrary != null) {
-      if (library != null) throw const FormatException('一次只能导入一份音乐库备份。');
+      if (library != null) throw FormatException(tr('一次只能导入一份音乐库备份。'));
       final decoded = jsonDecode(rawLibrary);
       if (decoded is! Map<String, dynamic>) {
-        throw const FormatException('音乐库结构无效。');
+        throw       FormatException(tr('音乐库结构无效。'));
       }
       library = decoded;
     }
@@ -254,7 +255,7 @@ class LegacyImport {
       if (values.containsKey(entry.key)) {
         library ??= {};
         if (library.containsKey(entry.value)) {
-          throw const FormatException('发现重复音乐库，请分开导入。');
+          throw       FormatException(tr('发现重复音乐库，请分开导入。'));
         }
         library[entry.value] = jsonDecode(values[entry.key]!);
       }
@@ -279,7 +280,7 @@ class LegacyImport {
       if (selection != null) {
         platform = int.tryParse(selection);
         if (platform != 0 && platform != 1) {
-          throw const FormatException('酷狗账号槽位无效。');
+          throw       FormatException(tr('酷狗账号槽位无效。'));
         }
       }
       final legacyToken = values['kgToken'] ?? values['kg_token'];
@@ -313,7 +314,7 @@ class LegacyImport {
         playback.count == 0 &&
         queue == null &&
         effects == null) {
-      throw const FormatException('未找到可导入内容；账号、播放设置、队列或音效需要先勾选对应导入选项。');
+      throw       FormatException(tr('未找到可导入内容；账号、播放设置、队列或音效需要先勾选对应导入选项。'));
     }
     final safeLibrary = {
       for (final key in ['favorites', 'history', 'playlists'])
@@ -333,7 +334,7 @@ class LegacyImport {
       }
     }
     if (decoded.tracks.isEmpty && skipped > 0) {
-      throw const FormatException('所有歌曲都缺少可识别的音源 ID，未导入。');
+      throw       FormatException(tr('所有歌曲都缺少可识别的音源 ID，未导入。'));
     }
     return LegacyImport(
       library: safeLibrary,
@@ -385,11 +386,11 @@ class LegacyImport {
       r'<!\s*(DOCTYPE|ENTITY)',
       caseSensitive: false,
     ).hasMatch(source)) {
-      throw const FormatException('不接受带外部实体的 XML。');
+      throw       FormatException(tr('不接受带外部实体的 XML。'));
     }
     final root = XmlDocument.parse(source).rootElement;
     if (root.name.qualified != 'map') {
-      throw const FormatException('不是 Android SharedPreferences 备份。');
+      throw FormatException(tr('不是 Android SharedPreferences 备份。'));
     }
     final values = <String, String>{};
     for (final element in root.childElements) {
@@ -401,7 +402,7 @@ class LegacyImport {
       if (key == null ||
           values.containsKey(key) ||
           element.childElements.isNotEmpty) {
-        throw const FormatException('SharedPreferences 字段无效或重复。');
+        throw FormatException(tr('SharedPreferences 字段无效或重复。'));
       }
       final value = type == 'string'
           ? element.innerText
@@ -414,7 +415,7 @@ class LegacyImport {
               (int.parse(value) < -2147483648 ||
                   int.parse(value) > 2147483647)) ||
           (type == 'float' && !(double.tryParse(value)?.isFinite ?? false))) {
-        throw const FormatException('SharedPreferences 值类型无效。');
+        throw FormatException(tr('SharedPreferences 值类型无效。'));
       }
       values[key] = value;
     }
@@ -499,14 +500,14 @@ class LegacyImport {
       final character = source[index];
       if (character == 'u') {
         if (index + 4 >= source.length) {
-          throw const FormatException('Properties Unicode 转义不完整。');
+          throw FormatException(tr('Properties Unicode 转义不完整。'));
         }
         final code = int.tryParse(
           source.substring(index + 1, index + 5),
           radix: 16,
         );
         if (code == null) {
-          throw const FormatException('Properties Unicode 转义无效。');
+          throw FormatException(tr('Properties Unicode 转义无效。'));
         }
         result.writeCharCode(code);
         index += 4;

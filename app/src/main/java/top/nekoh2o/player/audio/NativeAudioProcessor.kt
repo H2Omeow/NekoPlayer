@@ -1,5 +1,7 @@
 package top.nekoh2o.player.audio
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
@@ -57,7 +59,7 @@ class NativeAudioProcessor internal constructor(
         wasNative = true
         val channels = inputAudioFormat.channelCount
         if (channels !in 1..2 || output.remaining() % (channels * 2) != 0) {
-            reportError("专业音效仅支持完整的单/双声道 PCM 帧；当前音频已原样播放")
+            reportError(tr("专业音效仅支持完整的单/双声道 PCM 帧；当前音频已原样播放"))
             return
         }
         if (failed && failedSettings == current) return
@@ -65,7 +67,7 @@ class NativeAudioProcessor internal constructor(
         try {
             if (handle == 0L) {
                 handle = backend.create(inputAudioFormat.sampleRate, channels)
-                check(handle != 0L) { "DSP 初始化失败" }
+                check(handle != 0L) { tr("DSP 初始化失败") }
             }
             if (appliedSettings != current) {
                 backend.configure(handle, current)
@@ -87,7 +89,7 @@ class NativeAudioProcessor internal constructor(
         output.put(original).flip()
         failed = true
         failedSettings = attempted
-        reportError("专业音效不可用，已原样播放：${error.message ?: error.javaClass.simpleName}")
+        reportError(tr("专业音效不可用，已原样播放：{reason}", "reason" to (error.message ?: error.javaClass.simpleName)))
         releaseEngine()
     }
 

@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.social
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -108,7 +110,7 @@ class SocialViewModel(
                 }
                 .onFailure {
                     _state.value = _state.value.copy(loadingConversations = false)
-                    if (!silent) message(it.message ?: "会话加载失败")
+                    if (!silent) message(it.message ?: tr("会话加载失败"))
                 }
         }
     }
@@ -132,7 +134,7 @@ class SocialViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                message(e.message ?: "无法打开会话")
+                message(e.message ?: tr("无法打开会话"))
                 _state.value = _state.value.copy(messagesLoading = false)
             }
         }
@@ -179,7 +181,7 @@ class SocialViewModel(
             throw e
         } catch (e: Exception) {
             _state.value = _state.value.copy(messagesLoading = false)
-            message(e.message ?: "消息加载失败")
+            message(e.message ?: tr("消息加载失败"))
         }
     }
 
@@ -200,7 +202,7 @@ class SocialViewModel(
 
     fun sendSong(song: Song) {
         val active = _state.value.active ?: run {
-            message("请先打开一个会话")
+            message(tr("请先打开一个会话"))
             return
         }
         send(SendMessageRequest(
@@ -219,7 +221,7 @@ class SocialViewModel(
                     resp.message?.let { appendMessage(it) }
                     refreshConversations(silent = true)
                 }
-                .onFailure { message(it.message ?: "发送失败") }
+                .onFailure { message(it.message ?: tr("发送失败")) }
         }
     }
 
@@ -233,7 +235,7 @@ class SocialViewModel(
                         )
                     }
                 }
-                .onFailure { message(it.message ?: "撤回失败") }
+                .onFailure { message(it.message ?: tr("撤回失败")) }
         }
     }
 
@@ -251,7 +253,7 @@ class SocialViewModel(
                 .onSuccess { _state.value = _state.value.copy(feed = it, feedLoading = false) }
                 .onFailure {
                     _state.value = _state.value.copy(feedLoading = false)
-                    message(it.message ?: "动态加载失败")
+                    message(it.message ?: tr("动态加载失败"))
                 }
         }
     }
@@ -259,7 +261,7 @@ class SocialViewModel(
     fun search(query: String) {
         val clean = query.trim()
         if (clean.length < 2) {
-            message("至少输入 2 个字符")
+            message(tr("至少输入 2 个字符"))
             return
         }
         viewModelScope.launch {
@@ -268,7 +270,7 @@ class SocialViewModel(
                 .onSuccess { _state.value = _state.value.copy(searchResults = it, searching = false) }
                 .onFailure {
                     _state.value = _state.value.copy(searching = false)
-                    message(it.message ?: "搜索失败")
+                    message(it.message ?: tr("搜索失败"))
                 }
         }
     }
@@ -281,7 +283,7 @@ class SocialViewModel(
                 .onSuccess { _state.value = _state.value.copy(profile = it, profileLoading = false) }
                 .onFailure {
                     _state.value = _state.value.copy(profileLoading = false)
-                    message(it.message ?: "资料加载失败")
+                    message(it.message ?: tr("资料加载失败"))
                 }
         }
     }
@@ -303,10 +305,10 @@ class SocialViewModel(
                         searchResults = _state.value.searchResults.map {
                             if (it.id == profile.id) it.copy(isFollowing = resp.following) else it
                         },
-                        toast = if (resp.following) "已关注" else "已取消关注"
+                        toast = if (resp.following) tr("已关注") else tr("已取消关注")
                     )
                 }
-                .onFailure { message(it.message ?: "操作失败") }
+                .onFailure { message(it.message ?: tr("操作失败")) }
         }
     }
 
@@ -317,10 +319,10 @@ class SocialViewModel(
                 .onSuccess {
                     _state.value = _state.value.copy(
                         profile = _state.value.profile?.copy(blocked = !profile.blocked),
-                        toast = if (profile.blocked) "已取消拉黑" else "已拉黑"
+                        toast = if (profile.blocked) tr("已取消拉黑") else tr("已拉黑")
                     )
                 }
-                .onFailure { message(it.message ?: "操作失败") }
+                .onFailure { message(it.message ?: tr("操作失败")) }
         }
     }
 
@@ -328,7 +330,7 @@ class SocialViewModel(
         viewModelScope.launch {
             runCatching { repo.preferences() }
                 .onSuccess { _state.value = _state.value.copy(dmPolicy = it.dmPolicy) }
-                .onFailure { message(it.message ?: "设置加载失败") }
+                .onFailure { message(it.message ?: tr("设置加载失败")) }
         }
     }
 
@@ -336,16 +338,16 @@ class SocialViewModel(
         viewModelScope.launch {
             runCatching { repo.savePreferences(policy) }
                 .onSuccess {
-                    _state.value = _state.value.copy(dmPolicy = it.dmPolicy, toast = "私信设置已保存")
+                    _state.value = _state.value.copy(dmPolicy = it.dmPolicy, toast = tr("私信设置已保存"))
                 }
-                .onFailure { message(it.message ?: "保存失败") }
+                .onFailure { message(it.message ?: tr("保存失败")) }
         }
     }
 
     // ==================== 分享 ====================
     fun openShareComposer(song: Song?) {
         if (song == null) {
-            message("当前没有播放歌曲")
+            message(tr("当前没有播放歌曲"))
             return
         }
         _state.value = _state.value.copy(shareComposer = song, shareResult = null, shareError = null)
@@ -378,7 +380,7 @@ class SocialViewModel(
             }.onSuccess {
                 _state.value = _state.value.copy(shareBusy = false, shareResult = it)
             }.onFailure {
-                _state.value = _state.value.copy(shareBusy = false, shareError = it.message ?: "分享创建失败")
+                _state.value = _state.value.copy(shareBusy = false, shareError = it.message ?: tr("分享创建失败"))
             }
         }
     }
@@ -389,13 +391,13 @@ class SocialViewModel(
             runCatching { repo.share(token) }
                 .onSuccess { share ->
                     if (share.revoked) {
-                        message("分享已失效")
+                        message(tr("分享已失效"))
                         return@onSuccess
                     }
                     onPlayShared(share.song.toSong(), share.progress?.positionMs ?: 0)
-                    message("正在播放分享歌曲")
+                    message(tr("正在播放分享歌曲"))
                 }
-                .onFailure { message(it.message ?: "分享加载失败") }
+                .onFailure { message(it.message ?: tr("分享加载失败")) }
         }
     }
 
@@ -480,7 +482,7 @@ class SocialViewModel(
             return
         }
         if (event == "follow") {
-            _state.value = _state.value.copy(toast = "有新粉丝关注了你")
+            _state.value = _state.value.copy(toast = tr("有新粉丝关注了你"))
         }
     }
 

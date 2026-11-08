@@ -12,6 +12,7 @@ import top.nekoh2o.player.data.repo.DownloadIndex
 import top.nekoh2o.player.data.repo.KugouRepository
 import top.nekoh2o.player.data.repo.LocalStore
 import top.nekoh2o.player.data.repo.MusicRepository
+import top.nekoh2o.player.i18n.NekoI18n
 
 class PlayerApp : Application() {
 
@@ -23,6 +24,8 @@ class PlayerApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // 界面语言必须在 ViewModel 和任何界面文案之前初始化
+        NekoI18n.initialize(this)
         MusicCache.init(this)
         DownloadIndex.init(this)
         localStore = LocalStore(this)

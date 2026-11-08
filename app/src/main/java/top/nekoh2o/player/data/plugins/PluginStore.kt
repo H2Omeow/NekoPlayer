@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.plugins
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.content.Context
 import android.net.Uri
 import android.util.AtomicFile
@@ -44,13 +46,13 @@ object PluginStore {
                 } else PluginState()
                 val subscriptions = loaded.subscriptions.toMutableList()
                 if (subscriptions.none { it.id == BUILTIN_ID }) subscriptions.add(0,
-                    PluginSubscription(BUILTIN_ID, "Animemusic 内置订阅", BUILTIN_URL, builtIn = true))
+                    PluginSubscription(BUILTIN_ID, tr("Animemusic 内置订阅"), BUILTIN_URL, builtIn = true))
                 val plugins = loaded.plugins.toMutableList()
                 builtins.forEach { builtin -> if (plugins.none { it.id == builtin.id }) plugins.add(builtin) }
                 persist(loaded.copy(subscriptions = subscriptions, plugins = plugins))
                 ready.complete(Unit)
             } catch (failure: Exception) {
-                ready.completeExceptionally(IOException("音源数据读取失败，已保留原文件", failure))
+                ready.completeExceptionally(IOException(tr("音源数据读取失败，已保留原文件"), failure))
                 throw failure
             }
         }
@@ -81,10 +83,10 @@ object PluginStore {
         awaitReady()
         mutex.withLock {
             val normalized = location.trim()
-            require(state.value.subscriptions.size < 64 || state.value.subscriptions.any { it.location == normalized }) { "最多支持 64 个订阅" }
+            require(state.value.subscriptions.size < 64 || state.value.subscriptions.any { it.location == normalized }) { tr("最多支持 64 个订阅") }
             val existing = state.value.subscriptions.firstOrNull { it.location == normalized }
             val subscription = existing ?: PluginSubscription("sub-${pluginDigest(normalized).take(24)}",
-                name.trim().ifBlank { "外部音源" }, normalized)
+                name.trim().ifBlank { tr("外部音源") }, normalized)
             install(subscription, format)
         }
     }
@@ -92,7 +94,7 @@ object PluginStore {
     suspend fun update(id: String) = withContext(Dispatchers.IO) {
         awaitReady()
         mutex.withLock {
-            val subscription = state.value.subscriptions.firstOrNull { it.id == id } ?: error("订阅不存在")
+            val subscription = state.value.subscriptions.firstOrNull { it.id == id } ?: error(tr("订阅不存在"))
             install(subscription, "auto")
         }
     }
@@ -106,7 +108,7 @@ object PluginStore {
     }
 
     suspend fun delete(id: String) = mutate { current ->
-        require(current.subscriptions.none { it.id == id && it.builtIn }) { "内置订阅可以关闭，不能删除" }
+        require(current.subscriptions.none { it.id == id && it.builtIn }) { tr("内置订阅可以关闭，不能删除") }
         current.copy(subscriptions = current.subscriptions.filterNot { it.id == id }, plugins = current.plugins.filterNot { it.subscriptionId == id })
     }
 
@@ -152,7 +154,7 @@ object PluginStore {
                 else -> null
             }
             val plugins = if (entries != null) {
-                require(entries.size in 1..64) { "订阅必须包含 1–64 个音源" }
+                require(entries.size in 1..64) { tr("订阅必须包含 1–64 个音源") }
                 entries.map { element ->
                     val entry = if (element is JsonPrimitive && element.isString) buildJsonObject { put("url", element.content) } else element.jsonObject
                     val location = resolveLocation(subscription.location, entry.string("url", "srcUrl", "update"))
@@ -160,17 +162,17 @@ object PluginStore {
                         descriptorPlugin(subscription, location, entry)
                     } else {
                         val script = readLocation(location)
-                        val expected = entry["sha256"]?.let { (it as? JsonPrimitive)?.contentOrNull ?: error("音源 SHA256 格式无效") }
+                        val expected = entry["sha256"]?.let { (it as? JsonPrimitive)?.contentOrNull ?: error(tr("音源 SHA256 格式无效")) }
                         verifyPluginChecksum(script, expected)
                         parsePlugin(subscription, location, script, entry.string("name"), entry.string("format").ifBlank { format })
                     }
                 }
             } else {
-                require(document == null) { "JSON 文件缺少 plugins 数组" }
+                require(document == null) { tr("JSON 文件缺少 plugins 数组") }
                 listOf(parsePlugin(subscription, subscription.location, text, subscription.name, format))
             }
-            require(plugins.distinctBy { it.id }.size == plugins.size) { "订阅包含重复音源" }
-            require(plugins.sumOf { it.script.toByteArray().size.toLong() } <= 16L * 1024 * 1024) { "订阅脚本总大小超过限制" }
+            require(plugins.distinctBy { it.id }.size == plugins.size) { tr("订阅包含重复音源") }
+            require(plugins.sumOf { it.script.toByteArray().size.toLong() } <= 16L * 1024 * 1024) { tr("订阅脚本总大小超过限制") }
             val current = state.value
             val retained = plugins.map { plugin ->
                 current.plugins.firstOrNull { it.id == plugin.id }?.let { old ->
@@ -184,9 +186,9 @@ object PluginStore {
     }
 
     private fun descriptorPlugin(subscription: PluginSubscription, location: String, descriptor: JsonObject): MusicPlugin {
-        require(validPluginUrl(descriptor.string("api"))) { "Animemusic 音源缺少有效 api 地址" }
+        require(validPluginUrl(descriptor.string("api"))) { tr("Animemusic 音源缺少有效 api 地址") }
         val platform = descriptor.string("platform")
-        require(platform.isNotBlank()) { "Animemusic 音源缺少 platform" }
+        require(platform.isNotBlank()) { tr("Animemusic 音源缺少 platform") }
         val id = if (subscription.builtIn) "animemusic-$platform" else "plugin-${pluginDigest(subscription.id + location).take(24)}"
         return MusicPlugin(id, subscription.id, descriptor.string("name").ifBlank { platform }, location, "animemusic/1", descriptor)
     }
@@ -195,12 +197,12 @@ object PluginStore {
         val meta = parsePluginMetadata(script)
         if (meta?.string("format") == "animemusic/1") return descriptorPlugin(subscription, location, meta)
         val detected = if (format != "auto") format else if (Regex("""(?:globalThis\.|global\.|window\.)?lx\s*[.\[]""").containsMatchIn(script)) "lx" else "auto"
-        require(detected in listOf("auto", "musicfree", "baka", "lx")) { "不支持的脚本格式" }
+        require(detected in listOf("auto", "musicfree", "baka", "lx")) { tr("不支持的脚本格式") }
         val plugin = MusicPlugin("plugin-${pluginDigest(subscription.id + location).take(24)}", subscription.id,
-            name.ifBlank { "外部音源" }, location, detected, JsonObject(emptyMap()), script)
+            name.ifBlank { tr("外部音源") }, location, detected, JsonObject(emptyMap()), script)
         val result = PluginRuntime(context).run(plugin)
-        val descriptor = result.value as? JsonObject ?: throw IOException("脚本未返回音源元数据")
-        if (detected == "lx") require((descriptor["sources"] as? JsonObject)?.isNotEmpty() == true) { "LX 脚本没有注册来源" }
+        val descriptor = result.value as? JsonObject ?: throw IOException(tr("脚本未返回音源元数据"))
+        if (detected == "lx") require((descriptor["sources"] as? JsonObject)?.isNotEmpty() == true) { tr("LX 脚本没有注册来源") }
         return plugin.copy(format = descriptor.string("format"), name = descriptor.string("name", "platform").ifBlank { plugin.name }, descriptor = descriptor, storage = result.storage)
     }
 
@@ -208,14 +210,14 @@ object PluginStore {
         validPluginUrl(location) -> PluginHttp.get(location)
         location.startsWith("content://") -> context.contentResolver.openInputStream(Uri.parse(location))?.use {
             it.readPluginBytes().toString(Charsets.UTF_8)
-        } ?: throw IOException("无法读取本地音源文件")
-        else -> throw IOException("仅支持 HTTP(S) 地址或选择的本地文件")
+        } ?: throw IOException(tr("无法读取本地音源文件"))
+        else -> throw IOException(tr("仅支持 HTTP(S) 地址或选择的本地文件"))
     }
 
     private fun resolveLocation(base: String, value: String): String {
-        require(value.isNotBlank()) { "订阅条目缺少 url" }
+        require(value.isNotBlank()) { tr("订阅条目缺少 url") }
         val resolved = if (validPluginUrl(value)) value else if (validPluginUrl(base)) URI(base).resolve(value).toString() else value
-        require(validPluginUrl(resolved)) { "订阅条目必须提供有效 HTTP(S) 地址" }
+        require(validPluginUrl(resolved)) { tr("订阅条目必须提供有效 HTTP(S) 地址") }
         return resolved
     }
 }

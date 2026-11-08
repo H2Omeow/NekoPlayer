@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
@@ -33,11 +34,11 @@ class HomePage extends StatelessWidget {
   final VoidCallback? onRecent;
 
   static String greeting(DateTime now) => switch (now.hour) {
-    < 5 => '夜深了',
-    < 11 => '早上好',
-    < 13 => '中午好',
-    < 18 => '下午好',
-    _ => '晚上好',
+    < 5 => tr('夜深了'),
+    < 11 => tr('早上好'),
+    < 13 => tr('中午好'),
+    < 18 => tr('下午好'),
+    _ => tr('晚上好'),
   };
 
   @override
@@ -50,7 +51,7 @@ class HomePage extends StatelessWidget {
         children: [
           PageHeader(
             title: greeting(DateTime.now()),
-            subtitle: empty ? '从导入音乐或搜索一首歌开始。' : '接着听，或者找点新的。',
+            subtitle: empty ? tr('从导入音乐或搜索一首歌开始。') : tr('接着听，或者找点新的。'),
             bottom: NekoSpace.lg,
           ),
           if (player.current != null)
@@ -65,18 +66,18 @@ class HomePage extends StatelessWidget {
             onDiscover: onDiscover,
           ),
           SectionHeader(
-            '最近播放',
+            tr('最近播放'),
             action: recent.isEmpty || onRecent == null
                 ? null
-                : TextButton(onPressed: onRecent, child: const Text('全部')),
+                : TextButton(onPressed: onRecent, child:       Text(tr('全部'))),
           ),
           if (recent.isEmpty)
-            const Padding(
+                  Padding(
               padding: EdgeInsets.symmetric(vertical: NekoSpace.lg),
               child: EmptyState(
                 icon: Icons.headphones_rounded,
-                title: '还没有播放记录',
-                description: '播放过的歌曲会出现在这里。',
+                title: tr('还没有播放记录'),
+                description: tr('播放过的歌曲会出现在这里。'),
               ),
             )
           else
@@ -95,16 +96,16 @@ class HomePage extends StatelessWidget {
               ),
             ),
           SectionHeader(
-            '我的歌单',
+            tr('我的歌单'),
             action: TextButton.icon(
               onPressed: onCreatePlaylist,
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('新建'),
+              label:       Text(tr('新建')),
             ),
           ),
           if (player.playlists.isEmpty)
             Text(
-              '把喜欢的歌整理成歌单：在歌曲的“⋯”菜单中选择“添加到歌单”。',
+              tr('把喜欢的歌整理成歌单：在歌曲的“⋯”菜单中选择“添加到歌单”。'),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -117,7 +118,9 @@ class HomePage extends StatelessWidget {
                 for (final playlist in player.playlists)
                   MediaCard(
                     title: playlist.name,
-                    subtitle: '${playlist.paths.length} 首',
+                    subtitle: tr('{count} 首', {
+                      'count': playlist.paths.length,
+                    }),
                     artwork: _coverOf(player, playlist),
                     icon: Icons.queue_music_rounded,
                     onTap: () => onOpenPlaylist(playlist.id),
@@ -284,7 +287,7 @@ class _ContinueCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              player.engine.playing ? '正在播放' : '继续播放',
+                              player.engine.playing ? tr('正在播放') : tr('继续播放'),
                               style: text.labelLarge?.copyWith(
                                 color: Colors.white70,
                               ),
@@ -326,7 +329,7 @@ class _ContinueCard extends StatelessWidget {
                                         : Icons.play_arrow_rounded,
                                   ),
                                   label: Text(
-                                    player.engine.playing ? '暂停' : '播放',
+                                    player.engine.playing ? tr('暂停') : tr('播放'),
                                   ),
                                 ),
                                 OutlinedButton(
@@ -337,7 +340,7 @@ class _ContinueCard extends StatelessWidget {
                                     ),
                                   ),
                                   onPressed: onOpenPlayer,
-                                  child: const Text('歌词与播放器'),
+                                  child:       Text(tr('歌词与播放器')),
                                 ),
                               ],
                             ),
@@ -370,10 +373,10 @@ class _WelcomeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('欢迎使用 NekoPlayer', style: text.titleLarge),
+            Text(tr('欢迎使用 NekoPlayer'), style: text.titleLarge),
             const SizedBox(height: NekoSpace.xs),
             Text(
-              '导入本地音乐，或者搜索在线曲库。登录本站账号后，收藏和歌单可以在手机与电脑间同步。',
+              tr('导入本地音乐，或者搜索在线曲库。登录本站账号后，收藏和歌单可以在手机与电脑间同步。'),
               style: text.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -387,12 +390,12 @@ class _WelcomeCard extends StatelessWidget {
                   FilledButton.icon(
                     onPressed: onImport,
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('导入音乐'),
+                    label:       Text(tr('导入音乐')),
                   ),
                 OutlinedButton.icon(
                   onPressed: onDiscover,
                   icon: const Icon(Icons.search_rounded, size: 18),
-                  label: const Text('搜索歌曲'),
+                  label:       Text(tr('搜索歌曲')),
                 ),
               ],
             ),
@@ -466,12 +469,12 @@ class _Shortcuts extends StatelessWidget {
     final tiles = [
       tile(
         Icons.favorite_rounded,
-        '我喜欢',
+        tr('我喜欢'),
         '${player.favorites.length}',
         onFavorites,
       ),
-      tile(Icons.history_rounded, '最近播放', '${player.history.length}', onRecent),
-      tile(Icons.explore_rounded, '发现音乐', '', onDiscover),
+      tile(Icons.history_rounded, tr('最近播放'), '${player.history.length}', onRecent),
+      tile(Icons.explore_rounded, tr('发现音乐'), '', onDiscover),
     ];
     if (compact) {
       return Row(

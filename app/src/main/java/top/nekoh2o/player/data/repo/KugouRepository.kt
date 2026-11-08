@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.repo
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -28,7 +30,7 @@ class KugouRepository(
             if (sessions.value(platform, "dfid").isNotBlank()) return
             val body = api.get("register/dev", platform).kugouBody()
             val dfid = body.payload().text("dfid")
-            if (dfid.isBlank()) throw KugouApiException("酷狗设备初始化失败，请重试")
+            if (dfid.isBlank()) throw KugouApiException(tr("酷狗设备初始化失败，请重试"))
             sessions.merge(platform, mapOf("dfid" to dfid))
         }
     }
@@ -40,17 +42,17 @@ class KugouRepository(
     }
 
     suspend fun sendCode(phone: String, platform: Int) {
-        require(phone.matches(Regex("1[3-9][0-9]{9}"))) { "请输入有效的大陆手机号" }
+        require(phone.matches(Regex("1[3-9][0-9]{9}"))) { tr("请输入有效的大陆手机号") }
         ensureInitialized(platform)
         val result = api.post("captcha/sent", platform, mapOf("mobile" to phone)).kugouBody()
         if (result.text("status") != "1" && result.text("code") != "200") {
-            throw KugouApiException("酷狗未确认验证码发送成功，请稍后重试")
+            throw KugouApiException(tr("酷狗未确认验证码发送成功，请稍后重试"))
         }
     }
 
     suspend fun login(phone: String, code: String, platform: Int, userid: String? = null): KgLoginData {
-        require(phone.matches(Regex("1[3-9][0-9]{9}"))) { "请输入有效的大陆手机号" }
-        require(code.matches(Regex("[0-9]{4,8}"))) { "请输入有效验证码" }
+        require(phone.matches(Regex("1[3-9][0-9]{9}"))) { tr("请输入有效的大陆手机号") }
+        require(code.matches(Regex("[0-9]{4,8}"))) { tr("请输入有效验证码") }
         ensureInitialized(platform)
         val fields = mutableMapOf("mobile" to phone, "code" to code)
         userid?.takeIf { it.toLongOrNull()?.let { id -> id > 0 } == true }?.let { fields["userid"] = it }
@@ -69,10 +71,10 @@ class KugouRepository(
     suspend fun createLoginQR(platform: Int): KgQrSession {
         ensureInitialized(platform)
         val key = api.get("login/qr/key", platform).kugouBody().payload().text("qrcode", "key", "unikey")
-        if (key.isBlank()) throw KugouApiException("酷狗未返回二维码标识，请重试")
+        if (key.isBlank()) throw KugouApiException(tr("酷狗未返回二维码标识，请重试"))
         val image = api.get("login/qr/create", platform, mapOf("key" to key, "qrimg" to "true"))
             .kugouBody().payload().text("base64", "qrcode_img", "qrimg")
-        if (image.isBlank()) throw KugouApiException("酷狗未返回二维码图片，请重试")
+        if (image.isBlank()) throw KugouApiException(tr("酷狗未返回二维码图片，请重试"))
         return KgQrSession(key, image, platform)
     }
 
@@ -81,8 +83,8 @@ class KugouRepository(
         val response = api.get("login/qr/check", session.platform, mapOf("key" to session.key))
         val data = response.kugouBody().payload()
         val status = data.text("status").toIntOrNull()
-            ?: throw KugouApiException("无法识别酷狗扫码状态，请刷新二维码")
-        if (status !in setOf(0, 1, 2, 4)) throw KugouApiException("酷狗扫码授权失败，请刷新二维码")
+            ?: throw KugouApiException(tr("无法识别酷狗扫码状态，请刷新二维码"))
+        if (status !in setOf(0, 1, 2, 4)) throw KugouApiException(tr("酷狗扫码授权失败，请刷新二维码"))
         return KgQrCheckResult(status, if (status == 4) acceptLogin(session.platform, response, data) else null)
     }
 
@@ -90,7 +92,7 @@ class KugouRepository(
         val token = data.text("token")
         val userid = data.number("userid")
         if (token.isBlank() || token in setOf("undefined", "null") || userid <= 0) {
-            throw KugouApiException("酷狗未返回有效登录凭据，请重新扫码或使用验证码登录")
+            throw KugouApiException(tr("酷狗未返回有效登录凭据，请重新扫码或使用验证码登录"))
         }
         currentCoroutineContext().ensureActive()
         sessions.commitLogin(platform, response.raw().request.url, response.headers().values("Set-Cookie"), token, userid, data.text("dfid"))
@@ -158,7 +160,7 @@ class KugouRepository(
     }.orEmpty()
 
     suspend fun getSongUrl(hash: String, quality: String = "320"): String? = optional {
-        require(hash.matches(Regex("[a-fA-F0-9]{32}"))) { "歌曲缺少酷狗 hash，请重新搜索并添加该歌曲" }
+        require(hash.matches(Regex("[a-fA-F0-9]{32}"))) { tr("歌曲缺少酷狗 hash，请重新搜索并添加该歌曲") }
         val data = get("song/url", mapOf("hash" to hash, "quality" to quality)).payload()
         playableUrl(data)
     }
@@ -169,7 +171,7 @@ class KugouRepository(
         data.items("relate_goods").mapNotNull { item ->
             val info = item.obj("info")
             val quality = when (info.number("bitrate")) { 128L -> "128"; 320L -> "320"; else -> if (info.text("extname") == "flac") "flac" else null }
-            quality?.let { KgQualityItem(it, if (it == "flac") "无损" else it + " kbps", info.number("bitrate").toInt()) }
+            quality?.let { KgQualityItem(it, if (it == "flac") tr("无损") else it + " kbps", info.number("bitrate").toInt()) }
         }.distinctBy { it.quality }
     }.orEmpty()
 
@@ -190,9 +192,9 @@ class KugouRepository(
     }
 
     suspend fun receiveVip(vipType: Int = 1, days: Int = 1): String? = optional {
-        if (CookieStore.kgPlatformValue() != 1) return@optional "此功能仅限概念版"
+        if (CookieStore.kgPlatformValue() != 1) return@optional tr("此功能仅限概念版")
         val data = get("youth/day/vip", mapOf("receive_day" to "1")).payload()
-        data.text("message", "msg").ifEmpty { "已提交领取，请刷新账号查看实际权益" }
+        data.text("message", "msg").ifEmpty { tr("已提交领取，请刷新账号查看实际权益") }
     }
 
     suspend fun getFollowArtists(): List<KgArtistItem> = optional {

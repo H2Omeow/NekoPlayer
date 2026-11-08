@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as paths;
@@ -16,8 +17,8 @@ class AppearancePage extends StatelessWidget {
     try {
       final file = await openFile(
         acceptedTypeGroups: [
-          const XTypeGroup(
-            label: '图片',
+                XTypeGroup(
+            label: tr('图片'),
             extensions: ['png', 'jpg', 'jpeg', 'webp'],
           ),
         ],
@@ -30,7 +31,7 @@ class AppearancePage extends StatelessWidget {
             content: Text(
               failure is MusicSearchException
                   ? failure.message
-                  : '无法选择图片，请检查文件权限。',
+                  : tr('无法选择图片，请检查文件权限。'),
             ),
           ),
         );
@@ -42,7 +43,7 @@ class AppearancePage extends StatelessWidget {
     try {
       final file = await openFile(
         acceptedTypeGroups: [
-          const XTypeGroup(label: '字体', extensions: ['ttf', 'otf']),
+                XTypeGroup(label: tr('字体'), extensions: ['ttf', 'otf']),
         ],
       );
       if (file != null) await controller.setCustomFont(file.path);
@@ -53,7 +54,7 @@ class AppearancePage extends StatelessWidget {
             content: Text(
               failure is MusicSearchException
                   ? failure.message
-                  : '无法读取字体文件，请检查文件权限。',
+                  : tr('无法读取字体文件，请检查文件权限。'),
             ),
           ),
         );
@@ -109,25 +110,25 @@ class AppearancePage extends StatelessWidget {
       final hasWallpaper = controller.wallpaper != null;
       final wallpaperOn = controller.wallpaperEnabled;
       return DetailPage(
-        title: '主题与背景',
+        title: tr('主题与背景'),
         children: [
           SettingsSection(
-            title: '主题',
+            title: tr('主题'),
             children: [
               SettingsControlTile(
-                title: '颜色模式',
+                title: tr('颜色模式'),
                 child: choices(
-                  const [
-                    (ThemeMode.system, '跟随系统'),
-                    (ThemeMode.light, '浅色'),
-                    (ThemeMode.dark, '深色'),
+                        [
+                    (ThemeMode.system, tr('跟随系统')),
+                    (ThemeMode.light, tr('浅色')),
+                    (ThemeMode.dark, tr('深色')),
                   ],
                   controller.theme,
                   (value) => controller.update(themeMode: value),
                 ),
               ),
               slider(
-                '界面文字缩放',
+                tr('界面文字缩放'),
                 controller.scale,
                 .85,
                 1.4,
@@ -136,14 +137,14 @@ class AppearancePage extends StatelessWidget {
             ],
           ),
           SettingsSection(
-            title: '字体',
-            description: '选择本地 TTF / OTF 字体应用到整个界面。字体缺少的中文会回退到内置字体。',
+            title: tr('字体'),
+            description: tr('选择本地 TTF / OTF 字体应用到整个界面。字体缺少的中文会回退到内置字体。'),
             children: [
               SettingsTile(
                 icon: Icons.text_fields_rounded,
-                title: '界面字体',
+                title: tr('界面字体'),
                 subtitle: controller.fontPath == null
-                    ? '使用内置字体'
+                    ? tr('使用内置字体')
                     : paths.basename(controller.fontPath!),
                 onTap: () => pickFont(context),
               ),
@@ -156,12 +157,12 @@ class AppearancePage extends StatelessWidget {
                     OutlinedButton.icon(
                       onPressed: () => pickFont(context),
                       icon: const Icon(Icons.font_download_outlined, size: 18),
-                      label: const Text('选择本地字体'),
+                      label:       Text(tr('选择本地字体')),
                     ),
                     if (controller.fontPath != null)
                       TextButton(
                         onPressed: controller.clearCustomFont,
-                        child: const Text('恢复默认字体'),
+                        child:       Text(tr('恢复默认字体')),
                       ),
                   ],
                 ),
@@ -174,15 +175,14 @@ class AppearancePage extends StatelessWidget {
             ],
           ),
           SettingsSection(
-            title: '窗口背景',
+            title: tr('窗口背景'),
             description:
-                '随机壁纸只在点击时请求本站；本地图片路径不会上传。'
-                '模糊上限为 20，避免占用过多 GPU。',
+                tr('随机壁纸只在点击时请求本站；本地图片路径不会上传。') + tr('模糊上限为 20，避免占用过多 GPU。'),
             children: [
               SettingsSwitchTile(
                 icon: Icons.wallpaper_rounded,
-                title: '壁纸背景',
-                subtitle: hasWallpaper ? null : '先选择一张图片或加载随机壁纸',
+                title: tr('壁纸背景'),
+                subtitle: hasWallpaper ? null : tr('先选择一张图片或加载随机壁纸'),
                 value: wallpaperOn,
                 onChanged: hasWallpaper
                     ? (value) => controller.update(showWallpaper: value)
@@ -197,27 +197,27 @@ class AppearancePage extends StatelessWidget {
                     OutlinedButton.icon(
                       onPressed: () => pickWallpaper(context),
                       icon: const Icon(Icons.image_outlined, size: 18),
-                      label: const Text('选择本地图片'),
+                      label:       Text(tr('选择本地图片')),
                     ),
                     OutlinedButton.icon(
                       onPressed: controller.busy
                           ? null
                           : controller.randomWallpaper,
                       icon: const Icon(Icons.shuffle_rounded, size: 18),
-                      label: const Text('随机横屏壁纸'),
+                      label:       Text(tr('随机横屏壁纸')),
                     ),
                     if (hasWallpaper)
                       TextButton(
                         onPressed: () =>
                             controller.update(clearWallpaper: true),
-                        child: const Text('恢复纯色背景'),
+                        child:       Text(tr('恢复纯色背景')),
                       ),
                   ],
                 ),
               ),
               if (controller.busy) const LinearProgressIndicator(),
               slider(
-                '背景遮罩',
+                tr('背景遮罩'),
                 controller.mask,
                 .35,
                 .95,
@@ -226,7 +226,7 @@ class AppearancePage extends StatelessWidget {
                     : null,
               ),
               slider(
-                '背景模糊',
+                tr('背景模糊'),
                 controller.blur,
                 0,
                 20,
@@ -236,7 +236,7 @@ class AppearancePage extends StatelessWidget {
                 format: whole,
               ),
               slider(
-                '面板不透明度',
+                tr('面板不透明度'),
                 controller.controls,
                 .2,
                 1,
@@ -248,23 +248,23 @@ class AppearancePage extends StatelessWidget {
             ],
           ),
           SettingsSection(
-            title: '播放页背景',
-            description: '与窗口背景相互独立；没有封面或壁纸时使用纯色，不会自动请求随机壁纸。',
+            title: tr('播放页背景'),
+            description: tr('与窗口背景相互独立；没有封面或壁纸时使用纯色，不会自动请求随机壁纸。'),
             children: [
               SettingsControlTile(
-                title: '背景来源',
+                title: tr('背景来源'),
                 child: choices(
-                  const [
-                    (PlayerBackground.solid, '纯色'),
-                    (PlayerBackground.cover, '歌曲封面'),
-                    (PlayerBackground.wallpaper, '当前壁纸'),
+                        [
+                    (PlayerBackground.solid, tr('纯色')),
+                    (PlayerBackground.cover, tr('歌曲封面')),
+                    (PlayerBackground.wallpaper, tr('当前壁纸')),
                   ],
                   controller.playerBackground,
                   (value) => controller.update(playerMode: value),
                 ),
               ),
               slider(
-                '遮罩',
+                tr('遮罩'),
                 controller.playerMask,
                 .35,
                 .95,
@@ -273,7 +273,7 @@ class AppearancePage extends StatelessWidget {
                     : (value) => controller.update(playerDarkness: value),
               ),
               slider(
-                '模糊',
+                tr('模糊'),
                 controller.playerBlur,
                 0,
                 20,

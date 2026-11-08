@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -58,16 +60,16 @@ fun KugouAccountScreen(vm: PlayerViewModel, onBack: () -> Unit, onLogin: () -> U
     }
 
     DetailPage(
-        title = "酷狗音乐",
+        title = tr("酷狗音乐"),
         onBack = onBack,
         actions = { TextButton(onClick = { showCookieManager = true }) { Text("Cookie") } }
     ) {
         if (!kgAccount.isValid) {
             EmptyState(
                 icon = Icons.Filled.Person,
-                title = "未登录酷狗账号",
-                description = "登录后可以搜索和播放酷狗音乐、查看个人歌单；概念版可领取每日权益。",
-                action = { Button(onClick = onLogin) { Text("登录酷狗账号") } }
+                title = tr("未登录酷狗账号"),
+                description = tr("登录后可以搜索和播放酷狗音乐、查看个人歌单；概念版可领取每日权益。"),
+                action = { Button(onClick = onLogin) { Text(tr("登录酷狗账号")) } }
             )
             return@DetailPage
         }
@@ -83,14 +85,14 @@ fun KugouAccountScreen(vm: PlayerViewModel, onBack: () -> Unit, onLogin: () -> U
             ) {
                 Artwork(kgAccount.avatar, size = 64.dp, shape = CircleShape, thumbnail = null, placeholder = Icons.Filled.Person)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(NekoSpace.xs)) {
-                    Text(kgAccount.nickname.ifEmpty { "酷狗用户" }, style = MaterialTheme.typography.titleLarge)
+                    Text(kgAccount.nickname.ifEmpty { tr("酷狗用户") }, style = MaterialTheme.typography.titleLarge)
                     Text(
                         "UID ${kgAccount.userId}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     StatusBadge(
-                        when (kgAccount.vipType) { 1 -> "VIP 会员"; 2 -> "豪华 VIP"; else -> "普通用户" },
+                        when (kgAccount.vipType) { 1 -> tr("VIP 会员"); 2 -> tr("豪华 VIP"); else -> tr("普通用户") },
                         if (kgAccount.vipType > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                 }
@@ -98,30 +100,30 @@ fun KugouAccountScreen(vm: PlayerViewModel, onBack: () -> Unit, onLogin: () -> U
         }
 
         SettingsSection(
-            title = "账号",
-            description = "原版与概念版的登录状态分别保存，首次在新设备使用时请扫码或验证码登录。"
+            title = tr("账号"),
+            description = tr("原版与概念版的登录状态分别保存，首次在新设备使用时请扫码或验证码登录。")
         ) {
-            SettingsControlTile(title = "当前版本") {
+            SettingsControlTile(title = tr("当前版本")) {
                 Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
-                    NekoChip("原版", kgAccount.platform == 0, { if (kgAccount.platform != 0) vm.kgSwitchPlatform(0) })
-                    NekoChip("概念版", kgAccount.platform == 1, { if (kgAccount.platform != 1) vm.kgSwitchPlatform(1) })
+                    NekoChip(tr("原版"), kgAccount.platform == 0, { if (kgAccount.platform != 0) vm.kgSwitchPlatform(0) })
+                    NekoChip(tr("概念版"), kgAccount.platform == 1, { if (kgAccount.platform != 1) vm.kgSwitchPlatform(1) })
                 }
             }
             if (kgAccount.vipType > 0 && kgAccount.vipEndTime > 0) {
                 SettingsTile(
-                    title = "会员到期",
+                    title = tr("会员到期"),
                     value = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(kgAccount.vipEndTime * 1000))
                 )
             }
-            SettingsTile(title = "登录其他账号", onClick = onLogin)
+            SettingsTile(title = tr("登录其他账号"), onClick = onLogin)
         }
 
         if (kgAccount.platform == 1) {
             SettingsSection(
-                title = "概念版权益",
-                description = "测试接口，可能随时失效；领取资格与结果以酷狗返回为准。"
+                title = tr("概念版权益"),
+                description = tr("测试接口，可能随时失效；领取资格与结果以酷狗返回为准。")
             ) {
-                SettingsTile(title = "领取每日 VIP", onClick = { showVipDialog = true })
+                SettingsTile(title = tr("领取每日 VIP"), onClick = { showVipDialog = true })
             }
         }
     }
@@ -134,9 +136,9 @@ private fun VipReceiveDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("领取概念版每日权益") },
-        text = { Text("领取资格、有效期与结果以酷狗返回为准。请先完成官方要求的听歌任务。") },
-        confirmButton = { TextButton(onClick = { onReceive(1, 1) }) { Text("领取") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        title = { Text(tr("领取概念版每日权益")) },
+        text = { Text(tr("领取资格、有效期与结果以酷狗返回为准。请先完成官方要求的听歌任务。")) },
+        confirmButton = { TextButton(onClick = { onReceive(1, 1) }) { Text(tr("领取")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("取消")) } }
     )
 }

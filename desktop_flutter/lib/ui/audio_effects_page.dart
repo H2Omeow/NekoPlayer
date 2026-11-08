@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'package:flutter/material.dart';
 
 import '../domain/audio_effects.dart';
@@ -38,28 +39,26 @@ class AudioEffectsPage extends StatelessWidget {
       final text = Theme.of(context).textTheme;
       void configure(AudioEffects value) => engine.configure(value);
       return DetailPage(
-        title: '音效',
+        title: tr('音效'),
         maxWidth: 820,
         actions: [
           TextButton(
             onPressed: engine.changing
                 ? null
                 : () => configure(AudioEffects(enabled: settings.enabled)),
-            child: const Text('全部重置'),
+            child:       Text(tr('全部重置')),
           ),
         ],
         children: [
           SettingsSection(
             description:
-                '参数实时生效；变速和跳转会重新启动解码。'
-                '母带只开放原版实际实现的 15–34 号处理链。重启应用后专业模式默认关闭。',
+                tr('参数实时生效；变速和跳转会重新启动解码。') + tr('母带只开放原版实际实现的 15–34 号处理链。重启应用后专业模式默认关闭。'),
             children: [
               SettingsSwitchTile(
                 icon: Icons.graphic_eq_rounded,
-                title: '专业音效',
+                title: tr('专业音效'),
                 subtitle:
-                    '使用原版 C++ DSP，以 48kHz 双声道输出到系统音频设备。'
-                    '切换时会重新解析当前音源。',
+                    tr('使用原版 C++ DSP，以 48kHz 双声道输出到系统音频设备。') + tr('切换时会重新解析当前音源。'),
                 value: settings.enabled,
                 onChanged: engine.changing
                     ? null
@@ -76,7 +75,7 @@ class AudioEffectsPage extends StatelessWidget {
             const SizedBox(height: NekoSpace.lg),
           ],
           SettingsSection(
-            title: '均衡器',
+            title: tr('均衡器'),
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -91,7 +90,7 @@ class AudioEffectsPage extends StatelessWidget {
                   children: [
                     for (final preset in AudioEffects.presets.entries)
                       ActionChip(
-                        label: Text(preset.key),
+                        label: Text(tr(preset.key)),
                         onPressed: engine.changing
                             ? null
                             : () => configure(
@@ -113,42 +112,42 @@ class AudioEffectsPage extends StatelessWidget {
             ],
           ),
           SettingsSection(
-            title: '空间与动态',
+            title: tr('空间与动态'),
             children: [
               slider(
-                '低音增强',
+                tr('低音增强'),
                 settings.bass,
                 (value) => configure(settings.copyWith(bass: value)),
               ),
               slider(
-                '立体声宽度',
+                tr('立体声宽度'),
                 settings.width,
                 (value) => configure(settings.copyWith(width: value)),
               ),
               slider(
-                '混响湿声',
+                tr('混响湿声'),
                 settings.wet,
                 (value) => configure(settings.copyWith(wet: value)),
               ),
               slider(
-                '混响空间',
+                tr('混响空间'),
                 settings.room,
                 (value) => configure(settings.copyWith(room: value)),
               ),
               slider(
-                '混响阻尼',
+                tr('混响阻尼'),
                 settings.damping,
                 (value) => configure(settings.copyWith(damping: value)),
               ),
               slider(
-                '响度增益',
+                tr('响度增益'),
                 settings.loudness,
                 (value) => configure(settings.copyWith(loudness: value)),
               ),
             ],
           ),
           SettingsSection(
-            title: '母带处理',
+            title: tr('母带处理'),
             children: [
               Padding(
                 padding: const EdgeInsets.all(NekoSpace.lg),
@@ -159,14 +158,14 @@ class AudioEffectsPage extends StatelessWidget {
                       key: ValueKey(settings.mastering),
                       initialValue: settings.values[16].toInt(),
                       isExpanded: true,
-                      decoration: const InputDecoration(labelText: '处理链'),
+                      decoration:       InputDecoration(labelText: tr('处理链')),
                       items: [
-                        const DropdownMenuItem(value: 0, child: Text('关闭')),
+                              DropdownMenuItem(value: 0, child: Text(tr('关闭'))),
                         for (final preset in MasteringPreset.available)
                           DropdownMenuItem(
                             value: preset.id,
                             child: Text(
-                              preset.name,
+                              tr(preset.name),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -183,7 +182,10 @@ class AudioEffectsPage extends StatelessWidget {
                     if (mastering != null) ...[
                       const SizedBox(height: NekoSpace.sm),
                       Text(
-                        '${mastering.group} · ${mastering.description}',
+                        tr('{group} · {description}', {
+                          'group': tr(mastering.group),
+                          'description': tr(mastering.description),
+                        }),
                         style: text.bodySmall,
                       ),
                     ],
@@ -191,7 +193,7 @@ class AudioEffectsPage extends StatelessWidget {
                 ),
               ),
               slider(
-                '母带混合',
+                tr('母带混合'),
                 settings.mix,
                 (value) => configure(settings.copyWith(mix: value)),
               ),

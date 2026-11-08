@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import '../domain/library.dart';
 import '../domain/online_music.dart';
 import '../domain/music_plugin.dart';
@@ -102,7 +103,7 @@ class CloudLibrary {
       if (value != null &&
           (value is! List ||
               value.any((item) => item is! Map<String, dynamic>))) {
-        throw const FormatException('云端音乐库格式异常。');
+        throw       FormatException(tr('云端音乐库格式异常。'));
       }
     }
     for (final playlist in items(body['playlists'])) {
@@ -110,7 +111,7 @@ class CloudLibrary {
       if (songs != null &&
           (songs is! List ||
               songs.any((song) => song is! Map<String, dynamic>))) {
-        throw const FormatException('云端歌单格式异常。');
+        throw       FormatException(tr('云端歌单格式异常。'));
       }
     }
     final tracks = <String, Track>{};
@@ -133,7 +134,7 @@ class CloudLibrary {
         if ((playlist['id']?.toString() ?? '').isNotEmpty)
           LocalPlaylist(
             id: playlist['id'].toString(),
-            name: playlist['name']?.toString() ?? '云端歌单',
+            name: playlist['name']?.toString() ?? tr('云端歌单'),
             paths: collect(playlist['songs']),
           ),
     ];
@@ -373,7 +374,7 @@ class CloudLibrary {
               'name':
                   localPlaylists[id]?.name ??
                   remotePlaylists[id]?['name'] ??
-                  '云端歌单',
+                  tr('云端歌单'),
               'songs': _union(
                 _songs(local, localPlaylists[id]?.paths ?? []),
                 items(remotePlaylists[id]?['songs']),

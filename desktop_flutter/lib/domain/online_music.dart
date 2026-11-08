@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'music_plugin.dart';
 
 enum MusicProvider {
@@ -11,8 +12,9 @@ enum MusicProvider {
   gatewayBilibili('内置 · B站', gateway: 'bilibili'),
   pluginQishui('内置 · 汽水', gateway: 'qishui');
 
-  const MusicProvider(this.label, {this.gateway});
-  final String label;
+  const MusicProvider(this.rawLabel, {this.gateway});
+  final String rawLabel;
+  String get label => tr(rawLabel);
   final String? gateway;
   String get sourceId => gateway == null ? name : 'animemusic-$gateway';
 }
@@ -113,9 +115,10 @@ class AudioUnavailableException extends MusicSearchException {
 }
 
 class AudioQuality {
-  const AudioQuality(this.id, this.label, this.rank, {this.size = 0});
+  const AudioQuality(this.id, this.rawLabel, this.rank, {this.size = 0});
   final String id;
-  final String label;
+  final String rawLabel;
+  String get label => tr(rawLabel);
   final int rank;
   final int size;
 
@@ -162,7 +165,12 @@ class AudioQuality {
 }
 
 class MusicHttpException extends MusicSearchException {
-  MusicHttpException(this.status) : super('音乐平台请求失败（HTTP $status），请稍后重试。');
+  MusicHttpException(this.status)
+      : super(
+          tr('音乐平台请求失败（HTTP {status}），请稍后重试。', {
+            'status': status,
+          }),
+        );
   final int status;
 }
 

@@ -8,6 +8,7 @@ import top.nekoh2o.player.data.model.AudioEffectEngine
 import top.nekoh2o.player.data.model.AudioEffectSettings
 import top.nekoh2o.player.data.model.BgSource
 import top.nekoh2o.player.data.model.Song
+import top.nekoh2o.player.i18n.NekoI18n
 
 class SettingsStore(context: Context) {
 
@@ -52,7 +53,8 @@ class SettingsStore(context: Context) {
         ).normalized(),
         customFontPath = prefs.getString(KEY_CUSTOM_FONT, "") ?: "",
         customFontName = prefs.getString(KEY_CUSTOM_FONT_NAME, "") ?: "",
-        socialPushEnabled = prefs.getBoolean(KEY_SOCIAL_PUSH, true)
+        socialPushEnabled = prefs.getBoolean(KEY_SOCIAL_PUSH, true),
+        language = prefs.getString(KEY_LANGUAGE, NekoI18n.SYSTEM) ?: NekoI18n.SYSTEM
     )
 
     fun save(s: AppSettings) {
@@ -87,6 +89,7 @@ class SettingsStore(context: Context) {
             .putString(KEY_CUSTOM_FONT, s.customFontPath)
             .putString(KEY_CUSTOM_FONT_NAME, s.customFontName)
             .putBoolean(KEY_SOCIAL_PUSH, s.socialPushEnabled)
+            .putString(KEY_LANGUAGE, s.language)
             .apply()
     }
 
@@ -121,6 +124,7 @@ class SettingsStore(context: Context) {
         private const val KEY_CUSTOM_FONT = "custom_font_path"
         private const val KEY_CUSTOM_FONT_NAME = "custom_font_name"
         private const val KEY_SOCIAL_PUSH = "social_push_enabled"
+        private const val KEY_LANGUAGE = "language_tag"
 
         // 播放状态保存
         private const val KEY_PLAY_QUEUE = "play_queue"

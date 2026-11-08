@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'package:flutter/material.dart';
 
 import '../download_controller.dart';
@@ -22,14 +23,17 @@ class DownloadsPage extends StatelessWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('删除已下载的文件？'),
+        title:       Text(tr('删除已下载的文件？')),
         content: Text(
-          '将删除这项任务创建的音频${task.lyricsOwned ? '及歌词' : ''}，不只是移除记录。\n\n${task.path ?? ''}\n\n正在播放的文件可能被系统占用。',
+          tr('将删除这项任务创建的音频{lyrics}，不只是移除记录。\n\n{path}\n\n正在播放的文件可能被系统占用。', {
+            'lyrics': task.lyricsOwned ? tr('及歌词') : '',
+            'path': task.path ?? '',
+          }),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child:       Text(tr('取消')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -37,7 +41,7 @@ class DownloadsPage extends StatelessWidget {
               foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除文件'),
+            child:       Text(tr('删除文件')),
           ),
         ],
       ),
@@ -51,26 +55,25 @@ class DownloadsPage extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: controller,
     builder: (context, _) => DetailPage(
-      title: '下载管理',
+      title: tr('下载管理'),
       children: [
         if (controller.error case final error?) ...[
           InlineNotice(error, error: true),
           const SizedBox(height: NekoSpace.lg),
         ],
         if (controller.tasks.isEmpty)
-          const Padding(
+                Padding(
             padding: EdgeInsets.symmetric(vertical: NekoSpace.xxl),
             child: EmptyState(
               icon: Icons.download_rounded,
-              title: '还没有下载任务',
-              description: '在歌曲的“⋯”菜单中选择“下载”。',
+              title: tr('还没有下载任务'),
+              description: tr('在歌曲的“⋯”菜单中选择“下载”。'),
             ),
           )
         else
           SettingsSection(
             description:
-                '一次只下载一首以降低占用，支持暂停和断点续传。'
-                '下载权限单独验证，不会用试听或播放链接代替。',
+                tr('一次只下载一首以降低占用，支持暂停和断点续传。') + tr('下载权限单独验证，不会用试听或播放链接代替。'),
             children: [
               for (final task in controller.tasks)
                 _DownloadTile(
@@ -112,11 +115,11 @@ class _DownloadTile extends StatelessWidget {
     final done = task.phase == DownloadPhase.completed && task.path != null;
     final running = task.phase == DownloadPhase.downloading;
     final status = switch (task.phase) {
-      DownloadPhase.queued => '排队中',
-      DownloadPhase.downloading => '下载中',
-      DownloadPhase.paused => '已暂停',
-      DownloadPhase.failed => '失败',
-      DownloadPhase.completed => '已完成',
+      DownloadPhase.queued => tr('排队中'),
+      DownloadPhase.downloading => tr('下载中'),
+      DownloadPhase.paused => tr('已暂停'),
+      DownloadPhase.failed => tr('失败'),
+      DownloadPhase.completed => tr('已完成'),
     };
     final size = task.total == null
         ? megabytes(task.received)
@@ -182,14 +185,16 @@ class _DownloadTile extends StatelessWidget {
           const SizedBox(width: NekoSpace.sm),
           if (running || task.phase == DownloadPhase.queued)
             IconButton(
-              tooltip: '暂停',
+              tooltip: tr('暂停'),
               onPressed: () => controller.pause(task),
               icon: const Icon(Icons.pause_rounded),
             ),
           if (task.phase == DownloadPhase.paused ||
               task.phase == DownloadPhase.failed)
             IconButton(
-              tooltip: task.phase == DownloadPhase.failed ? '重试' : '继续',
+              tooltip: task.phase == DownloadPhase.failed
+                  ? tr('重试')
+                  : tr('继续'),
               onPressed: () => controller.resume(task),
               icon: Icon(
                 task.phase == DownloadPhase.failed
@@ -199,26 +204,26 @@ class _DownloadTile extends StatelessWidget {
             ),
           if (done)
             IconButton(
-              tooltip: '播放',
+              tooltip: tr('播放'),
               onPressed: onPlay,
               icon: const Icon(Icons.play_circle_outline_rounded),
             ),
           PopupMenuButton<VoidCallback>(
-            tooltip: '更多',
+            tooltip: tr('更多'),
             icon: const Icon(Icons.more_horiz_rounded),
             onSelected: (action) => action(),
             itemBuilder: (_) => [
               if (done)
-                PopupMenuItem(value: onImport, child: const Text('加入音乐库')),
+                PopupMenuItem(value: onImport, child:       Text(tr('加入音乐库'))),
               if (done)
                 PopupMenuItem(
                   value: onDeleteFiles,
                   enabled: !controller.isActive(task),
-                  child: Text('删除下载文件', style: TextStyle(color: colors.error)),
+                  child: Text(tr('删除下载文件'), style: TextStyle(color: colors.error)),
                 ),
               PopupMenuItem(
                 value: () => controller.remove(task),
-                child: Text(running ? '取消下载' : '移除记录'),
+                child: Text(running ? tr('取消下载') : tr('移除记录')),
               ),
             ],
           ),

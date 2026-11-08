@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as paths;
 
 import 'app_info.dart';
+import '../i18n/tr.dart';
 
 class DiagnosticFile {
   const DiagnosticFile({
@@ -63,7 +64,9 @@ class DiagnosticsStore {
   /// Text of [entry], keeping only the last [maxBytes] of large files.
   Future<String> read(DiagnosticFile entry, {int maxBytes = 512 * 1024}) async {
     if (entry.binary) {
-      return '这是二进制崩溃转储（${_size(entry.size)}），请通过“导出诊断信息”或打开日志文件夹提交。';
+      return tr('这是二进制崩溃转储（{size}），请通过“导出诊断信息”或打开日志文件夹提交。', {
+        'size': _size(entry.size),
+      });
     }
     final handle = await entry.file.open();
     try {
@@ -74,7 +77,9 @@ class DiagnosticsStore {
         await handle.read(length - start),
         allowMalformed: true,
       );
-      return start > 0 ? '...(仅显示末尾 ${_size(maxBytes)})\n$text' : text;
+      return start > 0
+          ? '${tr('...(仅显示末尾 {size})', {'size': _size(maxBytes)})}\n$text'
+          : text;
     } finally {
       await handle.close();
     }

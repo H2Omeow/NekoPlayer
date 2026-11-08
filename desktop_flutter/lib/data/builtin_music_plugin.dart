@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -47,7 +48,7 @@ class BuiltinMusicPlugin {
     if (!endpoints.contains(endpoint) ||
         query.containsKey('route') ||
         platform != null && !platforms.contains(platform)) {
-      throw const MusicSearchException('内置插件请求参数无效。');
+      throw       MusicSearchException(tr('内置插件请求参数无效。'));
     }
     final api =
         source?.api ?? Uri.https('animemusic.bzxhkj.com', '/v1/index.php');
@@ -81,20 +82,20 @@ class BuiltinMusicPlugin {
       }
       final code = int.tryParse('${body['code']}');
       if (code == null) {
-        throw const MusicSearchException('内置插件返回格式异常。');
+        throw       MusicSearchException(tr('内置插件返回格式异常。'));
       }
       if ([401, 403, 429].contains(code)) {
-        throw const MusicSearchException('内置插件服务拒绝请求或请求过于频繁，请稍后重试。');
+        throw       MusicSearchException(tr('内置插件服务拒绝请求或请求过于频繁，请稍后重试。'));
       }
       return body;
     } on HandshakeException {
-      throw const MusicSearchException('内置插件 TLS 证书验证失败；不会忽略安全校验。');
+      throw       MusicSearchException(tr('内置插件 TLS 证书验证失败；不会忽略安全校验。'));
     } on TimeoutException {
-      throw const MusicSearchException('内置插件请求超时，请稍后重试。');
+      throw       MusicSearchException(tr('内置插件请求超时，请稍后重试。'));
     } on IOException {
-      throw const MusicSearchException('无法连接内置插件服务，请检查网络。');
+      throw       MusicSearchException(tr('无法连接内置插件服务，请检查网络。'));
     } on FormatException {
-      throw const MusicSearchException('内置插件响应格式异常。');
+      throw       MusicSearchException(tr('内置插件响应格式异常。'));
     }
   }
 
@@ -151,7 +152,7 @@ class BuiltinMusicPlugin {
     } on MusicSearchException catch (_) {}
     final line = await request('music/lyric', query, source: source);
     if ('${line['code']}' != '200') {
-      throw const MusicSearchException('内置插件歌词读取失败。');
+      throw       MusicSearchException(tr('内置插件歌词读取失败。'));
     }
     return line;
   }

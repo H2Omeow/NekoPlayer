@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -108,14 +109,14 @@ class _FullPlayerState extends State<FullPlayer> {
     child: Row(
       children: [
         IconButton(
-          tooltip: '返回',
+          tooltip: tr('返回'),
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 28),
         ),
         const Spacer(),
         if (controller.current != null && widget.onShare != null)
           IconButton(
-            tooltip: '分享歌曲',
+            tooltip: tr('分享歌曲'),
             onPressed: () {
               final current = controller.current;
               if (current != null) widget.onShare!(current);
@@ -126,9 +127,9 @@ class _FullPlayerState extends State<FullPlayer> {
           SegmentedButton<bool>(
             showSelectedIcon: false,
             style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            segments: const [
-              ButtonSegment(value: false, label: Text('歌词')),
-              ButtonSegment(value: true, label: Text('动态歌词')),
+            segments:       [
+              ButtonSegment(value: false, label: Text(tr('歌词'))),
+              ButtonSegment(value: true, label: Text(tr('动态歌词'))),
             ],
             selected: {dynamicLyrics},
             onSelectionChanged: (value) => setState(() {
@@ -138,7 +139,7 @@ class _FullPlayerState extends State<FullPlayer> {
           ),
         if (widget.onDynamicLyrics != null)
           IconButton(
-            tooltip: '在浏览器中打开动态歌词',
+            tooltip: tr('在浏览器中打开动态歌词'),
             onPressed: widget.onDynamicLyrics,
             icon: const Icon(Icons.open_in_new_rounded, size: 20),
           ),
@@ -195,7 +196,7 @@ class _FullPlayerState extends State<FullPlayer> {
     final actions = <Widget>[
       if (track != null)
         IconButton(
-          tooltip: favorite ? '取消收藏' : '收藏',
+          tooltip: favorite ? tr('取消收藏') : tr('收藏'),
           onPressed: () => controller.toggleFavorite(track),
           icon: Icon(
             favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
@@ -204,20 +205,20 @@ class _FullPlayerState extends State<FullPlayer> {
         ),
       if (track != null)
         IconButton(
-          tooltip: '添加到歌单',
+          tooltip: tr('添加到歌单'),
           onPressed: () =>
               unawaited(showPlaylistPicker(context, controller, track)),
           icon: const Icon(Icons.playlist_add_rounded),
         ),
       if (online != null && widget.onComments != null)
         IconButton(
-          tooltip: '查看评论',
+          tooltip: tr('查看评论'),
           onPressed: () => widget.onComments!(online),
           icon: const Icon(Icons.chat_bubble_outline_rounded),
         ),
       if (online != null && widget.onDownload != null)
         IconButton(
-          tooltip: '下载歌曲',
+          tooltip: tr('下载歌曲'),
           onPressed: () => widget.onDownload!(online),
           icon: const Icon(Icons.download_rounded),
         ),
@@ -229,7 +230,7 @@ class _FullPlayerState extends State<FullPlayer> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          track?.title ?? '尚未播放',
+          track?.title ?? tr('尚未播放'),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           textAlign: center ? TextAlign.center : TextAlign.start,
@@ -358,7 +359,7 @@ class _FullPlayerState extends State<FullPlayer> {
                       dynamicLyrics = false;
                     }),
                     icon: const Icon(Icons.album_rounded, size: 18),
-                    label: const Text('封面'),
+                    label:       Text(tr('封面')),
                   ),
                 )
               else if (!showLyrics)
@@ -367,7 +368,7 @@ class _FullPlayerState extends State<FullPlayer> {
                   child: TextButton.icon(
                     onPressed: () => setState(() => compactLyrics = true),
                     icon: const Icon(Icons.lyrics_outlined, size: 18),
-                    label: const Text('歌词'),
+                    label:       Text(tr('歌词')),
                   ),
                 ),
               _transport(),
@@ -448,10 +449,10 @@ class _LyricsViewState extends State<LyricsView> {
   Widget build(BuildContext context) {
     final lyrics = controller.lyrics;
     if (lyrics.isEmpty) {
-      return const EmptyState(
+      return       EmptyState(
         icon: Icons.lyrics_outlined,
-        title: '暂无歌词',
-        description: '在线歌曲会自动获取歌词；本地歌曲可把同名 .lrc 文件放在音频旁边。',
+        title: tr('暂无歌词'),
+        description: tr('在线歌曲会自动获取歌词；本地歌曲可把同名 .lrc 文件放在音频旁边。'),
       );
     }
     while (keys.length < lyrics.length) {

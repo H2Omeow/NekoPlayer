@@ -19,3 +19,7 @@ app/.cxx/
 /desktop/build/
 /desktop/.gradle/
 /desktop/packaging/__pycache__/
+
+__pycache__/
+*.pyc
+/i18n/work/

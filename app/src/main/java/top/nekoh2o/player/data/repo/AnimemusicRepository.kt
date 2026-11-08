@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.repo
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import top.nekoh2o.player.data.model.Song
 import top.nekoh2o.player.data.net.AnimemusicApi
 import top.nekoh2o.player.data.net.ApiFactory
@@ -13,14 +15,14 @@ data class AnimemusicSearchPage(val songs: List<Song>, val hasMore: Boolean)
 class AnimemusicRepository(private val api: AnimemusicApi = ApiFactory.animemusic) {
     suspend fun search(platform: String, keyword: String, page: Int = 1, limit: Int = 30): AnimemusicSearchPage {
         val response = api.search(platform, keyword, page, limit)
-        if (response.code != 200) throw IOException("内置插件搜索失败（${response.code}）")
+        if (response.code != 200) throw IOException(tr("内置插件搜索失败（{code}）", "code" to response.code))
         val songs = response.data.mapNotNull { item ->
             val id = item.id.ifBlank { item.songId }
             if (id.isBlank() || item.title.isBlank()) return@mapNotNull null
             Song(
                 id = stableId(platform, id),
                 nm = item.title,
-                ar = item.artist.ifBlank { "未知艺术家" },
+                ar = item.artist.ifBlank { tr("未知艺术家") },
                 pc = item.artwork?.toAbsoluteArtworkUrl(),
                 source = "animemusic-$platform",
                 hash = id,
@@ -38,7 +40,7 @@ class AnimemusicRepository(private val api: AnimemusicApi = ApiFactory.animemusi
         val id = song.providerMediaId.ifBlank { song.hash.ifBlank { song.id.toString() } }
         val requested = if (quality == "hires") "flac24bit" else quality
         val response = api.url(platform, id, requested)
-        if (response.code in listOf(401, 403, 429)) throw IOException("内置插件服务拒绝请求或请求过于频繁，请稍后重试")
+        if (response.code in listOf(401, 403, 429)) throw IOException(tr("内置插件服务拒绝请求或请求过于频繁，请稍后重试"))
         if (response.code != 200 || response.is_free_part > 0 ||
             response.freeTrialInfo != null && response.freeTrialInfo != JsonNull) return null
         val url = response.url?.takeIf { value ->
@@ -88,12 +90,12 @@ class AnimemusicRepository(private val api: AnimemusicApi = ApiFactory.animemusi
         const val version = "2.3.1"
         const val author = "惜缘惜梦"
         val qualities = listOf(
-            AudioQuality("128k", "标准 128k", 0), AudioQuality("192k", "较高 192k", 1),
-            AudioQuality("320k", "高品质 320k", 2), AudioQuality("flac", "无损 FLAC", 3),
+            AudioQuality("128k", tr("标准 128k"), 0), AudioQuality("192k", tr("较高 192k"), 1),
+            AudioQuality("320k", tr("高品质 320k"), 2), AudioQuality("flac", tr("无损 FLAC"), 3),
             AudioQuality("hires", "Hi-Res", 4)
         )
         val platforms = listOf(
-            "kg" to "酷狗", "kw" to "酷我", "wy" to "网易", "tx" to "QQ", "mg" to "咪咕", "bilibili" to "B站", "qishui" to "汽水"
+            "kg" to tr("酷狗"), "kw" to tr("酷我"), "wy" to tr("网易"), "tx" to "QQ", "mg" to tr("咪咕"), "bilibili" to tr("B站"), "qishui" to tr("汽水")
         )
         internal fun titleScore(title: String, candidate: String): Double {
             fun normalize(value: String) = value.lowercase().replace(Regex("""[\s\-_·、，,。.！!？?（）()\[\]【】"'’“”：:;；~—]+"""), "")

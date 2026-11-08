@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -86,7 +87,7 @@ class MediaKitEngine extends PlaybackEngine {
       }),
       _player.stream.error.listen((value) {
         CrashLog.error('mpv', 'playback error: $value');
-        _error = '音频无法播放，请确认文件可访问且格式受支持。';
+        _error = tr('音频无法播放，请确认文件可访问且格式受支持。');
         notifyListeners();
       }),
       attachMpvLog(_player, 'mpv'),
@@ -113,7 +114,7 @@ class MediaKitEngine extends PlaybackEngine {
       if (_disposed) return;
       _error = failure is MusicSearchException
           ? failure.message
-          : '音频无法播放，请检查网络、文件与播放设备。';
+          : tr('音频无法播放，请检查网络、文件与播放设备。');
       notifyListeners();
     });
     return command;

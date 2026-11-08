@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide RepeatMode;
@@ -65,7 +66,7 @@ class PlayerBar extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          track?.title ?? '未在播放',
+                          track?.title ?? tr('未在播放'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: text.bodyLarge?.copyWith(
@@ -73,7 +74,7 @@ class PlayerBar extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          track?.artist ?? '选择一首歌开始播放',
+                          track?.artist ?? tr('选择一首歌开始播放'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: text.bodySmall,
@@ -88,14 +89,14 @@ class PlayerBar extends StatelessWidget {
         ),
         if (track != null)
           IconButton(
-            tooltip: '分享歌曲',
+            tooltip: tr('分享歌曲'),
             onPressed: onShare == null ? null : () => onShare!(track),
             iconSize: 20,
             icon: const Icon(Icons.ios_share_rounded),
           ),
         if (track != null)
           IconButton(
-            tooltip: favorite ? '取消收藏' : '收藏',
+            tooltip: favorite ? tr('取消收藏') : tr('收藏'),
             onPressed: () => controller.toggleFavorite(track),
             iconSize: 20,
             icon: Icon(
@@ -138,7 +139,7 @@ class PlayerBar extends StatelessWidget {
                   SleepTimerButton(controller: controller),
                   if (lyrics != null && lyrics.lyricsAvailable)
                     IconButton(
-                      tooltip: lyrics.overlay ? '关闭桌面歌词' : '桌面歌词',
+                      tooltip: lyrics.overlay ? tr('关闭桌面歌词') : tr('桌面歌词'),
                       isSelected: lyrics.overlay,
                       onPressed: () =>
                           lyrics.configureOverlay(enabled: !lyrics.overlay),
@@ -150,7 +151,7 @@ class PlayerBar extends StatelessWidget {
                     ),
                   if (onToggleQueue != null)
                     IconButton(
-                      tooltip: queueOpen ? '收起播放队列' : '播放队列',
+                      tooltip: queueOpen ? tr('收起播放队列') : tr('播放队列'),
                       isSelected: queueOpen,
                       onPressed: onToggleQueue,
                       icon: const Icon(Icons.queue_music_rounded),
@@ -161,7 +162,7 @@ class PlayerBar extends StatelessWidget {
                     ),
                   Flexible(child: VolumeControl(controller: controller)),
                   IconButton(
-                    tooltip: '打开播放器',
+                    tooltip: tr('打开播放器'),
                     onPressed: controller.current == null ? null : onOpenPlayer,
                     icon: const Icon(Icons.open_in_full_rounded, size: 20),
                   ),
@@ -206,7 +207,7 @@ class PlayerBar extends StatelessWidget {
                   Expanded(child: _trackInfo(context, art: 44)),
                   PlayButton(controller: controller, size: 40),
                   IconButton(
-                    tooltip: '下一首',
+                    tooltip: tr('下一首'),
                     onPressed: controller.current == null
                         ? null
                         : controller.next,
@@ -241,7 +242,7 @@ class PlayButton extends StatelessWidget {
       dimension: size + 8,
       child: Center(
         child: IconButton.filled(
-          tooltip: playing ? '暂停' : '播放',
+          tooltip: playing ? tr('暂停') : tr('播放'),
           onPressed: controller.tracks.isEmpty && controller.queue.isEmpty
               ? null
               : controller.toggle,
@@ -286,10 +287,10 @@ class PlaybackControls extends StatelessWidget {
         if (!compact) ...[
           IconButton(
             tooltip: switch (controller.repeat) {
-              RepeatMode.sequential => '顺序播放',
-              RepeatMode.loop => '列表循环',
-              RepeatMode.single => '单曲循环',
-              RepeatMode.shuffle => '随机播放',
+              RepeatMode.sequential => tr('顺序播放'),
+              RepeatMode.loop => tr('列表循环'),
+              RepeatMode.single => tr('单曲循环'),
+              RepeatMode.shuffle => tr('随机播放'),
             },
             onPressed: controller.cycleRepeat,
             iconSize: large ? 24 : 20,
@@ -302,7 +303,7 @@ class PlaybackControls extends StatelessWidget {
           ),
           gap,
           IconButton(
-            tooltip: '上一首',
+            tooltip: tr('上一首'),
             onPressed: controller.current == null ? null : controller.previous,
             iconSize: iconSize,
             color: colors.onSurface,
@@ -313,7 +314,7 @@ class PlaybackControls extends StatelessWidget {
         PlayButton(controller: controller, size: large ? 64 : 36),
         gap,
         IconButton(
-          tooltip: '下一首',
+          tooltip: tr('下一首'),
           onPressed: controller.current == null ? null : controller.next,
           iconSize: iconSize,
           color: colors.onSurface,
@@ -343,8 +344,10 @@ class SleepTimerButton extends StatelessWidget {
     String two(int value) => value.toString().padLeft(2, '0');
     return PopupMenuButton<int>(
       tooltip: deadline == null
-          ? '定时暂停'
-          : '将在 ${two(deadline.hour)}:${two(deadline.minute)} 暂停',
+          ? tr('定时暂停')
+          : tr('将在 {time} 暂停', {
+              'time': '${two(deadline.hour)}:${two(deadline.minute)}',
+            }),
       iconSize: iconSize,
       icon: Icon(
         deadline == null ? Icons.bedtime_outlined : Icons.bedtime_rounded,
@@ -355,10 +358,15 @@ class SleepTimerButton extends StatelessWidget {
       ),
       itemBuilder: (_) => [
         for (final minutes in [15, 30, 45, 60, 90])
-          PopupMenuItem(value: minutes, child: Text('$minutes 分钟后暂停')),
+          PopupMenuItem(
+            value: minutes,
+            child: Text(
+              tr('{minutes} 分钟后暂停', {'minutes': minutes}),
+            ),
+          ),
         if (deadline != null) ...[
           const PopupMenuDivider(),
-          const PopupMenuItem(value: 0, child: Text('取消定时')),
+                PopupMenuItem(value: 0, child: Text(tr('取消定时'))),
         ],
       ],
     );
@@ -376,7 +384,7 @@ class VolumeControl extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          tooltip: volume == 0 ? '取消静音' : '静音',
+          tooltip: volume == 0 ? tr('取消静音') : tr('静音'),
           onPressed: () => controller.setVolume(volume == 0 ? 75 : 0),
           iconSize: 20,
           icon: Icon(
@@ -393,7 +401,8 @@ class VolumeControl extends StatelessWidget {
             child: Slider(
               value: volume.clamp(0, 100),
               max: 100,
-              semanticFormatterCallback: (value) => '音量 ${value.round()}%',
+              semanticFormatterCallback: (value) =>
+                  tr('音量 {percent}%', {'percent': value.round()}),
               onChanged: controller.setVolume,
             ),
           ),

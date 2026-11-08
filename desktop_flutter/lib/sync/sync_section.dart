@@ -1,12 +1,15 @@
+import '../i18n/tr.dart';
+
 enum SyncSection {
   favorites('favorites', '我喜欢', true),
   history('history', '播放历史', true),
   playlists('playlists', '本地歌单', true),
   credentials('credentials', '音乐平台登录', false);
 
-  const SyncSection(this.key, this.label, this.defaultAuto);
+  const SyncSection(this.key, this.rawLabel, this.defaultAuto);
   final String key;
-  final String label;
+  final String rawLabel;
+  String get label => tr(rawLabel);
   final bool defaultAuto;
 
   bool get isLibrary => this != credentials;
@@ -81,8 +84,9 @@ enum SyncStatus {
   remoteNewer('云端较新'),
   conflict('两端都有改动');
 
-  const SyncStatus(this.label);
-  final String label;
+  const SyncStatus(this.rawLabel);
+  final String rawLabel;
+  String get label => tr(rawLabel);
 }
 
 enum SyncAction { none, upload, pull }
@@ -116,15 +120,15 @@ String two(int value) => value.toString().padLeft(2, '0');
 
 /// 相对 + 绝对时间，例如“3 分钟前 · 2026-11-08 14:03”；0 表示从未。
 String describeTime(int milliseconds, DateTime now) {
-  if (milliseconds <= 0) return '从未';
+  if (milliseconds <= 0) return tr('从未');
   final time = DateTime.fromMillisecondsSinceEpoch(milliseconds);
   final difference = now.difference(time);
   final relative = difference.isNegative || difference.inSeconds < 60
-      ? '刚刚'
+      ? tr('刚刚')
       : difference.inMinutes < 60
-      ? '${difference.inMinutes} 分钟前'
+      ? tr('{minutes} 分钟前', {'minutes': difference.inMinutes})
       : difference.inHours < 24
-      ? '${difference.inHours} 小时前'
-      : '${difference.inDays} 天前';
+      ? tr('{hours} 小时前', {'hours': difference.inHours})
+      : tr('{days} 天前', {'days': difference.inDays});
   return '$relative · ${time.year}-${two(time.month)}-${two(time.day)} ${two(time.hour)}:${two(time.minute)}';
 }

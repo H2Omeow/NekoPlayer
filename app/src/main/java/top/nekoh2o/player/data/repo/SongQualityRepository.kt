@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.repo
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -25,14 +27,14 @@ class SongQualityRepository internal constructor(
         }
         CookieStore.awaitReady();ApiFactory.awaitReady()
         if(song.source=="kugou") {
-            require(song.hash.matches(Regex("[a-fA-F0-9]{32}"))) { "歌曲缺少酷狗 hash，请重新搜索该歌曲" }
+            require(song.hash.matches(Regex("[a-fA-F0-9]{32}"))) { tr("歌曲缺少酷狗 hash，请重新搜索该歌曲") }
             KugouRepository().ensureInitialized()
             val body=ApiFactory.kugou.get("privilege/lite",CookieStore.kgPlatformValue(),mapOf(
                 "hash" to song.hash,"album_id" to song.albumId.ifBlank { "0" },"behavior" to if(download) "download" else "play")).kugouBody()
             return kugouCandidates(body)
         }
         val body=native.get("song/music/detail",mapOf("id" to song.id.toString()))
-        if(body.text("code")!="200") throw IOException(body.text("message","msg").ifBlank { "音质信息获取失败" })
+        if(body.text("code")!="200") throw IOException(body.text("message","msg").ifBlank { tr("音质信息获取失败") })
         return neteaseCandidates(body)
     }
 
@@ -100,10 +102,10 @@ class SongQualityRepository internal constructor(
     companion object {
         internal val ncLevels=listOf("standard","higher","exhigh","lossless","hires","jyeffect","sky","jymaster","dolby")
         private val ncFields=listOf("l","m","h","sq","hr","je","sk","jm","db")
-        private val ncLabels=listOf("标准 128k","较高 192k","极高 320k","无损 SQ","Hi-Res","高清臻音","沉浸环绕声","超清母带","臻音全景声")
-        internal val kgLabels=linkedMapOf("128" to ("标准 128k" to 0),"320" to ("高品质 320k" to 2),"flac" to ("无损 FLAC" to 3),
-            "high" to ("Hi-Res" to 4),"viper_atmos" to ("全景声" to 5),"viper_tape" to ("蝰蛇磁带" to 5),
-            "viper_clear" to ("蝰蛇超清" to 6),"super" to ("超清母带" to 7))
+        private val ncLabels=listOf(tr("标准 128k"),tr("较高 192k"),tr("极高 320k"),tr("无损 SQ"),"Hi-Res",tr("高清臻音"),tr("沉浸环绕声"),tr("超清母带"),tr("臻音全景声"))
+        internal val kgLabels=linkedMapOf("128" to (tr("标准 128k") to 0),"320" to (tr("高品质 320k") to 2),"flac" to (tr("无损 FLAC") to 3),
+            "high" to ("Hi-Res" to 4),"viper_atmos" to (tr("全景声") to 5),"viper_tape" to (tr("蝰蛇磁带") to 5),
+            "viper_clear" to (tr("蝰蛇超清") to 6),"super" to (tr("超清母带") to 7))
         internal fun preferredFor(source: String, preferred: String): String = if (source.startsWith("animemusic-")) mapOf(
             "standard" to "128k", "higher" to "192k", "exhigh" to "320k", "lossless" to "flac", "hires" to "hires"
         )[preferred] ?: preferred else if(source!="kugou") preferred else mapOf(

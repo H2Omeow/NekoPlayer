@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -57,7 +58,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
+              child:       Text(tr('取消')),
             ),
             FilledButton(
               style: destructive
@@ -81,10 +82,14 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     final sections = Set.of(selected);
     final credentials = sections.contains(SyncSection.credentials);
     if (await confirm(
-          '上传到云端？',
-          '将用本机的「${names(sections)}」覆盖云端对应数据，云端多出的条目会被删除。'
-              '${credentials ? '\n\n登录 Cookie 将上传至本站服务器，请确认这是你信任的设备。' : ''}',
-          '上传',
+          tr('上传到云端？'),
+          tr('将用本机的「{sections}」覆盖云端对应数据，云端多出的条目会被删除。{credentials}', {
+            'sections': names(sections),
+            'credentials': credentials
+                ? '\n\n${tr('登录 Cookie 将上传至本站服务器，请确认这是你信任的设备。')}'
+                : '',
+          }),
+          tr('上传'),
         ) &&
         mounted) {
       await controller.upload(sections);
@@ -95,10 +100,14 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     final sections = Set.of(selected);
     final credentials = sections.contains(SyncSection.credentials);
     if (await confirm(
-          '从云端拉取？',
-          '将用云端的「${names(sections)}」覆盖本机对应数据，本机多出的条目会被删除。'
-              '${credentials ? '\n\n本机的网易云 / 酷狗登录将被云端的登录替换。' : ''}',
-          '拉取',
+          tr('从云端拉取？'),
+          tr('将用云端的「{sections}」覆盖本机对应数据，本机多出的条目会被删除。{credentials}', {
+            'sections': names(sections),
+            'credentials': credentials
+                ? '\n\n${tr('本机的网易云 / 酷狗登录将被云端的登录替换。')}'
+                : '',
+          }),
+          tr('拉取'),
         ) &&
         mounted) {
       await controller.pull(sections);
@@ -110,7 +119,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
     final value = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('导入登录令牌'),
+        title:       Text(tr('导入登录令牌')),
         content: SizedBox(
           width: 420,
           child: TextField(
@@ -119,19 +128,19 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
             autocorrect: false,
             enableSuggestions: false,
             autofocus: true,
-            decoration: const InputDecoration(
-              hintText: '令牌或 nekoplayer://auth 回调链接',
+            decoration:       InputDecoration(
+              hintText: tr('令牌或 nekoplayer://auth 回调链接'),
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child:       Text(tr('取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, input.text),
-            child: const Text('验证并导入'),
+            child:       Text(tr('验证并导入')),
           ),
         ],
       ),
@@ -142,9 +151,9 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
 
   Future<void> logout() async {
     if (await confirm(
-          '退出 NekoPlayer 账号？',
-          '本机将不再同步；本机的音乐库与平台登录不会被删除。',
-          '退出',
+          tr('退出 NekoPlayer 账号？'),
+          tr('本机将不再同步；本机的音乐库与平台登录不会被删除。'),
+          tr('退出'),
           destructive: true,
         ) &&
         mounted) {
@@ -163,7 +172,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
           controller.signedIn && !controller.busy && selected.isNotEmpty;
       final text = Theme.of(context).textTheme;
       return DetailPage(
-        title: '账号与云端同步',
+        title: tr('账号与云端同步'),
         children: [
           _AccountCard(
             site: site,
@@ -179,17 +188,16 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
               action: site.busy
                   ? TextButton(
                       onPressed: site.cancelLogin,
-                      child: const Text('取消'),
+                      child:       Text(tr('取消')),
                     )
                   : null,
             ),
           ],
           const SizedBox(height: NekoSpace.xl),
           SettingsSection(
-            title: '同步内容',
+            title: tr('同步内容'),
             description:
-                '勾选的数据用于下方的手动操作。自动同步只处理单边改动；'
-                '两端都改过时会标记冲突，等你选择方向。',
+                tr('勾选的数据用于下方的手动操作。自动同步只处理单边改动；') + tr('两端都改过时会标记冲突，等你选择方向。'),
             children: [
               for (final section in SyncSection.values)
                 _SectionTile(
@@ -218,28 +226,30 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
               FilledButton.icon(
                 onPressed: enabled ? upload : null,
                 icon: const Icon(Icons.cloud_upload_outlined, size: 18),
-                label: const Text('上传到云端'),
+                label:       Text(tr('上传到云端')),
               ),
               FilledButton.tonalIcon(
                 onPressed: enabled ? pull : null,
                 icon: const Icon(Icons.cloud_download_outlined, size: 18),
-                label: const Text('从云端拉取'),
+                label:       Text(tr('从云端拉取')),
               ),
               OutlinedButton.icon(
                 onPressed: enabled
                     ? () => controller.merge(Set.of(selected))
                     : null,
                 icon: const Icon(Icons.merge_type_rounded, size: 18),
-                label: const Text('合并两端'),
+                label:       Text(tr('合并两端')),
               ),
             ],
           ),
           const SizedBox(height: NekoSpace.sm),
           Text(
             selected.isEmpty
-                ? '先勾选要操作的数据。'
-                : '已选 ${names(selected)}。上传 / 拉取会让对方与这一端完全一致（包括删除）；'
-                      '合并保留两端的全部条目，适合第一次同步或处理冲突。',
+                ? tr('先勾选要操作的数据。')
+                : tr('已选 {sections}。上传 / 拉取会让对方与这一端完全一致（包括删除）；', {
+                        'sections': names(selected),
+                      }) +
+                      tr('合并保留两端的全部条目，适合第一次同步或处理冲突。'),
             style: text.bodySmall,
           ),
           if (controller.error != null || controller.results.isNotEmpty) ...[
@@ -259,7 +269,7 @@ class _CloudSyncPageState extends State<CloudSyncPage> {
               ),
           ],
           const SizedBox(height: NekoSpace.lg),
-          Text('本地音频文件及其路径不会上传。', style: text.bodySmall),
+          Text(tr('本地音频文件及其路径不会上传。'), style: text.bodySmall),
         ],
       );
     },
@@ -291,13 +301,15 @@ class _AccountCard extends StatelessWidget {
     final busy = site.busy || sync.busy;
     final readable = site.accounts.readable;
     final title = !signedIn
-        ? '未登录'
+        ? tr('未登录')
         : name.isEmpty
-        ? '已保存登录凭据'
+        ? tr('已保存登录凭据')
         : name;
     final subtitle = !signedIn
-        ? '登录后，收藏、歌单、播放记录和平台登录可以在设备间同步。'
-        : '上次检查云端：${describeTime(sync.lastCheckedAt, DateTime.now())}';
+        ? tr('登录后，收藏、歌单、播放记录和平台登录可以在设备间同步。')
+        : tr('上次检查云端：{time}', {
+            'time': describeTime(sync.lastCheckedAt, DateTime.now()),
+          });
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(NekoSpace.xl),
@@ -350,19 +362,19 @@ class _AccountCard extends StatelessWidget {
                       OutlinedButton.icon(
                         onPressed: busy ? null : sync.refresh,
                         icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text('刷新云端状态'),
+                        label:       Text(tr('刷新云端状态')),
                       ),
                       if (name.isEmpty)
                         TextButton(
                           onPressed: busy ? null : site.refresh,
-                          child: const Text('验证账号'),
+                          child:       Text(tr('验证账号')),
                         ),
                       TextButton(
                         style: TextButton.styleFrom(
                           foregroundColor: colors.error,
                         ),
                         onPressed: busy ? null : onLogout,
-                        child: const Text('退出登录'),
+                        child:       Text(tr('退出登录')),
                       ),
                     ]
                   : [
@@ -372,11 +384,11 @@ class _AccountCard extends StatelessWidget {
                           Icons.open_in_browser_rounded,
                           size: 18,
                         ),
-                        label: const Text('在浏览器中登录'),
+                        label:       Text(tr('在浏览器中登录')),
                       ),
                       TextButton(
                         onPressed: busy || !readable ? null : onImportToken,
-                        child: const Text('导入令牌'),
+                        child:       Text(tr('导入令牌')),
                       ),
                     ],
             ),
@@ -410,13 +422,18 @@ class _SectionTile extends StatelessWidget {
     final now = DateTime.now();
     final checked = controller.remote.isNotEmpty;
     final cloud = !checked
-        ? '未检查'
+        ? tr('未检查')
         : remote == null || !remote.hasData
-        ? '暂无数据'
-        : '${remote.count} 项 · ${describeTime(remote.updatedAt, now)}'
-              '${remote.device.isEmpty ? '' : ' · ${remote.device}'}';
-    final local =
-        '${controller.localCount(section)} 项 · ${describeTime(state.localUpdatedAt, now)}';
+        ? tr('暂无数据')
+        : tr('{count} 项 · {time}{device}', {
+            'count': remote.count,
+            'time': describeTime(remote.updatedAt, now),
+            'device': remote.device.isEmpty ? '' : ' · ${remote.device}',
+          });
+    final local = tr('{count} 项 · {time}', {
+      'count': controller.localCount(section),
+      'time': describeTime(state.localUpdatedAt, now),
+    });
     Widget side(IconData icon, String label, String value) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -456,13 +473,13 @@ class _SectionTile extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: NekoSpace.xs),
-                  side(Icons.computer_rounded, '本机', local),
+                  side(Icons.computer_rounded, tr('本机'), local),
                   const SizedBox(height: 2),
-                  side(Icons.cloud_outlined, '云端', cloud),
+                  side(Icons.cloud_outlined, tr('云端'), cloud),
                   if (section == SyncSection.credentials) ...[
                     const SizedBox(height: NekoSpace.xs),
                     Text(
-                      '包含网易云 / 酷狗的登录 Cookie，只在信任的设备上开启。',
+                      tr('包含网易云 / 酷狗的登录 Cookie，只在信任的设备上开启。'),
                       style: text.bodySmall?.copyWith(color: colors.error),
                     ),
                   ],
@@ -477,7 +494,7 @@ class _SectionTile extends StatelessWidget {
                   value: state.autoSync,
                   onChanged: (value) => controller.setAuto(section, value),
                 ),
-                Text('自动同步', style: text.labelSmall),
+                Text(tr('自动同步'), style: text.labelSmall),
               ],
             ),
           ],

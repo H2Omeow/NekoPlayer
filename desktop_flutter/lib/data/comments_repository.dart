@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
@@ -146,7 +147,7 @@ class CommentsRepository {
     }
     await catalog.initializeProvider(MusicProvider.kugou);
     if ((int.tryParse(song.albumAudioId) ?? 0) <= 0) {
-      throw const MusicSearchException('缺少酷狗评论资源标识，请重新搜索歌曲。');
+      throw       MusicSearchException(tr('缺少酷狗评论资源标识，请重新搜索歌曲。'));
     }
     final body = await catalog.kugouApi(
       parent == null ? '/mcomment/v1/cmtlist' : '/mcomment/v1/hot_replylist',
@@ -233,19 +234,19 @@ class CommentsRepository {
   }
 
   void _requireAccount(CommentSource source) {
-    if (!loggedIn(source)) throw const MusicSearchException('请先登录对应平台账号。');
+    if (!loggedIn(source)) throw       MusicSearchException(tr('请先登录对应平台账号。'));
   }
 
   static void _checkNc(Map<String, dynamic> body) {
     if (number(body['code']) != 200) {
-      throw const MusicSearchException('网易云未确认评论操作成功，请检查登录与权限。');
+      throw       MusicSearchException(tr('网易云未确认评论操作成功，请检查登录与权限。'));
     }
   }
 
   static void _checkKg(Map<String, dynamic> body) {
     if (number(body['status']) != 1 ||
         number(body['error_code'] ?? body['errcode']) != 0) {
-      throw const MusicSearchException('酷狗未确认评论操作成功，请检查登录与权限。');
+      throw       MusicSearchException(tr('酷狗未确认评论操作成功，请检查登录与权限。'));
     }
   }
 
@@ -260,7 +261,7 @@ class CommentsRepository {
     _requireAccount(source);
     content = content.trim();
     if (content.isEmpty || content.length > 2000) {
-      throw const MusicSearchException('评论需为 1–2000 个字符。');
+      throw       MusicSearchException(tr('评论需为 1–2000 个字符。'));
     }
     if (source == CommentSource.site) {
       await site.commentRequest(
@@ -287,7 +288,7 @@ class CommentsRepository {
       );
     } else {
       if (page.specialId.isEmpty) {
-        throw const MusicSearchException('缺少酷狗评论资源，请刷新后重试。');
+        throw       MusicSearchException(tr('缺少酷狗评论资源，请刷新后重试。'));
       }
       final session = catalog.accounts.kugou();
       final lite = catalog.accounts.platform == 1;
@@ -368,7 +369,7 @@ class CommentsRepository {
         ),
       );
     } else {
-      throw const MusicSearchException('酷狗点赞接口尚未验证，暂不开放。');
+      throw       MusicSearchException(tr('酷狗点赞接口尚未验证，暂不开放。'));
     }
   }
 
@@ -379,7 +380,7 @@ class CommentsRepository {
   ) async {
     _checkSong(source, song);
     _requireAccount(source);
-    if (!comment.owned) throw const MusicSearchException('只能删除本人评论。');
+    if (!comment.owned) throw       MusicSearchException(tr('只能删除本人评论。'));
     if (source == CommentSource.site) {
       await site.commentRequest(
         'comments/${comment.id}',
@@ -394,7 +395,7 @@ class CommentsRepository {
         }, weapi: true),
       );
     } else {
-      throw const MusicSearchException('酷狗删除接口尚未验证，暂不开放。');
+      throw       MusicSearchException(tr('酷狗删除接口尚未验证，暂不开放。'));
     }
   }
 
@@ -405,7 +406,7 @@ class CommentsRepository {
             !RegExp(r'^\d+$').hasMatch(song.id)) ||
         (source == CommentSource.kugou &&
             !RegExp(r'^[a-fA-F0-9]{32}$').hasMatch(song.hash))) {
-      throw const MusicSearchException('评论歌曲与平台不匹配，请重新选择歌曲。');
+      throw       MusicSearchException(tr('评论歌曲与平台不匹配，请重新选择歌曲。'));
     }
   }
 }

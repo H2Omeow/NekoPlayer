@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import '../domain/audio_effects.dart';
 import '../domain/mastering_presets.dart';
 
@@ -23,7 +24,7 @@ class LegacyAudioEffects {
       if (raw == null) return fallback;
       final value = double.tryParse(raw);
       if (value == null || !value.isFinite || value < 0 || value > 100) {
-        throw FormatException('旧版音效参数 $key 超出范围（0–100）。');
+        throw FormatException(tr('旧版音效参数 {key} 超出范围（0–100）。', {'key': key}));
       }
       return value;
     }
@@ -34,7 +35,7 @@ class LegacyAudioEffects {
     if (rawBands == null && presetName != null && presetName.isNotEmpty) {
       final preset = AudioEffects.presets[presetName];
       if (preset == null) {
-        throw const FormatException('旧版均衡器预设不存在，未导入音效。');
+        throw       FormatException(tr('旧版均衡器预设不存在，未导入音效。'));
       }
       bands = List<double>.of(preset);
     }
@@ -45,7 +46,7 @@ class LegacyAudioEffects {
             (value) =>
                 value == null || !value.isFinite || value < -15 || value > 15,
           )) {
-        throw const FormatException('旧版均衡器必须包含 10 段有限数值（−15–15 dB）。');
+        throw       FormatException(tr('旧版均衡器必须包含 10 段有限数值（−15–15 dB）。'));
       }
       bands = parsed.cast<double>();
     }
@@ -53,7 +54,7 @@ class LegacyAudioEffects {
     final mastering = rawMastering == null ? 0 : int.tryParse(rawMastering);
     if (mastering == null ||
         mastering != 0 && MasteringPreset.find(mastering) == null) {
-      throw const FormatException('旧版母带预设未实现或无效，未导入音效；请在旧版关闭母带后重试。');
+      throw       FormatException(tr('旧版母带预设未实现或无效，未导入音效；请在旧版关闭母带后重试。'));
     }
     return AudioEffects(
       eq: bands,

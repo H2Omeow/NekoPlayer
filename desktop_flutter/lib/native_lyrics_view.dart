@@ -1,3 +1,4 @@
+import './i18n/tr.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -42,17 +43,17 @@ class NativeLyricsView {
 
   /// Returns null when the embedded view can be used, otherwise the reason.
   Future<String?> unavailableReason() async {
-    if (!Platform.isLinux && !Platform.isWindows) return '当前平台暂不支持内嵌动态歌词';
+    if (!Platform.isLinux && !Platform.isWindows) return tr('当前平台暂不支持内嵌动态歌词');
     try {
       final result = await _channel.invokeMapMethod<String, Object?>(
         'isAvailable',
       );
       if (result?['available'] == true) return null;
-      return result?['reason'] as String? ?? '系统缺少内嵌网页组件';
+      return result?['reason'] as String? ?? tr('系统缺少内嵌网页组件');
     } on MissingPluginException {
-      return '当前版本不包含内嵌网页组件';
+      return tr('当前版本不包含内嵌网页组件');
     } on PlatformException catch (error) {
-      return error.message ?? '内嵌网页组件不可用';
+      return error.message ?? tr('内嵌网页组件不可用');
     }
   }
 
@@ -69,12 +70,12 @@ class NativeLyricsView {
         'background': background.toARGB32(),
       });
       if (result?['ok'] != true) {
-        throw LyricsViewException(result?['reason'] as String? ?? '无法创建内嵌网页');
+        throw LyricsViewException(result?['reason'] as String? ?? tr('无法创建内嵌网页'));
       }
     } on MissingPluginException {
-      throw const LyricsViewException('当前版本不包含内嵌网页组件');
+      throw       LyricsViewException(tr('当前版本不包含内嵌网页组件'));
     } on PlatformException catch (error) {
-      throw LyricsViewException(error.message ?? '无法创建内嵌网页');
+      throw LyricsViewException(error.message ?? tr('无法创建内嵌网页'));
     }
     return _current = LyricsViewSession._(this);
   }

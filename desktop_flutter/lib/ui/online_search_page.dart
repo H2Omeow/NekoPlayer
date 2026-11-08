@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -81,31 +82,33 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
     return [
       if (widget.onEnqueue != null)
         SongAction(
-          '加入播放队列',
+          tr('加入播放队列'),
           Icons.playlist_play_rounded,
           () => widget.onEnqueue!(song),
         ),
       if (widget.onFavorite != null)
         SongAction(
-          widget.isFavorite?.call(song) == true ? '取消收藏' : '收藏',
+          widget.isFavorite?.call(song) == true
+              ? tr('取消收藏')
+              : tr('收藏'),
           Icons.favorite_border_rounded,
           () => toggleFavorite(song),
         ),
       if (widget.onPlaylist != null)
         SongAction(
-          '添加到歌单…',
+          tr('添加到歌单…'),
           Icons.playlist_add_rounded,
           () => widget.onPlaylist!(song),
         ),
       if (widget.onDownload != null)
         SongAction(
-          '下载',
+          tr('下载'),
           Icons.download_rounded,
           () => widget.onDownload!(song),
         ),
       if (widget.onComments != null)
         SongAction(
-          '查看评论',
+          tr('查看评论'),
           Icons.chat_bubble_outline_rounded,
           () => widget.onComments!(song),
         ),
@@ -125,13 +128,13 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
       final gutter = pageGutter(context);
       final shortcuts = [
         if (widget.onBrowse != null)
-          (Icons.album_outlined, '歌手、专辑与歌单', widget.onBrowse!),
+          (Icons.album_outlined, tr('歌手、专辑与歌单'), widget.onBrowse!),
         if (widget.onAccountLibrary != null)
-          (Icons.cloud_outlined, '我的平台曲库', widget.onAccountLibrary!),
+          (Icons.cloud_outlined, tr('我的平台曲库'), widget.onAccountLibrary!),
         if (widget.onVideos != null)
-          (Icons.smart_display_outlined, '音乐 MV', widget.onVideos!),
+          (Icons.smart_display_outlined, tr('音乐 MV'), widget.onVideos!),
         if (widget.onSubscriptions != null)
-          (Icons.extension_outlined, '音源管理', widget.onSubscriptions!),
+          (Icons.extension_outlined, tr('音源管理'), widget.onSubscriptions!),
       ];
       return NotificationListener<ScrollEndNotification>(
         onNotification: (notification) {
@@ -152,7 +155,7 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const PageHeader(title: '发现', bottom: NekoSpace.lg),
+                          PageHeader(title: tr('发现'), bottom: NekoSpace.lg),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 720),
                       child: TextField(
@@ -164,7 +167,7 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
                             unawaited(controller.search(value)),
                         style: Theme.of(context).textTheme.bodyLarge,
                         decoration: InputDecoration(
-                          hintText: '搜索歌曲、歌手或专辑',
+                          hintText: tr('搜索歌曲、歌手或专辑'),
                           counterText: '',
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: NekoSpace.lg,
@@ -192,7 +195,7 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
                             child: Icon(Icons.search_rounded),
                           ),
                           suffixIcon: IconButton(
-                            tooltip: '搜索',
+                            tooltip: tr('搜索'),
                             onPressed: () =>
                                 unawaited(controller.search(input.text)),
                             icon: const Icon(Icons.arrow_forward_rounded),
@@ -266,13 +269,13 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
                             ? Icons.wifi_off_rounded
                             : Icons.search_off_rounded,
                         title: controller.loading
-                            ? '正在搜索…'
+                            ? tr('正在搜索…')
                             : controller.error != null
-                            ? '搜索没有完成'
-                            : '没有找到相关歌曲',
+                            ? tr('搜索没有完成')
+                            : tr('没有找到相关歌曲'),
                         description: controller.error != null
-                            ? '可以重新搜索，或切换到其他音源。'
-                            : '换个关键词，或切换音源试试。',
+                            ? tr('可以重新搜索，或切换到其他音源。')
+                            : tr('换个关键词，或切换音源试试。'),
                       ),
               )
             else
@@ -296,11 +299,11 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
                                       ? null
                                       : controller.loadMore,
                                   child: Text(
-                                    controller.loading ? '正在加载…' : '加载更多',
+                                    controller.loading ? tr('正在加载…') : tr('加载更多'),
                                   ),
                                 )
                               : Text(
-                                  '已显示全部结果',
+                                  tr('已显示全部结果'),
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                         ),
@@ -352,7 +355,7 @@ class _Shortcuts extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (items.isNotEmpty) ...[
-            Text('浏览', style: text.titleLarge),
+            Text(tr('浏览'), style: text.titleLarge),
             const SizedBox(height: NekoSpace.md),
             Wrap(
               spacing: NekoSpace.md,
@@ -393,7 +396,7 @@ class _Shortcuts extends StatelessWidget {
           const Spacer(),
           Center(
             child: Text(
-              '输入关键词，发现下一首喜欢的歌。',
+              tr('输入关键词，发现下一首喜欢的歌。'),
               style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
             ),
           ),

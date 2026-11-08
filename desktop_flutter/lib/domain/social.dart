@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import '../data/cloud_library.dart';
 import '../domain/library.dart';
 
@@ -43,7 +44,7 @@ class SocialProfile {
       ? nickname
       : username.isNotEmpty
       ? username
-      : '用户';
+      : tr('用户');
 
   SocialProfile copyWith({
     int? followers,
@@ -98,7 +99,7 @@ class ShareOptions {
 }
 
 class SocialShare {
-  const SocialShare({
+        SocialShare({
     required this.token,
     this.url = '',
     this.appUrl = '',

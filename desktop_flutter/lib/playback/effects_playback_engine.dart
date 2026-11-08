@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -57,7 +58,7 @@ class EffectsPlaybackEngine extends PlaybackEngine {
       }
     } catch (_) {
       _settingsReadable = false;
-      effectsError = '音效设置读取失败，已保留原配置；本次修改不覆盖它。';
+      effectsError = tr('音效设置读取失败，已保留原配置；本次修改不覆盖它。');
     }
   }
 
@@ -99,12 +100,12 @@ class EffectsPlaybackEngine extends PlaybackEngine {
         try {
           await write;
         } catch (_) {
-          effectsError = '音效已应用，但设置保存失败。';
+          effectsError = tr('音效已应用，但设置保存失败。');
         }
       }
     } catch (_) {
       professional.configure(previous);
-      effectsError = '音效切换失败，已保留原播放模式。请确认同架构解码组件完整，且音频设备可用。';
+      effectsError = tr('音效切换失败，已保留原播放模式。请确认同架构解码组件完整，且音频设备可用。');
     } finally {
       changing = false;
       if (!_disposed) notifyListeners();
@@ -113,7 +114,7 @@ class EffectsPlaybackEngine extends PlaybackEngine {
 
   Future<void> importParameters(AudioEffects imported) async {
     if (!_settingsReadable || changing || _disposed) {
-      throw StateError('音效设置不可写或正在切换，未导入。');
+      throw StateError(tr('音效设置不可写或正在切换，未导入。'));
     }
     final snapshot = AudioEffects.fromJson(imported.toJson());
     await configure(snapshot.copyWith(enabled: effects.enabled));

@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 
 import '../data/account_store.dart';
@@ -50,7 +51,7 @@ class SocialRepository {
     );
     final value = created['conversation'];
     if (value is! Map<String, dynamic>) {
-      throw const MusicSearchException('无法创建会话。');
+      throw       MusicSearchException(tr('无法创建会话。'));
     }
     return SocialConversation.fromJson(value);
   }
@@ -99,7 +100,7 @@ class SocialRepository {
     );
     final value = body['message'];
     if (value is! Map<String, dynamic>) {
-      throw const MusicSearchException('消息发送失败。');
+      throw       MusicSearchException(tr('消息发送失败。'));
     }
     return SocialMessage.fromJson(value);
   }
@@ -122,7 +123,7 @@ class SocialRepository {
     final body = await _call('social/users/${Uri.encodeComponent(id)}');
     final value = body['profile'];
     if (value is! Map<String, dynamic>) {
-      throw const MusicSearchException('用户不存在。');
+      throw       MusicSearchException(tr('用户不存在。'));
     }
     return SocialProfile.fromJson(value);
   }
@@ -177,7 +178,7 @@ class SocialRepository {
     );
     final share = body['share'];
     if (share is! Map<String, dynamic>) {
-      throw const MusicSearchException('分享创建失败。');
+      throw       MusicSearchException(tr('分享创建失败。'));
     }
     return SocialShare.fromJson(share);
   }
@@ -189,7 +190,7 @@ class SocialRepository {
     );
     final share = body['share'];
     if (share is! Map<String, dynamic>) {
-      throw const MusicSearchException('分享不存在。');
+      throw       MusicSearchException(tr('分享不存在。'));
     }
     return SocialShare.fromJson(share);
   }

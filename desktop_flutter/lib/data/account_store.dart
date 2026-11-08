@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:convert';
 import 'dart:math';
 
@@ -120,7 +121,7 @@ class AccountStore extends ChangeNotifier {
 
   static Map<String, String> parseCookies(String raw) {
     if (raw.length > 16384 || raw.contains(RegExp(r'[\x00-\x1f\x7f]'))) {
-      throw const FormatException('Cookie 必须为单行文本且不超过 16KB。');
+      throw       FormatException(tr('Cookie 必须为单行文本且不超过 16KB。'));
     }
     final result = <String, String>{};
     for (final part
@@ -129,10 +130,10 @@ class AccountStore extends ChangeNotifier {
             .split(';')) {
       if (part.trim().isEmpty) continue;
       final separator = part.indexOf('=');
-      if (separator <= 0) throw const FormatException('Cookie 格式无效。');
+      if (separator <= 0) throw       FormatException(tr('Cookie 格式无效。'));
       final name = part.substring(0, separator).trim();
       if (result.containsKey(name)) {
-        throw const FormatException('Cookie 包含重复字段。');
+        throw       FormatException(tr('Cookie 包含重复字段。'));
       }
       result[name] = part.substring(separator + 1).trim();
     }
@@ -215,7 +216,7 @@ class AccountStore extends ChangeNotifier {
     if (token.length < 16 ||
         token.length > 16384 ||
         token.contains(RegExp(r'[^\x21-\x7e]'))) {
-      throw const FormatException('本站令牌格式无效。');
+      throw       FormatException(tr('本站令牌格式无效。'));
     }
   }
 
@@ -223,11 +224,11 @@ class AccountStore extends ChangeNotifier {
     for (final entry in values.entries) {
       if (['MUSIC_U', 'token'].contains(entry.key) &&
           ['null', 'undefined'].contains(entry.value)) {
-        throw const FormatException('登录凭据无效。');
+        throw       FormatException(tr('登录凭据无效。'));
       }
       if (!RegExp(r'^[A-Za-z0-9_]+$').hasMatch(entry.key) ||
           entry.value.contains(RegExp(r'[;\x00-\x20\x7f-\uffff]'))) {
-        throw const FormatException('Cookie 包含无效字符。');
+        throw       FormatException(tr('Cookie 包含无效字符。'));
       }
     }
   }
@@ -242,9 +243,9 @@ class AccountStore extends ChangeNotifier {
     String? expectedSiteToken,
   }) {
     final command = _writes.then((_) async {
-      if (!readable) throw StateError('系统凭据库不可用或原数据损坏；为保护账号，未覆盖原数据。');
+      if (!readable) throw StateError(tr('系统凭据库不可用或原数据损坏；为保护账号，未覆盖原数据。'));
       if (expectedSiteToken != null && expectedSiteToken != _siteToken) {
-        throw const FormatException('本站账号已切换，已取消旧账号操作。');
+        throw       FormatException(tr('本站账号已切换，已取消旧账号操作。'));
       }
       if (platform != null && (platform < 0 || platform > 1)) {
         throw const FormatException('Invalid platform');
@@ -284,14 +285,14 @@ class AccountStore extends ChangeNotifier {
       for (final session in kugou) Map<String, String>.of(session),
     ];
     final command = _writes.then((_) async {
-      if (!readable) throw StateError('系统凭据库不可用或原数据损坏；为保护账号，未覆盖原数据。');
+      if (!readable) throw StateError(tr('系统凭据库不可用或原数据损坏；为保护账号，未覆盖原数据。'));
       if (expectedSiteToken != _siteToken) {
-        throw const FormatException('本站账号已切换，已取消旧账号操作。');
+        throw       FormatException(tr('本站账号已切换，已取消旧账号操作。'));
       }
       if (incomingKugou.length != 2 ||
           preferredPlatform < 0 ||
           preferredPlatform > 1) {
-        throw const FormatException('云端账号平台无效。');
+        throw       FormatException(tr('云端账号平台无效。'));
       }
       _validate(incomingNetease);
       for (final session in incomingKugou) {
@@ -334,13 +335,13 @@ class AccountStore extends ChangeNotifier {
         ? null
         : [for (final item in kugou) item == null ? null : Map.of(item)];
     final command = _writes.then((_) async {
-      if (!readable) throw StateError('系统凭据库不可用或原数据损坏；为保护账号，未覆盖原数据。');
+      if (!readable) throw StateError(tr('系统凭据库不可用或原数据损坏；为保护账号，未覆盖原数据。'));
       if (expectedSiteToken != _siteToken) {
-        throw const FormatException('本站账号已切换，已取消旧账号操作。');
+        throw       FormatException(tr('本站账号已切换，已取消旧账号操作。'));
       }
       if ((incomingKugou != null && incomingKugou.length != 2) ||
           (platform != null && (platform < 0 || platform > 1))) {
-        throw const FormatException('云端账号平台无效。');
+        throw       FormatException(tr('云端账号平台无效。'));
       }
       if (incomingNetease != null) _validate(incomingNetease);
       for (final session in incomingKugou ?? const <Map<String, String>?>[]) {

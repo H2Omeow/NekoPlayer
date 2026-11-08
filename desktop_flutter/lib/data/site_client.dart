@@ -1,3 +1,5 @@
+import '../i18n/app_language.dart';
+import '../i18n/tr.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -54,26 +56,26 @@ class SiteClient {
         );
       }
       if (response['code'] != expectedCode) {
-        throw const MusicSearchException('本站未确认操作成功，请检查登录状态后重试。');
+        throw       MusicSearchException(tr('本站未确认操作成功，请检查登录状态后重试。'));
       }
       return response;
     } on HandshakeException {
-      throw const MusicSearchException(
-        '本站 TLS 证书验证失败。请联系站点维护者检查证书；客户端不会忽略安全校验。',
+      throw       MusicSearchException(
+        tr('本站 TLS 证书验证失败。请联系站点维护者检查证书；客户端不会忽略安全校验。'),
       );
     } on IOException {
-      throw const MusicSearchException('无法连接本站，请检查网络。');
+      throw       MusicSearchException(tr('无法连接本站，请检查网络。'));
     } on TimeoutException {
-      throw const MusicSearchException('本站请求超时，请稍后重试。');
+      throw       MusicSearchException(tr('本站请求超时，请稍后重试。'));
     } on FormatException {
-      throw const MusicSearchException('本站响应格式异常，未修改本地数据。');
+      throw       MusicSearchException(tr('本站响应格式异常，未修改本地数据。'));
     }
   }
 
   Future<Map<String, dynamic>> me(String token) async {
     final body = await _request('auth/sso/me', token);
     if (body['user'] is! Map<String, dynamic>) {
-      throw const MusicSearchException('登录令牌无效或已过期。');
+      throw       MusicSearchException(tr('登录令牌无效或已过期。'));
     }
     return body['user'] as Map<String, dynamic>;
   }
@@ -82,7 +84,7 @@ class SiteClient {
     final body = await _request('user/data', token);
     if (body['data'] == null) return {};
     if (body['data'] is! Map<String, dynamic>) {
-      throw const MusicSearchException('云端数据格式异常。');
+      throw       MusicSearchException(tr('云端数据格式异常。'));
     }
     return body['data'] as Map<String, dynamic>;
   }
@@ -94,7 +96,7 @@ class SiteClient {
     final body = await _request('user/data', token);
     final data = body['data'] ?? {};
     if (data is! Map<String, dynamic>) {
-      throw const MusicSearchException('云端数据格式异常。');
+      throw       MusicSearchException(tr('云端数据格式异常。'));
     }
     final meta = body['meta'] ?? data['meta'];
     return (
@@ -138,7 +140,7 @@ class SiteClient {
       allowAnonymous: true,
     );
     final rows = body['data'];
-    if (rows is! List) throw const MusicSearchException('壁纸列表格式异常。');
+    if (rows is! List) throw       MusicSearchException(tr('壁纸列表格式异常。'));
     // The site serves images from /data/wallpaper/; very large originals
     // (tens of megapixels) are skipped because they exceed the download cap.
     bool reasonable(Map<String, dynamic> row) {
@@ -175,7 +177,7 @@ class SiteClient {
     Map<String, dynamic>? body,
   }) {
     if (!RegExp(r'^comments(?:/[A-Za-z0-9_-]+(?:/like)?)?$').hasMatch(path)) {
-      throw const MusicSearchException('评论地址无效。');
+      throw       MusicSearchException(tr('评论地址无效。'));
     }
     return _request(
       path,
@@ -198,7 +200,7 @@ class SiteClient {
     bool allowAnonymous = false,
   }) {
     if (!path.startsWith('social/') || path.contains('..') || path.contains('\\')) {
-      throw const MusicSearchException('社区地址无效。');
+      throw       MusicSearchException(tr('社区地址无效。'));
     }
     return _request(
       path,
@@ -215,7 +217,7 @@ class SiteClient {
         request.uri.host != 'player.nekoh2o.top' ||
         request.uri.port != 443 ||
         request.uri.userInfo.isNotEmpty) {
-      throw const MusicSearchException('拒绝向非本站地址发送登录凭据。');
+      throw       MusicSearchException(tr('拒绝向非本站地址发送登录凭据。'));
     }
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 15);
@@ -223,6 +225,10 @@ class SiteClient {
       return await (() async {
         final outgoing = await client.openUrl(request.method, request.uri);
         outgoing.followRedirects = false;
+        outgoing.headers.set(
+          HttpHeaders.acceptLanguageHeader,
+          AppLanguage.currentTag,
+        );
         if (request.token.isNotEmpty) {
           outgoing.headers.set(
             HttpHeaders.authorizationHeader,
@@ -239,19 +245,19 @@ class SiteClient {
           return {'code': 0};
         }
         if (response.statusCode == 401) {
-          throw const MusicSearchException('本站登录已过期，请重新登录。');
+          throw       MusicSearchException(tr('本站登录已过期，请重新登录。'));
         }
         if (response.statusCode != 200 && response.statusCode != 409) {
           throw MusicSearchException(
             response.statusCode == 500
-                ? '云端数据读取或写入失败（HTTP 500），请稍后重试。'
-                : '本站请求失败（HTTP ${response.statusCode}），未发送至重定向地址。',
+                ? tr('云端数据读取或写入失败（HTTP 500），请稍后重试。')
+                : tr('本站请求失败（HTTP {status}），未发送至重定向地址。', {'status': response.statusCode}),
           );
         }
         final bytes = <int>[];
         await for (final chunk in response) {
           if (bytes.length + chunk.length > 8 * 1024 * 1024) {
-            throw const MusicSearchException('云端数据超过 8MB，已停止读取。');
+            throw       MusicSearchException(tr('云端数据超过 8MB，已停止读取。'));
           }
           bytes.addAll(chunk);
         }

@@ -1,4 +1,6 @@
+import '../i18n/tr.dart';
 import 'dart:convert';
+
 import 'online_music.dart';
 
 class Track {
@@ -84,7 +86,7 @@ class PlaybackSession {
         index >= paths.length ||
         milliseconds < 0 ||
         milliseconds > maxPosition.inMilliseconds) {
-      throw const FormatException('播放恢复记录无效。');
+      throw       FormatException(tr('播放恢复记录无效。'));
     }
     return PlaybackSession(
       paths: paths,
@@ -129,7 +131,7 @@ class LibraryData {
 
   factory LibraryData.decode(String value) {
     final json = jsonDecode(value) as Map<String, dynamic>;
-    if (json['version'] != 1) throw const FormatException('未知音乐库格式');
+    if (json['version'] != 1) throw FormatException(tr('未知音乐库格式'));
     final unique = <String, Track>{};
     for (final item in json['tracks'] as List) {
       final track = Track.fromJson(item as Map<String, dynamic>);

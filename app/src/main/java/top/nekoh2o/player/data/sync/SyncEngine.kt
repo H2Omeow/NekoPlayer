@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.sync
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -126,15 +128,15 @@ class SyncEngine(
     }
 
     suspend fun upload(sections: Set<SyncSection>) {
-        exclusive { manual(sections, "上传") { snap, out -> doUpload(snap, sections, out) } }
+        exclusive { manual(sections, tr("上传")) { snap, out -> doUpload(snap, sections, out) } }
     }
 
     suspend fun pull(sections: Set<SyncSection>) {
-        exclusive { manual(sections, "拉取") { snap, out -> doPull(snap, sections, out) } }
+        exclusive { manual(sections, tr("拉取")) { snap, out -> doPull(snap, sections, out) } }
     }
 
     suspend fun merge(sections: Set<SyncSection>) {
-        exclusive { manual(sections, "合并") { snap, out -> doMerge(snap, sections, out) } }
+        exclusive { manual(sections, tr("合并")) { snap, out -> doMerge(snap, sections, out) } }
     }
 
     suspend fun autoSync() {
@@ -174,8 +176,8 @@ class SyncEngine(
         val out = ArrayList<SectionResult>()
         val snap = if (requireLogin()) fetch() else null
         if (snap == null) {
-            val reason = error ?: "无法获取云端状态"
-            results = sections.map { SectionResult(it, Outcome.FAILED, "$reason，已取消$verb") }
+            val reason = error ?: tr("无法获取云端状态")
+            results = sections.map { SectionResult(it, Outcome.FAILED, tr("{reason}，已取消{action}", "reason" to reason, "action" to verb)) }
             publish()
             return
         }
@@ -190,10 +192,10 @@ class SyncEngine(
         for (section in sections) {
             try { payloads[section] = local.snapshot(section) }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { out.add(failed(section, "读取本地数据失败：${e.message}")) }
+            catch (e: Exception) { out.add(failed(section, tr("读取本地数据失败：{reason}", "reason" to e.message))) }
         }
         if (payloads.isEmpty()) return
-        commitPatch(payloads, null, startedAt, out) { "已覆盖云端（${localCount(it)} ${it.unit}）" }
+        commitPatch(payloads, null, startedAt, out) { tr("已覆盖云端（{count} {unit}）", "count" to localCount(it), "unit" to it.unit) }
     }
 
     private suspend fun doPull(snap: CloudSnapshot, sections: Set<SyncSection>, out: MutableList<SectionResult>) {
@@ -211,11 +213,11 @@ class SyncEngine(
                 local.apply(section, merged)
                 payloads[section] = merged
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { out.add(failed(section, "合并失败：${e.message}")) }
+            catch (e: Exception) { out.add(failed(section, tr("合并失败：{reason}", "reason" to e.message))) }
         }
         if (payloads.isEmpty()) return
         val expected = payloads.keys.associateWith { snap.updatedAt(it) }
-        val ok = commitPatch(payloads, expected, startedAt, out) { "已合并并上传（${localCount(it)} ${it.unit}）" }
+        val ok = commitPatch(payloads, expected, startedAt, out) { tr("已合并并上传（{count} {unit}）", "count" to localCount(it), "unit" to it.unit) }
         // 本地已被合并结果改写但云端未更新：标记本地较新，避免被误判为已同步
         if (!ok) payloads.keys.forEach { store.markLocalChanged(it, clock()) }
         onLocalApplied(payloads.keys.toSet())
@@ -232,7 +234,7 @@ class SyncEngine(
         val payload = snap.payloads[section]
         val remoteAt = snap.updatedAt(section)
         if (payload == null || (remoteAt == 0L && snap.count(section) == 0)) {
-            out.add(SectionResult(section, Outcome.SKIPPED, "云端暂无数据，已跳过"))
+            out.add(SectionResult(section, Outcome.SKIPPED, tr("云端暂无数据，已跳过")))
             return
         }
         val startedAt = clock()
@@ -240,9 +242,9 @@ class SyncEngine(
             local.apply(section, payload)
             store.markSynced(section, startedAt, remoteAt)
             applied.add(section)
-            out.add(SectionResult(section, Outcome.OK, "已用云端数据覆盖本地（${snap.count(section)} ${section.unit}）"))
+            out.add(SectionResult(section, Outcome.OK, tr("已用云端数据覆盖本地（{count} {unit}）", "count" to snap.count(section), "unit" to section.unit)))
         } catch (e: CancellationException) { throw e }
-        catch (e: Exception) { out.add(failed(section, "写入本地失败：${e.message}")) }
+        catch (e: Exception) { out.add(failed(section, tr("写入本地失败：{reason}", "reason" to e.message))) }
     }
 
     /** 自动上传：带 expected，409 表示云端已被其他设备更新。 */
@@ -250,8 +252,8 @@ class SyncEngine(
         val startedAt = clock()
         val payload = try { local.snapshot(section) }
         catch (e: CancellationException) { throw e }
-        catch (e: Exception) { out.add(failed(section, "读取本地数据失败：${e.message}")); return }
-        commitPatch(mapOf(section to payload), mapOf(section to remoteAt), startedAt, out) { "已自动上传（${localCount(it)} ${it.unit}）" }
+        catch (e: Exception) { out.add(failed(section, tr("读取本地数据失败：{reason}", "reason" to e.message))); return }
+        commitPatch(mapOf(section to payload), mapOf(section to remoteAt), startedAt, out) { tr("已自动上传（{count} {unit}）", "count" to localCount(it), "unit" to it.unit) }
     }
 
     private suspend fun commitPatch(
@@ -274,7 +276,7 @@ class SyncEngine(
                 )
                 payloads.keys.forEach { section ->
                     val updatedAt = meta[section]?.updatedAt
-                    if (updatedAt == null) out.add(failed(section, "云端未返回更新时间，请刷新后重试"))
+                    if (updatedAt == null) out.add(failed(section, tr("云端未返回更新时间，请刷新后重试")))
                     else {
                         store.markSynced(section, startedAt, updatedAt)
                         out.add(SectionResult(section, Outcome.OK, okMessage(section)))
@@ -286,7 +288,7 @@ class SyncEngine(
                 val base = snapshot
                 snapshot = CloudSnapshot(base?.meta.orEmpty() + r.meta, base?.payloads.orEmpty())
                 payloads.keys.forEach {
-                    out.add(failed(it, "云端已被其他设备更新，请刷新后选择拉取或合并"))
+                    out.add(failed(it, tr("云端已被其他设备更新，请刷新后选择拉取或合并")))
                 }
             }
             is PatchResult.Failure -> payloads.keys.forEach { out.add(failed(it, r.message)) }
@@ -315,7 +317,7 @@ class SyncEngine(
 
     private fun requireLogin(): Boolean {
         if (isLoggedIn()) return true
-        error = "请先登录本站账号"
+        error = tr("请先登录本站账号")
         publish()
         return false
     }

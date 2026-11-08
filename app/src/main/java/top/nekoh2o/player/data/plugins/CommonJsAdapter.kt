@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.plugins
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.content.Context
 import kotlinx.serialization.json.*
 import top.nekoh2o.player.data.model.LyricLine
@@ -34,9 +36,9 @@ open class CommonJsAdapter(context: Context) : PluginAdapter {
         val supported = declared.filter { available.isNullOrEmpty() || it in available }
         return supported.map { key ->
             when (key) {
-                "low" -> AudioQuality(key, "标准 128k", 0)
-                "standard" -> AudioQuality(key, "高品质 320k", 2)
-                "high" -> AudioQuality(key, "无损 FLAC", 3)
+                "low" -> AudioQuality(key, tr("标准 128k"), 0)
+                "standard" -> AudioQuality(key, tr("高品质 320k"), 2)
+                "high" -> AudioQuality(key, tr("无损 FLAC"), 3)
                 "super" -> AudioQuality(key, "Hi-Res", 4)
                 else -> pluginQuality(key)
             }
@@ -47,7 +49,7 @@ open class CommonJsAdapter(context: Context) : PluginAdapter {
         val value = invoke(source, "getMediaSource", song.rawPluginItem(), JsonPrimitive(quality.id))
         if (value == JsonNull) return null
         val response = value as? JsonObject ?: return null
-        if (response.string("ekey", "cek").isNotBlank()) throw IOException("该音源返回加密音频，Android 暂不支持解密")
+        if (response.string("ekey", "cek").isNotBlank()) throw IOException(tr("该音源返回加密音频，Android 暂不支持解密"))
         val url = response.string("url").takeIf(::validPluginUrl) ?: return null
         val actual = response.string("quality").ifBlank { quality.id }
         val headers = (response["headers"] as? JsonObject).orEmpty().mapNotNull { (key, item) ->
@@ -56,7 +58,7 @@ open class CommonJsAdapter(context: Context) : PluginAdapter {
         response.string("userAgent").takeIf { it.isNotBlank() }?.let { headers["User-Agent"] = it }
         require(headers.all { (name, value) ->
             name.matches(Regex("^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")) && '\r' !in value && '\n' !in value
-        }) { "音源返回无效的媒体请求头" }
+        }) { tr("音源返回无效的媒体请求头") }
         return ResolvedAudio(qualities(source, song).firstOrNull { it.id == actual } ?: return null, url, headers)
     }
 

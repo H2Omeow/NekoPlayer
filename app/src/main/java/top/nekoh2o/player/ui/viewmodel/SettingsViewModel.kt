@@ -82,6 +82,12 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         return updated
     }
 
+    fun setLanguage(tag: String, current: AppSettings): AppSettings {
+        val updated = current.copy(language = tag)
+        settingsStore.save(updated)
+        return updated
+    }
+
     // ==================== 控件透明度 ====================
 
     fun setControlAlpha(alpha: Float, current: AppSettings): AppSettings {

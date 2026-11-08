@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -38,7 +39,7 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
       final uri = subscriptionUri(value);
       if (uri.scheme == 'file' &&
           await File.fromUri(uri).length() > 5 * 1024 * 1024) {
-        throw const FormatException('文件超过 5 MiB。');
+        throw       FormatException(tr('文件超过 5 MiB。'));
       }
       final content =
           text ??
@@ -52,7 +53,9 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
       final accepted = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text(previous == null ? '添加音源订阅' : '更新音源订阅'),
+          title: Text(
+            previous == null ? tr('添加音源订阅') : tr('更新音源订阅'),
+          ),
           content: SizedBox(
             width: 480,
             child: SingleChildScrollView(
@@ -61,7 +64,10 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '${subscription.url.host} · ${subscription.sources.length} 个音源',
+                    tr('{host} · {count} 个音源', {
+                      'host': subscription.url.host,
+                      'count': subscription.sources.length,
+                    }),
                   ),
                   const SizedBox(height: 12),
                   for (final source in subscription.sources)
@@ -73,8 +79,8 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
                       ),
                       isThreeLine: true,
                     ),
-                  const Text(
-                    '音源会处理搜索词和歌曲信息，请只添加可信来源。LX 解析音源会用于对应平台的搜索结果；同平台有多个时，使用最后启用的订阅。',
+                        Text(
+                    tr('音源会处理搜索词和歌曲信息，请只添加可信来源。LX 解析音源会用于对应平台的搜索结果；同平台有多个时，使用最后启用的订阅。'),
                   ),
                 ],
               ),
@@ -83,11 +89,11 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
+              child:       Text(tr('取消')),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('确认'),
+              child:       Text(tr('确认')),
             ),
           ],
         ),
@@ -102,7 +108,7 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
         setState(
           () => error = failure is FormatException
               ? failure.message
-              : '订阅加载或保存失败，请检查网络和链接。',
+              : tr('订阅加载或保存失败，请检查网络和链接。'),
         );
       }
     } finally {
@@ -114,19 +120,19 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
     try {
       await operation();
     } catch (_) {
-      if (mounted) setState(() => error = '订阅配置保存失败，原配置保持不变。');
+      if (mounted) setState(() => error = tr('订阅配置保存失败，原配置保持不变。'));
     }
   }
 
   Future<void> importFile() async {
     final file = await openFile(
       acceptedTypeGroups: [
-        const XTypeGroup(label: '音源 / 订阅', extensions: ['js', 'json']),
+              XTypeGroup(label: tr('音源 / 订阅'), extensions: ['js', 'json']),
       ],
     );
     if (file == null || !mounted) return;
     if (await file.length() > 5 * 1024 * 1024) {
-      if (mounted) setState(() => error = '文件超过 5 MiB。');
+      if (mounted) setState(() => error = tr('文件超过 5 MiB。'));
       return;
     }
     await preview(
@@ -144,7 +150,7 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, update) => AlertDialog(
-          title: Text('${source.name} · 变量'),
+          title: Text(tr('{name} · 变量', {'name': source.name})),
           content: SizedBox(
             width: 440,
             child: Column(
@@ -160,7 +166,7 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
                   minLines: 4,
                   maxLines: 10,
                   decoration: InputDecoration(
-                    labelText: '变量 JSON 对象',
+                    labelText: tr('变量 JSON 对象'),
                     errorText: validation,
                   ),
                 ),
@@ -170,7 +176,7 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
+              child:       Text(tr('取消')),
             ),
             FilledButton(
               onPressed: () {
@@ -182,10 +188,10 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
                   }
                   Navigator.pop(context, values.cast<String, String>());
                 } catch (_) {
-                  update(() => validation = '请输入值为字符串的 JSON 对象。');
+                  update(() => validation = tr('请输入值为字符串的 JSON 对象。'));
                 }
               },
-              child: const Text('保存'),
+              child:       Text(tr('保存')),
             ),
           ],
         ),
@@ -212,10 +218,10 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
       final text = Theme.of(context).textTheme;
       final colors = Theme.of(context).colorScheme;
       return DetailPage(
-        title: '音源与插件订阅',
+        title: tr('音源与插件订阅'),
         children: [
           Text(
-            '支持 Animemusic、MusicFree、BakaMusic 和 LX / 洛雪脚本，可以导入订阅链接或本地文件。',
+            tr('支持 Animemusic、MusicFree、BakaMusic 和 LX / 洛雪脚本，可以导入订阅链接或本地文件。'),
             style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: NekoSpace.lg),
@@ -225,8 +231,8 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
                 child: TextField(
                   controller: input,
                   enabled: !disabled,
-                  decoration: const InputDecoration(
-                    hintText: 'HTTPS 订阅或插件链接',
+                  decoration:       InputDecoration(
+                    hintText: tr('HTTPS 订阅或插件链接'),
                     prefixIcon: Icon(Icons.link_rounded),
                   ),
                   onSubmitted: disabled ? null : preview,
@@ -235,11 +241,11 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
               const SizedBox(width: NekoSpace.sm),
               FilledButton(
                 onPressed: disabled ? null : () => preview(input.text),
-                child: const Text('添加'),
+                child:       Text(tr('添加')),
               ),
               const SizedBox(width: NekoSpace.xs),
               IconButton(
-                tooltip: '从文件导入',
+                tooltip: tr('从文件导入'),
                 onPressed: disabled ? null : importFile,
                 icon: const Icon(Icons.file_open_outlined),
               ),
@@ -276,14 +282,16 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
                               children: [
                                 Text(
                                   subscription.builtin
-                                      ? '内置 · 惜缘惜梦'
+                                      ? tr('内置 · 惜缘惜梦')
                                       : subscription.url.scheme == 'file'
                                       ? subscription.url.pathSegments.last
                                       : subscription.url.host,
                                   style: text.titleMedium,
                                 ),
                                 Text(
-                                  '${subscription.sources.length} 个音源',
+                                  tr('{count} 个音源', {
+                                    'count': subscription.sources.length,
+                                  }),
                                   style: text.bodySmall,
                                 ),
                               ],
@@ -299,7 +307,7 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
                                   ),
                           ),
                           PopupMenuButton<VoidCallback>(
-                            tooltip: '更多',
+                            tooltip: tr('更多'),
                             enabled: !disabled,
                             icon: const Icon(Icons.more_horiz_rounded),
                             onSelected: (action) => action(),
@@ -309,14 +317,14 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
                                   '${subscription.url}',
                                   previous: subscription,
                                 ),
-                                child: const Text('检查更新'),
+                                child:       Text(tr('检查更新')),
                               ),
                               if (!subscription.builtin)
                                 PopupMenuItem(
                                   value: () =>
                                       change(() => store.remove(subscription)),
                                   child: Text(
-                                    '删除订阅',
+                                    tr('删除订阅'),
                                     style: TextStyle(color: colors.error),
                                   ),
                                 ),
@@ -340,7 +348,7 @@ class _PluginSubscriptionsPageState extends State<PluginSubscriptionsPage> {
                               avatar: source.scripted
                                   ? const Icon(Icons.tune_rounded)
                                   : null,
-                              tooltip: source.scripted ? '设置变量' : null,
+                              tooltip: source.scripted ? tr('设置变量') : null,
                               label: Text('${source.name} · ${source.version}'),
                               onPressed: disabled || !source.scripted
                                   ? null

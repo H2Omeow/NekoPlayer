@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.social
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -76,10 +78,10 @@ fun SocialScreen(vm: PlayerViewModel, onLogin: () -> Unit) {
         Column(Modifier.fillMaxSize()) {
             PrimaryTabRow(selectedTabIndex = tab) {
                 Tab(selected = tab == 0, onClick = { tab = 0 }, text = {
-                    Text(if (state.unread > 0) "消息 ${state.unread}" else "消息")
+                    Text(if (state.unread > 0) tr("消息 {count}", "count" to state.unread) else tr("消息"))
                 })
-                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("关注动态") })
-                Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("发现") })
+                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(tr("关注动态")) })
+                Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text(tr("发现")) })
             }
             when (tab) {
                 0 -> MessagesTab(vm, state)
@@ -108,15 +110,15 @@ private fun LoginPrompt(onLogin: () -> Unit) {
             tint = MaterialTheme.colorScheme.primary
         )
         Spacer(Modifier.height(NekoSpace.lg))
-        Text("登录后使用社区", style = MaterialTheme.typography.titleLarge)
+        Text(tr("登录后使用社区"), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(NekoSpace.sm))
         Text(
-            "关注喜欢的人、发送私信，把正在听的歌分享给朋友。",
+            tr("关注喜欢的人、发送私信，把正在听的歌分享给朋友。"),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(NekoSpace.xl))
-        Button(onClick = onLogin) { Text("登录 NekoPlayer 账号") }
+        Button(onClick = onLogin) { Text(tr("登录 NekoPlayer 账号")) }
     }
 }
 
@@ -129,8 +131,8 @@ private fun MessagesTab(vm: PlayerViewModel, state: SocialUiState) {
     if (state.conversations.isEmpty()) {
         EmptyState(
             Icons.Outlined.ChatBubbleOutline,
-            "还没有私信",
-            description = "在「发现」里找到朋友，开始聊天吧。"
+            tr("还没有私信"),
+            description = tr("在「发现」里找到朋友，开始聊天吧。")
         )
         return
     }
@@ -156,7 +158,7 @@ private fun ConversationRow(conversation: SocialConversation, onClick: () -> Uni
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    peer?.displayName ?: "用户",
+                    peer?.displayName ?: tr("用户"),
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -208,7 +210,7 @@ private fun ChatScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { vm.socialVm.closeChat() }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回会话列表")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("返回会话列表"))
             }
             Row(
                 Modifier.weight(1f).clickable { conversation.peer?.id?.let(vm.socialVm::loadProfile) },
@@ -217,7 +219,7 @@ private fun ChatScreen(
                 Avatar(conversation.peer, 38.dp)
                 Spacer(Modifier.width(NekoSpace.sm))
                 Text(
-                    conversation.peer?.displayName ?: "用户",
+                    conversation.peer?.displayName ?: tr("用户"),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -246,13 +248,13 @@ private fun ChatScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { vm.socialVm.openShareComposer(player.current) }) {
-                Icon(Icons.Filled.MusicNote, contentDescription = "分享当前歌曲")
+                Icon(Icons.Filled.MusicNote, contentDescription = tr("分享当前歌曲"))
             }
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it.take(2000) },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("输入消息…") },
+                placeholder = { Text(tr("输入消息…")) },
                 maxLines = 4,
                 shape = RoundedCornerShape(NekoRadius.card)
             )
@@ -264,7 +266,7 @@ private fun ChatScreen(
                     vm.socialVm.sendText(body)
                 }
             }) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
+                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = tr("发送"))
             }
         }
     }
@@ -276,7 +278,7 @@ private fun MessageBubble(vm: PlayerViewModel, message: SocialMessage) {
     if (message.deleted) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Text(
-                if (message.owned) "你撤回了一条消息" else "对方撤回了一条消息",
+                if (message.owned) tr("你撤回了一条消息") else tr("对方撤回了一条消息"),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -319,7 +321,7 @@ private fun MessageBubble(vm: PlayerViewModel, message: SocialMessage) {
                             overflow = TextOverflow.Ellipsis
                         )
                         Row {
-                            TextButton(onClick = { vm.playSharedSong(song.toSong(), 0) }) { Text("播放") }
+                            TextButton(onClick = { vm.playSharedSong(song.toSong(), 0) }) { Text(tr("播放")) }
                             if (!message.shareToken.isNullOrBlank()) {
                                 TextButton(onClick = {
                                     context.startActivity(
@@ -328,7 +330,7 @@ private fun MessageBubble(vm: PlayerViewModel, message: SocialMessage) {
                                             Uri.parse("$SOCIAL_BASE/s/${message.shareToken}")
                                         )
                                     )
-                                }) { Text("查看") }
+                                }) { Text(tr("查看")) }
                             }
                         }
                     }
@@ -354,7 +356,7 @@ private fun MessageBubble(vm: PlayerViewModel, message: SocialMessage) {
         if (message.owned) {
             Spacer(Modifier.width(NekoSpace.sm))
             Text(
-                "撤回",
+                tr("撤回"),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.clickable { vm.socialVm.deleteMessage(message.id) }
@@ -372,8 +374,8 @@ private fun FeedTab(vm: PlayerViewModel, state: SocialUiState, current: Song?) {
     if (state.feed.isEmpty()) {
         EmptyState(
             Icons.Filled.PersonAdd,
-            "还没有关注动态",
-            description = "去「发现」关注喜欢的人，这里会出现他们分享的歌曲。"
+            tr("还没有关注动态"),
+            description = tr("去「发现」关注喜欢的人，这里会出现他们分享的歌曲。")
         )
         return
     }
@@ -400,9 +402,9 @@ private fun FeedCard(vm: PlayerViewModel, share: SocialShare) {
                 Avatar(share.sharer, 32.dp)
                 Spacer(Modifier.width(8.dp))
                 Column {
-                    Text(share.sharer?.displayName ?: "用户", style = MaterialTheme.typography.labelLarge)
+                    Text(share.sharer?.displayName ?: tr("用户"), style = MaterialTheme.typography.labelLarge)
                     Text(
-                        "${shortTime(share.createdAt)} · ${share.platform}",
+                        "${shortTime(share.createdAt)} · ${tr(share.platform)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -418,13 +420,13 @@ private fun FeedCard(vm: PlayerViewModel, share: SocialShare) {
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        share.song.nm.ifBlank { "未知歌曲" },
+                        share.song.nm.ifBlank { tr("未知歌曲") },
                         style = MaterialTheme.typography.titleSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        share.song.ar.ifBlank { "未知歌手" },
+                        share.song.ar.ifBlank { tr("未知歌手") },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -447,10 +449,10 @@ private fun FeedCard(vm: PlayerViewModel, share: SocialShare) {
             Row(Modifier.padding(top = 4.dp)) {
                 TextButton(onClick = {
                     vm.playSharedSong(share.song.toSong(), share.progress?.positionMs ?: 0)
-                }) { Text("播放") }
+                }) { Text(tr("播放")) }
                 TextButton(onClick = {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("$SOCIAL_BASE/s/${share.token}")))
-                }) { Text("查看分享") }
+                }) { Text(tr("查看分享")) }
             }
         }
     }
@@ -468,22 +470,22 @@ private fun DiscoverTab(vm: PlayerViewModel, state: SocialUiState) {
                 value = query,
                 onValueChange = { query = it.take(64) },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("搜索用户名或昵称") },
+                placeholder = { Text(tr("搜索用户名或昵称")) },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 singleLine = true,
                 shape = RoundedCornerShape(NekoRadius.card)
             )
             Spacer(Modifier.width(NekoSpace.sm))
             Button(onClick = { vm.socialVm.search(query) }, enabled = !state.searching) {
-                Text("搜索")
+                Text(tr("搜索"))
             }
         }
         if (state.searching) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (state.searchResults.isEmpty()) {
             EmptyState(
                 Icons.Filled.Search,
-                "发现用户",
-                description = "输入至少 2 个字符，找到朋友后可以关注或私信。"
+                tr("发现用户"),
+                description = tr("输入至少 2 个字符，找到朋友后可以关注或私信。")
             )
         } else {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = NekoSpace.xl)) {
@@ -506,12 +508,12 @@ private fun DiscoverTab(vm: PlayerViewModel, state: SocialUiState) {
                             )
                         }
                         if (profile.isSelf) {
-                            Text("这是你", style = MaterialTheme.typography.labelSmall)
+                            Text(tr("这是你"), style = MaterialTheme.typography.labelSmall)
                         } else {
                             OutlinedButton(
                                 onClick = { vm.socialVm.toggleFollow(profile) },
                                 enabled = !profile.isFollowing
-                            ) { Text(if (profile.isFollowing) "已关注" else "关注") }
+                            ) { Text(if (profile.isFollowing) tr("已关注") else tr("关注")) }
                         }
                     }
                 }
@@ -551,36 +553,36 @@ private fun ProfileSheet(vm: PlayerViewModel, state: SocialUiState) {
             }
             Spacer(Modifier.height(NekoSpace.md))
             Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.xl)) {
-                Text("${profile.followers} 粉丝", style = MaterialTheme.typography.labelLarge)
-                Text("${profile.following} 关注", style = MaterialTheme.typography.labelLarge)
+                Text(tr("{count} 粉丝", "count" to profile.followers), style = MaterialTheme.typography.labelLarge)
+                Text(tr("{count} 关注", "count" to profile.following), style = MaterialTheme.typography.labelLarge)
             }
             Spacer(Modifier.height(NekoSpace.lg))
             if (profile.isSelf) {
-                Text("私信接收范围", style = MaterialTheme.typography.titleSmall)
+                Text(tr("私信接收范围"), style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
                     FilterChip(
                         selected = state.dmPolicy == "everyone",
                         onClick = { vm.socialVm.savePreferences("everyone") },
-                        label = { Text("所有人") }
+                        label = { Text(tr("所有人")) }
                     )
                     FilterChip(
                         selected = state.dmPolicy == "following",
                         onClick = { vm.socialVm.savePreferences("following") },
-                        label = { Text("我关注的人") }
+                        label = { Text(tr("我关注的人")) }
                     )
                 }
                 LaunchedEffect(Unit) { vm.socialVm.loadPreferences() }
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
                     Button(onClick = { vm.socialVm.toggleFollow(profile) }) {
-                        Text(if (profile.isFollowing) "已关注" else "关注")
+                        Text(if (profile.isFollowing) tr("已关注") else tr("关注"))
                     }
                     OutlinedButton(onClick = {
                         vm.socialVm.closeProfile()
                         vm.socialVm.openChat(profile.id)
-                    }) { Text("私信") }
+                    }) { Text(tr("私信")) }
                     OutlinedButton(onClick = { blockConfirm = true }) {
-                        Text(if (profile.blocked) "取消拉黑" else "拉黑")
+                        Text(if (profile.blocked) tr("取消拉黑") else tr("拉黑"))
                     }
                 }
             }
@@ -590,15 +592,15 @@ private fun ProfileSheet(vm: PlayerViewModel, state: SocialUiState) {
         val profile = state.profile ?: return
         AlertDialog(
             onDismissRequest = { blockConfirm = false },
-            title = { Text(if (profile.blocked) "取消拉黑？" else "拉黑该用户？") },
-            text = { Text(if (profile.blocked) "取消后可以重新关注和私信。" else "拉黑后双方无法私信或关注。") },
+            title = { Text(if (profile.blocked) tr("取消拉黑？") else tr("拉黑该用户？")) },
+            text = { Text(if (profile.blocked) tr("取消后可以重新关注和私信。") else tr("拉黑后双方无法私信或关注。")) },
             confirmButton = {
                 TextButton(onClick = {
                     blockConfirm = false
                     vm.socialVm.toggleBlock(profile)
-                }) { Text("确定") }
+                }) { Text(tr("确定")) }
             },
-            dismissButton = { TextButton(onClick = { blockConfirm = false }) { Text("取消") } }
+            dismissButton = { TextButton(onClick = { blockConfirm = false }) { Text(tr("取消")) } }
         )
     }
 }
@@ -628,7 +630,7 @@ fun ShareSongSheet(vm: PlayerViewModel) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = NekoSpace.xl).padding(bottom = NekoSpace.xl)
         ) {
-            Text("分享歌曲", style = MaterialTheme.typography.titleLarge)
+            Text(tr("分享歌曲"), style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(NekoSpace.md))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Artwork(song.pc, size = 54.dp)
@@ -647,24 +649,24 @@ fun ShareSongSheet(vm: PlayerViewModel) {
                 value = message,
                 onValueChange = { message = it.take(200) },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("写一句留言（可选）") },
+                placeholder = { Text(tr("写一句留言（可选）")) },
                 maxLines = 3
             )
             Spacer(Modifier.height(NekoSpace.sm))
-            SwitchRow("显示分享者身份", showSharer) { showSharer = it }
-            SwitchRow("包含封面", cover) { cover = it }
-            SwitchRow("包含专辑名", album) { album = it }
+            SwitchRow(tr("显示分享者身份"), showSharer) { showSharer = it }
+            SwitchRow(tr("包含封面"), cover) { cover = it }
+            SwitchRow(tr("包含专辑名"), album) { album = it }
             if (isCurrent && currentLyric.isNotBlank()) {
-                SwitchRow("包含当前歌词片段", lyric) { lyric = it }
+                SwitchRow(tr("包含当前歌词片段"), lyric) { lyric = it }
             }
             if (isCurrent) {
-                SwitchRow("包含播放进度", progress) { progress = it }
+                SwitchRow(tr("包含播放进度"), progress) { progress = it }
             }
             Spacer(Modifier.height(NekoSpace.md))
             val result = state.shareResult
             if (result != null) {
                 Text(
-                    "分享链接已生成",
+                    tr("分享链接已生成"),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.titleSmall
                 )
@@ -679,20 +681,20 @@ fun ShareSongSheet(vm: PlayerViewModel) {
                 Row(Modifier.padding(top = NekoSpace.sm), horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
                     OutlinedButton(onClick = {
                         clipboard.setText(AnnotatedString(result.url))
-                        android.widget.Toast.makeText(context, "已复制链接", android.widget.Toast.LENGTH_SHORT).show()
-                    }) { Text("复制") }
+                        android.widget.Toast.makeText(context, tr("已复制链接"), android.widget.Toast.LENGTH_SHORT).show()
+                    }) { Text(tr("复制")) }
                     OutlinedButton(onClick = {
                         val share = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
                             putExtra(Intent.EXTRA_TEXT, "${result.song.nm} - ${result.song.ar}\n${result.url}")
                         }
-                        context.startActivity(Intent.createChooser(share, "分享链接"))
-                    }) { Text("系统分享") }
+                        context.startActivity(Intent.createChooser(share, tr("分享链接")))
+                    }) { Text(tr("系统分享")) }
                     if (state.active != null) {
                         OutlinedButton(onClick = {
                             vm.socialVm.sendSong(song)
                             vm.socialVm.closeShareComposer()
-                        }) { Text("发到当前会话") }
+                        }) { Text(tr("发到当前会话")) }
                     }
                 }
             } else {
@@ -718,7 +720,7 @@ fun ShareSongSheet(vm: PlayerViewModel) {
                     enabled = !state.shareBusy
                 ) {
                     if (state.shareBusy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                    else Text("生成分享链接")
+                    else Text(tr("生成分享链接"))
                 }
                 state.shareError?.let {
                     Spacer(Modifier.height(NekoSpace.sm))
@@ -762,11 +764,11 @@ private fun Avatar(profile: SocialProfile?, size: androidx.compose.ui.unit.Dp) {
 }
 
 private fun preview(message: SocialMessage?): String = when {
-    message == null -> "开始聊天"
-    message.deleted -> "[消息已撤回]"
-    message.kind == "song" -> "[歌曲] " + (message.song?.nm ?: "分享")
+    message == null -> tr("开始聊天")
+    message.deleted -> tr("[消息已撤回]")
+    message.kind == "song" -> tr("[歌曲] {title}", "title" to (message.song?.nm ?: tr("分享")))
     message.text.isNotBlank() -> message.text
-    else -> "[消息]"
+    else -> tr("[消息]")
 }
 
 private fun shortTime(timestamp: Long): String {

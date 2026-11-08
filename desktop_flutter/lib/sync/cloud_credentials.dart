@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import '../data/account_store.dart';
 
 /// 云端 credentials 分区与本机账号之间的转换。
@@ -28,16 +29,22 @@ class CloudCredentials {
     ) {
       if (raw == null || raw == '') return null;
       if (raw is! String) {
-        notes.add('$name：云端 Cookie 格式异常，已跳过。');
+        notes.add(tr('{name}：云端 Cookie 格式异常，已跳过。', {'name': name}));
         return null;
       }
       final parsed = AccountStore.parseLenientCookies(raw, accept: accept);
       if ((parsed.values[required] ?? '').isEmpty) {
-        notes.add('$name：云端 Cookie 中没有有效的 $required，已跳过。');
+        notes.add(tr('{name}：云端 Cookie 中没有有效的 {field}，已跳过。', {
+          'name': name,
+          'field': required,
+        }));
         return null;
       }
       if (parsed.skipped > 0) {
-        notes.add('$name：已忽略 ${parsed.skipped} 个不兼容字段。');
+        notes.add(tr('{name}：已忽略 {count} 个不兼容字段。', {
+          'name': name,
+          'count': parsed.skipped,
+        }));
       }
       return parsed.values;
     }
@@ -45,14 +52,14 @@ class CloudCredentials {
     final platform = remote['kgPlatform'] == 1 ? 1 : 0;
     final cookies = remote['kgCookies'];
     if (cookies != null && cookies is! List) {
-      notes.add('酷狗：云端账号槽位格式异常，已跳过。');
+      notes.add(tr('酷狗：云端账号槽位格式异常，已跳过。'));
     }
     final legacy = remote['kgToken'] is String
         ? (remote['kgToken'] as String).trim()
         : '';
     final kugou = <Map<String, String>?>[];
     for (var slot = 0; slot < 2; slot++) {
-      final label = slot == 0 ? '酷狗原版' : '酷狗概念版';
+      final label = slot == 0 ? tr('酷狗原版') : tr('酷狗概念版');
       var raw = cookies is List && slot < cookies.length ? cookies[slot] : null;
       if ((raw == null || raw == '') && slot == platform && legacy.isNotEmpty) {
         raw = 'token=$legacy';
@@ -61,7 +68,7 @@ class CloudCredentials {
     }
     final netease = parse(
       remote['ncCookie'],
-      '网易云',
+      tr('网易云'),
       AccountStore.acceptNeteaseKey,
       'MUSIC_U',
     );

@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -110,7 +111,7 @@ class AudioCache extends ChangeNotifier {
     } catch (_) {
       readable = false;
       enabled = false;
-      error = '缓存索引读取失败；已保留原数据，不覆盖或自动清理。';
+      error = tr('缓存索引读取失败；已保留原数据，不覆盖或自动清理。');
     }
   }
 
@@ -199,7 +200,7 @@ class AudioCache extends ChangeNotifier {
           }
         })
         .catchError((Object _) {
-          error = '歌词缓存未完成，不影响音频播放。';
+          error = tr('歌词缓存未完成，不影响音频播放。');
         });
   }
 
@@ -224,7 +225,7 @@ class AudioCache extends ChangeNotifier {
           return ResolvedAudio(file.uri, entry.quality, size: entry.size);
         }
       } on FileSystemException {
-        error = '部分缓存不可读，将尝试正常在线播放。';
+        error = tr('部分缓存不可读，将尝试正常在线播放。');
       }
       entries.removeWhere((item) => item.file == entry.file);
     }
@@ -247,7 +248,7 @@ class AudioCache extends ChangeNotifier {
     final pending = _save(song, audio, file, _cancellation!).catchError((
       Object _,
     ) {
-      error = '缓存未完成，不影响普通播放。';
+      error = tr('缓存未完成，不影响普通播放。');
     });
     _active = pending;
     notifyListeners();
@@ -318,7 +319,7 @@ class AudioCache extends ChangeNotifier {
         await destination.delete();
       }
     } catch (_) {
-      error = '本首歌曲缓存未完成，不影响在线播放。';
+      error = tr('本首歌曲缓存未完成，不影响在线播放。');
     } finally {
       if (await partial.exists()) {
         try {
@@ -352,7 +353,7 @@ class AudioCache extends ChangeNotifier {
       await _persist();
     } catch (_) {
       enabled = false;
-      error = '缓存设置保存失败。';
+      error = tr('缓存设置保存失败。');
     }
     if (!_disposed) notifyListeners();
   }

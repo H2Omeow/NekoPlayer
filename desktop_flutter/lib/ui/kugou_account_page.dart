@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -68,11 +69,11 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
         setState(() {
           if (failure is KugouAccountSelection) {
             choices = failure.accounts;
-            message = '该手机号关联多个账号，请选择要登录的账号。';
+            message = tr('该手机号关联多个账号，请选择要登录的账号。');
           } else {
             message = failure is MusicSearchException
                 ? failure.message
-                : '账号操作失败，请检查网络、设备验证和系统密钥环。';
+                : tr('账号操作失败，请检查网络、设备验证和系统密钥环。');
           }
         });
       }
@@ -86,7 +87,7 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
     if (!mounted || request != generation) return;
     setState(() {
       sentAt = DateTime.now();
-      message = '平台已确认验证码发送，请检查短信。';
+      message = tr('平台已确认验证码发送，请检查短信。');
     });
     timer?.cancel();
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -110,7 +111,7 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
       setState(() {
         choices = [];
         code.clear();
-        message = '已保存平台确认的登录凭据。';
+        message = tr('已保存平台确认的登录凭据。');
       });
     }
   });
@@ -124,7 +125,7 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
           '${membership['end_time'] ?? membership['vip_end_time'] ?? 0}',
         ) ??
         0;
-    String expiry = '未提供有效期';
+    String expiry = tr('未提供有效期');
     if (rawEnd > 0 && rawEnd < 9999999999999) {
       final end = DateTime.fromMillisecondsSinceEpoch(
         rawEnd > 100000000000 ? rawEnd : rawEnd * 1000,
@@ -134,10 +135,12 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
     }
     setState(() {
       nickname =
-          '${user['nickname'] ?? user['nick_name'] ?? user['username'] ?? '酷狗用户'}';
-      vip =
-          '会员类型 ${membership['vip_type'] ?? membership['vip_level'] ?? 0} · $expiry';
-      message = '账号信息已更新；可播音质仍由播放接口验证。';
+          user['nickname'] ?? user['nick_name'] ?? user['username'] ?? tr('酷狗用户');
+      vip = tr('会员类型 {vip} · {expiry}', {
+        'vip': membership['vip_type'] ?? membership['vip_level'] ?? 0,
+        'expiry': expiry,
+      });
+      message = tr('账号信息已更新；可播音质仍由播放接口验证。');
     });
   });
 
@@ -145,16 +148,16 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('领取概念版听歌权益？'),
-        content: const Text('将使用当前概念版账号向官方接口发送一次领取请求。不会自动重复领取，也不保证账号满足领取条件。'),
+        title:       Text(tr('领取概念版听歌权益？')),
+        content:       Text(tr('将使用当前概念版账号向官方接口发送一次领取请求。不会自动重复领取，也不保证账号满足领取条件。')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child:       Text(tr('取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('确认领取'),
+            child:       Text(tr('确认领取')),
           ),
         ],
       ),
@@ -163,7 +166,7 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
     await action((request) async {
       await widget.catalog.claimKugouDailyVip();
       if (mounted && request == generation) {
-        setState(() => message = '平台已确认领取请求成功；具体权益请在官方客户端检查。');
+        setState(() => message = tr('平台已确认领取请求成功；具体权益请在官方客户端检查。'));
       }
     });
   }
@@ -182,11 +185,11 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
   Widget build(BuildContext context) {
     final loggedIn = widget.catalog.accounts.kugouLoggedIn();
     return DetailPage(
-      title: platform == 0 ? '酷狗账号 · 原版' : '酷狗账号 · 概念版',
+      title: platform == 0 ? tr('酷狗账号 · 原版') : tr('酷狗账号 · 概念版'),
       children: [
         SettingsSection(
-          title: '短信登录',
-          description: '只有点击发送时才会联系官方短信接口，不会自动发送或重试；发送需要通过平台设备验证。',
+          title: tr('短信登录'),
+          description: tr('只有点击发送时才会联系官方短信接口，不会自动发送或重试；发送需要通过平台设备验证。'),
           children: [
             Padding(
               padding: const EdgeInsets.all(NekoSpace.lg),
@@ -203,8 +206,8 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
                           keyboardType: TextInputType.phone,
                           maxLength: 11,
                           onChanged: (_) => setState(() => choices = []),
-                          decoration: const InputDecoration(
-                            hintText: '大陆手机号',
+                          decoration:       InputDecoration(
+                            hintText: tr('大陆手机号'),
                             prefixIcon: Icon(Icons.phone_iphone_rounded),
                             counterText: '',
                           ),
@@ -216,7 +219,7 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
                         child: OutlinedButton(
                           onPressed: busy || remaining > 0 ? null : send,
                           child: Text(
-                            remaining > 0 ? '$remaining 秒后重发' : '发送验证码',
+                            remaining > 0 ? '$remaining 秒后重发' : tr('发送验证码'),
                           ),
                         ),
                       ),
@@ -230,8 +233,8 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
                     keyboardType: TextInputType.number,
                     maxLength: 8,
                     onSubmitted: busy ? null : (_) => login(),
-                    decoration: const InputDecoration(
-                      hintText: '短信验证码',
+                    decoration:       InputDecoration(
+                      hintText: tr('短信验证码'),
                       prefixIcon: Icon(Icons.password_rounded),
                       counterText: '',
                     ),
@@ -241,7 +244,7 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
                     alignment: Alignment.centerLeft,
                     child: FilledButton(
                       onPressed: busy ? null : login,
-                      child: const Text('登录'),
+                      child:       Text(tr('登录')),
                     ),
                   ),
                 ],
@@ -250,41 +253,43 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
             for (final choice in choices)
               SettingsTile(
                 icon: Icons.account_circle_outlined,
-                title: choice.name.isEmpty ? '账号 ${choice.id}' : choice.name,
+                title: choice.name.isEmpty
+                    ? tr('账号 {id}', {'id': choice.id})
+                    : choice.name,
                 subtitle: 'ID ${choice.id}',
                 onTap: busy ? null : () => login(choice.id),
               ),
           ],
         ),
         SettingsSection(
-          title: '账号与权益',
-          description: loggedIn ? null : '登录后可用。',
+          title: tr('账号与权益'),
+          description: loggedIn ? null : tr('登录后可用。'),
           children: [
             SettingsTile(
               icon: Icons.workspace_premium_outlined,
-              title: '读取账号与会员状态',
+              title: tr('读取账号与会员状态'),
               subtitle: nickname == null ? null : '$nickname · $vip',
               enabled: !busy && loggedIn,
               onTap: info,
             ),
             SettingsTile(
               icon: Icons.refresh_rounded,
-              title: '刷新登录凭据',
+              title: tr('刷新登录凭据'),
               enabled: !busy && loggedIn,
               onTap: () => action((request) async {
                 await widget.catalog.refreshKugouToken(
                   accept: () => mounted && request == generation,
                 );
                 if (mounted) {
-                  setState(() => message = '登录凭据已通过平台确认并刷新。');
+                  setState(() => message = tr('登录凭据已通过平台确认并刷新。'));
                 }
               }),
             ),
             if (platform == 1)
               SettingsTile(
                 icon: Icons.redeem_rounded,
-                title: '领取每日听歌权益',
-                subtitle: '手动领取，不会自动执行',
+                title: tr('领取每日听歌权益'),
+                subtitle: tr('手动领取，不会自动执行'),
                 enabled: !busy && loggedIn,
                 onTap: claim,
               ),

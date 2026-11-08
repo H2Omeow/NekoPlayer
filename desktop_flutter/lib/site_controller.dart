@@ -1,3 +1,4 @@
+import './i18n/tr.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -38,8 +39,8 @@ class SiteController extends ChangeNotifier {
           : failure is FormatException
           ? failure.message
           : failure is TimeoutException
-          ? '等待登录超时，请重试。'
-          : '操作未完成，请检查系统密钥环与网络后重试。';
+          ? tr('等待登录超时，请重试。')
+          : tr('操作未完成，请检查系统密钥环与网络后重试。');
     } finally {
       busy = false;
       _notify();
@@ -62,7 +63,7 @@ class SiteController extends ChangeNotifier {
     await accounts.update(siteToken: token, expectedSiteToken: previous);
     user = verified;
     _userToken = token;
-    message = '本站登录成功。';
+    message = tr('本站登录成功。');
   }
 
   Future<void> login(
@@ -110,15 +111,15 @@ class SiteController extends ChangeNotifier {
           'redirect': redirect.toString(),
         }),
       )) {
-        throw const MusicSearchException('无法打开浏览器，请使用令牌导入。');
+        throw       MusicSearchException(tr('无法打开浏览器，请使用令牌导入。'));
       }
-      message = '浏览器已打开，等待本站登录；可取消。';
+      message = tr('浏览器已打开，等待本站登录；可取消。');
       _notify();
       final token = await callback.future.timeout(const Duration(minutes: 3));
       if (!_disposed && token.isNotEmpty) {
         await _accept(token);
       } else if (!_disposed) {
-        message = '已取消登录。';
+        message = tr('已取消登录。');
       }
     } finally {
       await server.close(force: true);
@@ -137,19 +138,19 @@ class SiteController extends ChangeNotifier {
     final token = accounts.siteToken;
     user = await client.me(token);
     _userToken = token;
-    message = '本站账号已验证。';
+    message = tr('本站账号已验证。');
   });
 
   Future<void> logout() => _action(() async {
     final token = accounts.siteToken;
     await accounts.update(siteToken: '');
     user = null;
-    message = '已清除本机本站登录凭据。';
+    message = tr('已清除本机本站登录凭据。');
     if (token.isNotEmpty) {
       try {
         await client.logout(token);
       } catch (_) {
-        message = '本机已退出；服务端会话注销失败，请在账号中心检查。';
+        message = tr('本机已退出；服务端会话注销失败，请在账号中心检查。');
       }
     }
   });
@@ -161,7 +162,7 @@ class SiteController extends ChangeNotifier {
     if (known != null && _userToken == token) return known;
     final verified = await client.me(token);
     if (_disposed || token != accounts.siteToken) {
-      throw const MusicSearchException('本站账号已切换，已取消操作。');
+      throw       MusicSearchException(tr('本站账号已切换，已取消操作。'));
     }
     user = verified;
     _userToken = token;

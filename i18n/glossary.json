@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "terms": {
+    "NekoPlayer": "NekoPlayer",
+    "歌单": { "zh-TW": "歌單", "en": "playlist", "ja": "プレイリスト" },
+    "音质": { "zh-TW": "音質", "en": "audio quality", "ja": "音質" },
+    "缓存": { "zh-TW": "快取", "en": "cache", "ja": "キャッシュ" },
+    "歌词": { "zh-TW": "歌詞", "en": "lyrics", "ja": "歌詞" },
+    "母带": { "zh-TW": "母帶", "en": "mastering", "ja": "マスタリング" },
+    "悬浮歌词": { "zh-TW": "懸浮歌詞", "en": "floating lyrics", "ja": "フローティング歌詞" },
+    "社区": { "zh-TW": "社群", "en": "community", "ja": "コミュニティ" },
+    "私信": { "zh-TW": "私訊", "en": "direct messages", "ja": "ダイレクトメッセージ" },
+    "分享": { "zh-TW": "分享", "en": "share", "ja": "共有" },
+    "收藏": { "zh-TW": "收藏", "en": "favorites", "ja": "お気に入り" },
+    "设置": { "zh-TW": "設定", "en": "settings", "ja": "設定" }
+  }
+}

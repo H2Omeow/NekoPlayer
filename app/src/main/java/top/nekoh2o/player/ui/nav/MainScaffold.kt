@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.nav
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -50,11 +52,13 @@ import top.nekoh2o.player.ui.social.SocialScreen
 import top.nekoh2o.player.ui.theme.NekoRadius
 import top.nekoh2o.player.ui.theme.NekoSpace
 
-enum class Tab(val label: String, val icon: ImageVector, val selectedIcon: ImageVector) {
+enum class Tab(private val rawLabel: String, val icon: ImageVector, val selectedIcon: ImageVector) {
     HOME("主页", Icons.Outlined.Home, Icons.Filled.Home),
     MUSIC("音乐", Icons.Outlined.LibraryMusic, Icons.Filled.LibraryMusic),
     SOCIAL("社区", Icons.Outlined.ChatBubbleOutline, Icons.Filled.ChatBubble),
-    MINE("我的", Icons.Outlined.Person, Icons.Filled.Person)
+    MINE("我的", Icons.Outlined.Person, Icons.Filled.Person);
+
+    val label: String get() = tr(rawLabel)
 }
 
 @Composable
@@ -308,7 +312,7 @@ fun MiniPlayer(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    Modifier.weight(1f).clickableRow(rowLabel = "${song.nm}，${song.ar}", actionLabel = "打开播放器", onClick = onOpen),
+                    Modifier.weight(1f).clickableRow(rowLabel = "${song.nm}，${song.ar}", actionLabel = tr("打开播放器"), onClick = onOpen),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Artwork(song.pc, size = 44.dp, thumbnail = 100)
@@ -331,13 +335,13 @@ fun MiniPlayer(
                     ) { playing ->
                         Icon(
                             if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (playing) "暂停" else "播放",
+                            contentDescription = if (playing) tr("暂停") else tr("播放"),
                             modifier = Modifier.size(30.dp)
                         )
                     }
                 }
                 IconButton(onClick = onNext) {
-                    Icon(Icons.Filled.SkipNext, contentDescription = "下一首")
+                    Icon(Icons.Filled.SkipNext, contentDescription = tr("下一首"))
                 }
             }
             // 进度条贴在卡片底边，圆角裁切

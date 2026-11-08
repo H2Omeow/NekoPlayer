@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
@@ -13,7 +14,7 @@ Uri pluginHttpsUri(String value) {
       uri.userInfo.isNotEmpty ||
       uri.hasFragment ||
       uri.toString().length > 4096) {
-    throw const FormatException('插件地址必须是无账号密码的 HTTPS 链接。');
+    throw       FormatException(tr('插件地址必须是无账号密码的 HTTPS 链接。'));
   }
   return uri;
 }
@@ -79,7 +80,7 @@ class MusicPluginSource {
         utf8.encode(script).length > 5 * 1024 * 1024 ||
         meta['capabilities'] is! List ||
         (meta['capabilities'] as List).any((value) => value is! String)) {
-      throw const FormatException('音源脚本元信息无效。');
+      throw       FormatException(tr('音源脚本元信息无效。'));
     }
     if (url.scheme != 'file') pluginHttpsUri('$url');
     return MusicPluginSource(
@@ -123,7 +124,7 @@ class MusicPluginSource {
         api.hasQuery ||
         capabilities is! List ||
         capabilities.any((value) => value is! String)) {
-      throw const FormatException('只支持具有有效 META 信息的 animemusic/1 音源插件。');
+      throw       FormatException(tr('只支持具有有效 META 信息的 animemusic/1 音源插件。'));
     }
     final supported = (meta['platforms'] as List? ?? [])
         .whereType<String>()
@@ -131,7 +132,7 @@ class MusicPluginSource {
     if (platform == 'all' &&
         (supported.isEmpty ||
             supported.any((item) => !platforms.contains(item)))) {
-      throw const FormatException('聚合音源必须声明有效的平台列表。');
+      throw       FormatException(tr('聚合音源必须声明有效的平台列表。'));
     }
     final normalizedUrl = url.scheme == 'file'
         ? url
@@ -177,7 +178,7 @@ class MusicPluginSource {
             builtin: json['builtin'] == true,
           );
     if (source.id != json['id']) {
-      throw const FormatException('插件标识与来源不一致。');
+      throw       FormatException(tr('插件标识与来源不一致。'));
     }
     return source;
   }

@@ -1,3 +1,4 @@
+import '../../i18n/tr.dart';
 import 'package:flutter/material.dart';
 
 import '../neko_theme.dart';
@@ -178,7 +179,7 @@ class _SongRowState extends State<SongRow> {
                     Opacity(
                       opacity: widget.favorite! || showControls ? 1 : 0,
                       child: IconButton(
-                        tooltip: widget.favorite! ? '取消收藏' : '收藏',
+                        tooltip: widget.favorite! ? tr('取消收藏') : tr('收藏'),
                         onPressed: widget.onFavorite,
                         iconSize: 20,
                         icon: Icon(
@@ -193,7 +194,7 @@ class _SongRowState extends State<SongRow> {
                     Opacity(
                       opacity: showControls ? 1 : 0.55,
                       child: PopupMenuButton<SongAction>(
-                        tooltip: '歌曲操作',
+                        tooltip: tr('歌曲操作'),
                         icon: const Icon(Icons.more_horiz_rounded, size: 20),
                         onSelected: (action) => action.onSelected(),
                         itemBuilder: (context) => [

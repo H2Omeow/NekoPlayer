@@ -1,5 +1,7 @@
 package top.nekoh2o.player.data.social
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -18,7 +20,7 @@ data class SocialProfile(
     val isSelf: Boolean = false,
     val blocked: Boolean = false
 ) {
-    val displayName: String get() = nickname.ifBlank { username.ifBlank { "用户" } }
+    val displayName: String get() = nickname.ifBlank { username.ifBlank { tr("用户") } }
 }
 
 @Serializable
@@ -46,8 +48,8 @@ data class SocialSong(
 ) {
     fun toSong(): Song = Song(
         id = id,
-        nm = nm.ifBlank { "未知歌曲" },
-        ar = ar.ifBlank { "未知歌手" },
+        nm = nm.ifBlank { tr("未知歌曲") },
+        ar = ar.ifBlank { tr("未知歌手") },
         pc = pc,
         source = source,
         hash = hash,
@@ -80,15 +82,15 @@ data class SocialSong(
 }
 
 fun platformLabel(song: Song): String = when (song.source) {
-    "netease" -> "网易云音乐"
-    "kugou" -> "酷狗音乐"
-    "animemusic-kg" -> "内置音源"
-    "animemusic-kw" -> "内置音源"
-    "animemusic-wy" -> "内置音源"
-    "animemusic-tx" -> "内置音源"
-    "animemusic-mg" -> "内置音源"
-    "animemusic-bilibili" -> "内置音源"
-    else -> song.source.ifBlank { "音乐" }
+    "netease" -> tr("网易云音乐")
+    "kugou" -> tr("酷狗音乐")
+    "animemusic-kg" -> tr("内置音源")
+    "animemusic-kw" -> tr("内置音源")
+    "animemusic-wy" -> tr("内置音源")
+    "animemusic-tx" -> tr("内置音源")
+    "animemusic-mg" -> tr("内置音源")
+    "animemusic-bilibili" -> tr("内置音源")
+    else -> song.source.ifBlank { tr("音乐") }
 }
 
 @Serializable
@@ -123,7 +125,7 @@ data class SocialShare(
     val token: String = "",
     val url: String = "",
     val appUrl: String = "",
-    val platform: String = "音乐",
+    val platform: String = tr("音乐"),
     val song: SocialSong = SocialSong(),
     val message: String = "",
     val lyricSnippet: String = "",
@@ -146,7 +148,7 @@ data class ShareOptions(
 @Serializable
 data class ShareRequest(
     val song: SocialSong,
-    val platform: String = "音乐",
+    val platform: String = tr("音乐"),
     val message: String = "",
     val options: ShareOptions = ShareOptions(),
     val lyricSnippet: String = "",

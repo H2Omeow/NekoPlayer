@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
@@ -61,7 +62,7 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
     try {
       text = await store.read(entry);
     } catch (_) {
-      text = '无法读取该文件。';
+      text = tr('无法读取该文件。');
     }
     if (mounted && selected == entry) setState(() => content = text);
   }
@@ -76,7 +77,7 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
       final message = await work();
       if (mounted) setState(() => notice = message);
     } catch (_) {
-      if (mounted) setState(() => notice = '操作未完成，请检查文件权限和磁盘空间。');
+      if (mounted) setState(() => notice = tr('操作未完成，请检查文件权限和磁盘空间。'));
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -90,35 +91,35 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
         .replaceAll('T', '-');
     final location = await getSaveLocation(
       suggestedName: 'nekoplayer-diagnostics-$stamp.txt',
-      acceptedTypeGroups: const [
-        XTypeGroup(label: '文本', extensions: ['txt']),
+      acceptedTypeGroups:       [
+        XTypeGroup(label: tr('文本'), extensions: ['txt']),
       ],
     );
     if (location == null) return null;
     await File(location.path).writeAsString(await store.exportText());
-    return '诊断信息已导出：${location.path}';
+    return tr('诊断信息已导出：{path}', {'path': location.path});
   });
 
   Future<void> openFolder() => action(() async {
     store.root.createSync(recursive: true);
     final opened = await launchUrl(Uri.file(store.root.path));
-    return opened ? null : '无法打开文件夹：${store.root.path}';
+    return opened ? null : tr('无法打开文件夹：{path}', {'path': store.root.path});
   });
 
   Future<void> clear() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('清除所有日志？'),
-        content: const Text('将删除全部运行日志和崩溃转储，无法恢复。建议先导出诊断信息。'),
+        title:       Text(tr('清除所有日志？')),
+        content:       Text(tr('将删除全部运行日志和崩溃转储，无法恢复。建议先导出诊断信息。')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child:       Text(tr('取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('清除'),
+            child:       Text(tr('清除')),
           ),
         ],
       ),
@@ -127,7 +128,7 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
     await action(() async {
       final removed = store.clear();
       CrashLog.current?.reset();
-      return '已清除 $removed 个文件。';
+      return tr('已清除 {count} 个文件。', {'count': removed});
     });
     await refresh();
   }
@@ -156,7 +157,7 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: Text(
-                '${entry.crash ? '崩溃 · ' : ''}'
+                '${entry.crash ? '${tr('崩溃')} · ' : ''}'
                 '${entry.modified.toLocal().toString().substring(0, 19)}',
                 style: text.labelSmall,
               ),
@@ -191,10 +192,10 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
     final narrow = MediaQuery.sizeOf(context).width < 900;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('崩溃日志与诊断'),
+        title:       Text(tr('崩溃日志与诊断')),
         actions: [
           IconButton(
-            tooltip: '刷新',
+            tooltip: tr('刷新'),
             onPressed: busy ? null : refresh,
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -208,9 +209,20 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
           children: [
             if (report.uncleanShutdown) ...[
               InlineNotice(
-                '上次运行没有正常退出'
-                '${report.previousStart == null ? '' : '（启动于 ${report.previousStart!.toString().substring(0, 19)}）'}。'
-                '${report.crashFiles.isEmpty ? '没有发现崩溃转储，可能是被系统结束或断电。' : '发现 ${report.crashFiles.length} 个崩溃文件，请导出诊断信息后反馈。'}',
+                tr('上次运行没有正常退出{started}。{detail}', {
+                  'started': report.previousStart == null
+                      ? ''
+                      : tr('（启动于 {time}）', {
+                          'time': report.previousStart!
+                              .toString()
+                              .substring(0, 19),
+                        }),
+                  'detail': report.crashFiles.isEmpty
+                      ? tr('没有发现崩溃转储，可能是被系统结束或断电。')
+                      : tr('发现 {count} 个崩溃文件，请导出诊断信息后反馈。', {
+                          'count': report.crashFiles.length,
+                        }),
+                }),
                 error: true,
               ),
               const SizedBox(height: NekoSpace.lg),
@@ -223,19 +235,19 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
                 FilledButton.icon(
                   onPressed: busy ? null : export,
                   icon: const Icon(Icons.ios_share_rounded, size: 18),
-                  label: const Text('导出诊断信息'),
+                  label:       Text(tr('导出诊断信息')),
                 ),
                 OutlinedButton.icon(
                   onPressed: busy ? null : openFolder,
                   icon: const Icon(Icons.folder_open_rounded, size: 18),
-                  label: const Text('打开日志文件夹'),
+                  label:       Text(tr('打开日志文件夹')),
                 ),
                 TextButton(
                   style: TextButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error,
                   ),
                   onPressed: busy || files.isEmpty ? null : clear,
-                  child: const Text('清除日志'),
+                  child:       Text(tr('清除日志')),
                 ),
               ],
             ),
@@ -248,10 +260,10 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
             const SizedBox(height: NekoSpace.lg),
             Expanded(
               child: files.isEmpty
-                  ? const EmptyState(
+                  ?       EmptyState(
                       icon: Icons.task_alt_rounded,
-                      title: '暂无日志',
-                      description: '运行日志和崩溃记录会保存在这里。',
+                      title: tr('暂无日志'),
+                      description: tr('运行日志和崩溃记录会保存在这里。'),
                     )
                   : narrow
                   ? Column(

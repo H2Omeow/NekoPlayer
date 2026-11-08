@@ -9,6 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
   file_selector: ^1.1.0
   crypto: ^3.0.6
   encrypt: ^5.0.3

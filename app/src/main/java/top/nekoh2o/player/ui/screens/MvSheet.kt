@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -48,7 +50,7 @@ fun MvSheet(source: String, initialQuery: String, onPauseMusic: () -> Unit, onDi
                 val found = withContext(Dispatchers.IO) { repo.search(source, query.trim(), currentPage) }
                 videos = (if (next) videos + found else found).distinctBy { it.source + ":" + it.id }
                 page = currentPage; more = found.size >= 30
-            } catch (problem: Exception) { error = "内置插件 MV 搜索失败，请稍后重试" }
+            } catch (problem: Exception) { error = tr("内置插件 MV 搜索失败，请稍后重试") }
             finally { loading = false }
         }
     }
@@ -56,8 +58,8 @@ fun MvSheet(source: String, initialQuery: String, onPauseMusic: () -> Unit, onDi
         Column(Modifier.fillMaxWidth().padding(16.dp).heightIn(max = 700.dp)) {
             Text("MV", style = MaterialTheme.typography.headlineSmall)
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                OutlinedTextField(query, { query = it }, Modifier.weight(1f), singleLine = true, label = { Text("搜索 MV") })
-                TextButton(onClick = { search() }, enabled = !loading) { Text("搜索") }
+                OutlinedTextField(query, { query = it }, Modifier.weight(1f), singleLine = true, label = { Text(tr("搜索 MV")) })
+                TextButton(onClick = { search() }, enabled = !loading) { Text(tr("搜索")) }
             }
             selected?.let { Text(it.title, Modifier.padding(vertical = 8.dp)) }
             if (url != null) AndroidView(factory = { PlayerView(it).apply { this.player = player; useController = true } },
@@ -70,12 +72,12 @@ fun MvSheet(source: String, initialQuery: String, onPauseMusic: () -> Unit, onDi
                         scope.launch {
                             loading = true; error = null
                             try { url = withContext(Dispatchers.IO) { repo.url(video) } ?: throw IllegalStateException(); selected = video }
-                            catch (problem: Exception) { error = "暂无可播放 MV 链接" }
+                            catch (problem: Exception) { error = tr("暂无可播放 MV 链接") }
                             finally { loading = false }
                         }
                     }, enabled = !loading) { Column(Modifier.fillMaxWidth()) { Text(video.title); Text(video.artist, style = MaterialTheme.typography.bodySmall) } }
                 }
-                if (more) item { TextButton(onClick = { search(true) }, enabled = !loading) { Text("加载更多") } }
+                if (more) item { TextButton(onClick = { search(true) }, enabled = !loading) { Text(tr("加载更多")) } }
             }
         }
     }

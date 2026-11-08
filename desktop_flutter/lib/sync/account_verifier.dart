@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import '../data/native_music_catalog.dart';
 import '../domain/online_music.dart';
 
@@ -13,13 +14,13 @@ AccountVerifier catalogVerifier(NativeMusicCatalog catalog) =>
           weapi: true,
         );
         if (response['code'] != 200 || response['account'] is! Map) {
-          throw const MusicSearchException('网易云未确认账号有效，请重新登录。');
+          throw       MusicSearchException(tr('网易云未确认账号有效，请重新登录。'));
         }
         final profile = response['profile'] is Map
             ? response['profile'] as Map
             : const {};
-        return profile['nickname']?.toString() ?? '网易云用户';
+        return profile['nickname']?.toString() ?? tr('网易云用户');
       }
       final info = await catalog.kugouAccountInfo();
-      return (info['nickname'] ?? info['username'] ?? '酷狗用户').toString();
+      return (info['nickname'] ?? info['username'] ?? tr('酷狗用户')).toString();
     };

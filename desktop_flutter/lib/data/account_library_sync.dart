@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'package:flutter/foundation.dart';
 
 import '../domain/library.dart';
@@ -36,7 +37,7 @@ class AccountLibrarySync extends ChangeNotifier {
     if (_disposed || busy) throw StateError('Library sync unavailable');
     if (destination == AccountLibraryDestination.playlist &&
         (playlistId.isEmpty || playlistName.trim().isEmpty)) {
-      throw const FormatException('缺少本机歌单标识或名称。');
+      throw       FormatException(tr('缺少本机歌单标识或名称。'));
     }
     final account = sessionKey();
     bool stale() => _disposed || cancelled || account != sessionKey();
@@ -54,11 +55,11 @@ class AccountLibrarySync extends ChangeNotifier {
         for (final song in result.items) {
           final encoded = CloudLibrary.encodeSong(Track.fromOnline(song));
           if (CloudLibrary.decodeSong(encoded)?.path != song.key) {
-            throw const FormatException('平台返回的歌曲标识无效，未保存部分结果。');
+            throw       FormatException(tr('平台返回的歌曲标识无效，未保存部分结果。'));
           }
           songs.putIfAbsent(song.key, () => encoded);
           if (songs.length > maxSongs) {
-            throw const MusicSearchException('歌曲数量超过安全上限，未保存部分结果。');
+            throw       MusicSearchException(tr('歌曲数量超过安全上限，未保存部分结果。'));
           }
         }
         count = songs.length;
@@ -83,7 +84,7 @@ class AccountLibrarySync extends ChangeNotifier {
           return count;
         }
       }
-      throw const MusicSearchException('平台分页超过安全上限，未保存部分结果。');
+      throw       MusicSearchException(tr('平台分页超过安全上限，未保存部分结果。'));
     } catch (_) {
       if (!committing && stale()) return null;
       rethrow;

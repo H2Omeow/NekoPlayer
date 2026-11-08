@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -91,7 +92,7 @@ class PluginSubscriptions extends ChangeNotifier {
       if (raw != null) {
         final body = jsonDecode(raw) as Map<String, dynamic>;
         if (body['version'] != 1 || body['subscriptions'] is! List) {
-          throw const FormatException('订阅配置格式无效。');
+          throw       FormatException(tr('订阅配置格式无效。'));
         }
         final restored = <MusicSubscription>[];
         for (final item
@@ -115,13 +116,13 @@ class PluginSubscriptions extends ChangeNotifier {
         if (restored.length > 64 ||
             restored.map((item) => item.url).toSet().length !=
                 restored.length) {
-          throw const FormatException('订阅数量或标识无效。');
+          throw       FormatException(tr('订阅数量或标识无效。'));
         }
         _subscriptions = restored;
       }
     } catch (_) {
       readable = false;
-      error = '订阅配置读取失败，未覆盖原文件。';
+      error = tr('订阅配置读取失败，未覆盖原文件。');
     }
     if (!_disposed) notifyListeners();
   }
@@ -134,7 +135,7 @@ class PluginSubscriptions extends ChangeNotifier {
 
   Future<MusicSubscription> previewText(String text, Uri safe) async {
     if (utf8.encode(text).length > 5 * 1024 * 1024) {
-      throw const FormatException('订阅或插件超过 5 MiB。');
+      throw       FormatException(tr('订阅或插件超过 5 MiB。'));
     }
     safe = subscriptionUri('$safe');
     final inspector = PluginLoader(runtime);
@@ -147,7 +148,7 @@ class PluginSubscriptions extends ChangeNotifier {
     }
     final plugins = body is Map ? body['plugins'] : body;
     if (plugins is! List || plugins.isEmpty || plugins.length > 32) {
-      throw const FormatException('订阅必须包含 1–32 个插件条目。');
+      throw       FormatException(tr('订阅必须包含 1–32 个插件条目。'));
     }
     final isBuiltin = safe == builtinSubscriptionUrl;
     final sources = <String, MusicPluginSource>{};
@@ -155,10 +156,10 @@ class PluginSubscriptions extends ChangeNotifier {
     for (final item in plugins) {
       final entry = item is String ? {'url': item} : item;
       if (entry is! Map) {
-        throw const FormatException('订阅中的插件链接无效。');
+        throw       FormatException(tr('订阅中的插件链接无效。'));
       }
       final location = entry['url'] ?? entry['srcUrl'] ?? entry['update'];
-      if (location is! String) throw const FormatException('订阅中的插件链接无效。');
+      if (location is! String) throw       FormatException(tr('订阅中的插件链接无效。'));
       final scriptUrl = pluginHttpsUri('${safe.resolve(location)}');
       final native =
           entry['format'] == 'animemusic/1' && entry['api'] is String;
@@ -166,7 +167,7 @@ class PluginSubscriptions extends ChangeNotifier {
       if (!native) verifyPluginChecksum(script, entry['sha256']);
       scriptBytes += utf8.encode(script).length;
       if (scriptBytes > 16 * 1024 * 1024) {
-        throw const FormatException('订阅脚本总大小超过 16 MiB。');
+        throw       FormatException(tr('订阅脚本总大小超过 16 MiB。'));
       }
       final source = native
           ? MusicPluginSource.fromMeta(
@@ -183,7 +184,7 @@ class PluginSubscriptions extends ChangeNotifier {
                   : entry['format'] as String?,
             );
       if (sources.containsKey(source.id)) {
-        throw const FormatException('订阅包含重复的插件标识。');
+        throw       FormatException(tr('订阅包含重复的插件标识。'));
       }
       sources[source.id] = source;
     }
@@ -243,7 +244,7 @@ class PluginSubscriptions extends ChangeNotifier {
       ]);
 
   Future<void> remove(MusicSubscription subscription) {
-    if (subscription.builtin) throw StateError('内置订阅只能停用，不能删除。');
+    if (subscription.builtin) throw StateError(tr('内置订阅只能停用，不能删除。'));
     return _change([
       for (final existing in _subscriptions)
         if (existing.url != subscription.url) existing,
@@ -251,8 +252,8 @@ class PluginSubscriptions extends ChangeNotifier {
   }
 
   Future<void> _change(List<MusicSubscription> next) async {
-    if (!readable || busy || _disposed) throw StateError('订阅配置暂不可写入。');
-    if (next.length > 64) throw const FormatException('最多支持 64 个订阅。');
+    if (!readable || busy || _disposed) throw StateError(tr('订阅配置暂不可写入。'));
+    if (next.length > 64) throw       FormatException(tr('最多支持 64 个订阅。'));
     busy = true;
     notifyListeners();
     try {
@@ -312,23 +313,23 @@ Future<String> loadPluginText(Uri uri) async {
         final response = await request.close();
         if ([301, 302, 303, 307, 308].contains(response.statusCode)) {
           final location = response.headers.value(HttpHeaders.locationHeader);
-          if (location == null) throw const FormatException('订阅重定向缺少地址。');
+          if (location == null) throw FormatException(tr('订阅重定向缺少地址。'));
           current = pluginHttpsUri('${current.resolve(location)}');
           continue;
         }
         if (response.statusCode != HttpStatus.ok) {
-          throw HttpException('订阅读取失败（HTTP ${response.statusCode}）');
+          throw HttpException(tr('订阅读取失败（HTTP {status}）', {'status': response.statusCode}));
         }
         final bytes = <int>[];
         await for (final chunk in response) {
           if (bytes.length + chunk.length > 5 * 1024 * 1024) {
-            throw const FormatException('订阅或插件超过 5 MiB，已停止读取。');
+            throw       FormatException(tr('订阅或插件超过 5 MiB，已停止读取。'));
           }
           bytes.addAll(chunk);
         }
         return utf8.decode(bytes);
       }
-      throw const FormatException('订阅重定向次数过多。');
+      throw       FormatException(tr('订阅重定向次数过多。'));
     })().timeout(const Duration(seconds: 20));
   } finally {
     client.close(force: true);

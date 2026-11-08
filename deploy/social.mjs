@@ -1,5 +1,6 @@
 // NekoPlayer 社区：关注、公开主页、私信、歌曲分享与 SSE 推送。
 // 数据保存在 SuperPlayer-Web 的 SQLite 中；用户资料由账户中心公开 API 提供。
+import { t as translateMessage } from './server-i18n.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -886,14 +887,15 @@ function safeJsonForHtml(value) {
     .replace(/\u2029/g, '\\u2029');
 }
 
-export function renderShareHtml(template, share, { publicBaseUrl = 'https://player.nekoh2o.top' } = {}) {
+export function renderShareHtml(template, share, { publicBaseUrl = 'https://player.nekoh2o.top', locale = 'zh-CN' } = {}) {
+  const tr = (source, params) => translateMessage(locale, source, params);
   const base = publicBaseUrl.replace(/\/+$/, '');
-  let title = 'NekoPlayer 音乐分享';
+  let title = tr('NekoPlayer 音乐分享');
   let metas = '<meta name="robots" content="noindex">';
   let data = { error: share?.revoked ? 'revoked' : 'notFound' };
   if (share && !share.revoked) {
     const song = share.song || {};
-    title = `${song.nm || '音乐'} - ${song.ar || '未知歌手'}`;
+    title = `${song.nm || tr('音乐')} - ${song.ar || tr('未知歌手')}`;
     data = { share };
     const description = [
       song.ar,
@@ -904,6 +906,7 @@ export function renderShareHtml(template, share, { publicBaseUrl = 'https://play
     metas = [
       `<meta property="og:type" content="music.song">`,
       `<meta property="og:site_name" content="NekoPlayer">`,
+      `<meta property="og:locale" content="${locale === 'zh-CN' ? 'zh_CN' : locale === 'zh-TW' ? 'zh_TW' : locale === 'ja' ? 'ja_JP' : 'en_US'}">`,
       `<meta property="og:title" content="${escapeHtml(title)}">`,
       `<meta property="og:description" content="${escapeHtml(description)}">`,
       `<meta property="og:url" content="${escapeHtml(share.url || `${base}/s/${share.token}`)}">`,
@@ -917,6 +920,7 @@ export function renderShareHtml(template, share, { publicBaseUrl = 'https://play
     ].filter(Boolean).join('\n    ');
   }
   return template
+    .replace('<html lang="zh-CN"', `<html lang="${locale}"`)
     .replaceAll('<!--SHARE_TITLE-->', escapeHtml(title))
     .replace('<!--SHARE_META-->', metas)
     .replace('<!--SHARE_DATA-->', safeJsonForHtml(data));

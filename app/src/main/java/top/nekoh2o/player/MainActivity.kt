@@ -1,6 +1,9 @@
 package top.nekoh2o.player
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
@@ -24,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import top.nekoh2o.player.i18n.NekoI18n
 import top.nekoh2o.player.ui.PlayerViewModel
 import top.nekoh2o.player.ui.nav.MainScaffold
 import top.nekoh2o.player.ui.social.ShareSongSheet
@@ -37,6 +41,10 @@ class MainActivity : ComponentActivity() {
 
     private val notifPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(NekoI18n.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -143,7 +151,7 @@ class MainActivity : ComponentActivity() {
         try {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(loginUrl)))
         } catch (e: Exception) {
-            Toast.makeText(this, "无法打开浏览器", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, tr("无法打开浏览器"), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -154,7 +162,7 @@ class MainActivity : ComponentActivity() {
         val token = data.getQueryParameter("token")
         if (!token.isNullOrEmpty()) {
             vm.onSsoTokenReceived(token)
-            Toast.makeText(this, "登录成功", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, tr("登录成功"), Toast.LENGTH_SHORT).show()
         }
     }
 

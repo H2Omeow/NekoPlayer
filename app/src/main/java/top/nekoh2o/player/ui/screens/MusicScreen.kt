@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.i18n.NekoI18n.tr
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -91,7 +93,7 @@ fun MusicScreen(vm: PlayerViewModel) {
                 title = artist.name,
                 artwork = artist.picUrl ?: artist.img1v1Url,
                 artworkShape = CircleShape,
-                subtitle = { count -> "$count 首热门歌曲" },
+                subtitle = { count -> tr("{count} 首热门歌曲", "count" to count) },
                 load = { done -> vm.loadArtistSongs(artist.id, done) },
                 key = artist.id,
                 actions = actions,
@@ -103,7 +105,7 @@ fun MusicScreen(vm: PlayerViewModel) {
                 title = album.name,
                 artwork = album.picUrl,
                 artworkShape = RoundedCornerShape(NekoRadius.artwork),
-                subtitle = { count -> listOfNotNull(album.artist?.name, "$count 首").joinToString(" · ") },
+                subtitle = { count -> listOfNotNull(album.artist?.name, tr("{count} 首", "count" to count)).joinToString(" · ") },
                 load = { done -> vm.loadAlbumSongs(album.id, done) },
                 key = album.id,
                 actions = actions,
@@ -112,7 +114,7 @@ fun MusicScreen(vm: PlayerViewModel) {
         }
         else -> MusicContent(
             state = state,
-            sources = listOf(MusicSource("netease", "网易云音乐"), MusicSource("kugou", "酷狗音乐")) +
+            sources = listOf(MusicSource("netease", tr("网易云音乐")), MusicSource("kugou", tr("酷狗音乐"))) +
                 PluginStore.sources(plugins).map { MusicSource(it.id, it.name) },
             actions = actions,
             callbacks = remember(vm) {
@@ -157,12 +159,12 @@ fun MusicContent(
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = NekoSpace.xl)) {
         item {
-            ScreenHeader("音乐") {
+            ScreenHeader(tr("音乐")) {
                 if (hasMv) IconButton(onClick = callbacks.onOpenMv) {
                     Icon(Icons.Filled.OndemandVideo, contentDescription = "MV")
                 }
                 IconButton(onClick = callbacks.onOpenPlugins) {
-                    Icon(Icons.Filled.Extension, contentDescription = "音源与订阅")
+                    Icon(Icons.Filled.Extension, contentDescription = tr("音源与订阅"))
                 }
             }
         }
@@ -178,7 +180,7 @@ fun MusicContent(
         item {
             SearchField(
                 query = state.query,
-                placeholder = "搜索${state.searchType.label}",
+                placeholder = tr("搜索{type}", "type" to tr(state.searchType.label)),
                 onQuery = callbacks.onQuery,
                 onSearch = { callbacks.onSearch(null) },
                 modifier = Modifier.padding(horizontal = NekoSpace.lg, vertical = NekoSpace.xs)
@@ -191,7 +193,7 @@ fun MusicContent(
             ChipRow(
                 items = SearchType.entries,
                 selected = state.searchType,
-                label = { it.label },
+                label = { tr(it.label) },
                 onSelect = callbacks.onType,
                 modifier = Modifier.padding(vertical = NekoSpace.sm)
             )
@@ -222,7 +224,7 @@ private fun SearchField(
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         trailingIcon = {
             if (query.isNotEmpty()) IconButton(onClick = { onQuery("") }) {
-                Icon(Icons.Filled.Close, contentDescription = "清空")
+                Icon(Icons.Filled.Close, contentDescription = tr("清空"))
             }
         },
         singleLine = true,
@@ -245,7 +247,7 @@ private fun Suggestions(suggestions: List<String>, onPick: (String) -> Unit) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clickableRow(rowLabel = suggestion, actionLabel = "搜索") { onPick(suggestion) }
+                        .clickableRow(rowLabel = suggestion, actionLabel = tr("搜索")) { onPick(suggestion) }
                         .heightIn(min = 48.dp)
                         .padding(horizontal = NekoSpace.lg),
                     verticalAlignment = Alignment.CenterVertically,
@@ -276,7 +278,7 @@ private fun LazyListScope.searchResults(
                 placeholder = Icons.Filled.Person,
                 title = artist.name,
                 subtitle = null,
-                actionLabel = "查看歌手"
+                actionLabel = tr("查看歌手")
             ) { callbacks.onOpenArtist(artist) }
         }
         SearchType.ALBUM -> items(state.albumResults, key = { "album:${it.id}" }) { album ->
@@ -286,7 +288,7 @@ private fun LazyListScope.searchResults(
                 placeholder = Icons.Filled.Album,
                 title = album.name,
                 subtitle = album.artist?.name,
-                actionLabel = "查看专辑"
+                actionLabel = tr("查看专辑")
             ) { callbacks.onOpenAlbum(album) }
         }
         SearchType.SONG -> items(state.results, key = { "song:" + songKey(it) }) { song ->
@@ -317,7 +319,7 @@ private fun LazyListScope.searchResults(
 private fun LazyListScope.recommendations(state: UiState, actions: SongActions, callbacks: MusicCallbacks) {
     if (state.recPlaylists.isNotEmpty()) {
         item {
-            SectionHeader("推荐歌单", Modifier.padding(start = NekoSpace.lg, end = NekoSpace.lg, top = NekoSpace.md, bottom = NekoSpace.sm))
+            SectionHeader(tr("推荐歌单"), Modifier.padding(start = NekoSpace.lg, end = NekoSpace.lg, top = NekoSpace.md, bottom = NekoSpace.sm))
         }
         item {
             LazyRow(
@@ -331,13 +333,13 @@ private fun LazyListScope.recommendations(state: UiState, actions: SongActions, 
         }
     }
     item {
-        SectionHeader("推荐歌曲", Modifier.padding(start = NekoSpace.lg, end = NekoSpace.lg, top = NekoSpace.xl, bottom = NekoSpace.xs))
+        SectionHeader(tr("推荐歌曲"), Modifier.padding(start = NekoSpace.lg, end = NekoSpace.lg, top = NekoSpace.xl, bottom = NekoSpace.xs))
     }
     if (state.recSongs.isEmpty() && !state.recLoading) item {
         EmptyState(
             icon = Icons.Filled.SearchOff,
-            title = "暂时没有推荐",
-            description = "试试搜索歌曲、歌手或专辑。"
+            title = tr("暂时没有推荐"),
+            description = tr("试试搜索歌曲、歌手或专辑。")
         )
     }
     items(state.recSongs, key = { "rec:" + songKey(it) }) { song ->
@@ -357,7 +359,7 @@ private fun PlaylistCard(playlist: PersonalizedItem, onClick: () -> Unit) {
     Column(
         Modifier
             .width(128.dp)
-            .clickableRow(rowLabel = playlist.name, actionLabel = "打开歌单", onClick = onClick)
+            .clickableRow(rowLabel = playlist.name, actionLabel = tr("打开歌单"), onClick = onClick)
     ) {
         Artwork(playlist.picUrl, size = 128.dp, shape = RoundedCornerShape(NekoRadius.card), thumbnail = 300)
         Text(
@@ -452,7 +454,7 @@ fun SongsDetailContent(
                         Button(onClick = { actions.playAll(songs) }, modifier = Modifier.padding(top = NekoSpace.sm)) {
                             Icon(Icons.Filled.PlayArrow, contentDescription = null)
                             Spacer(Modifier.width(NekoSpace.xs))
-                            Text("播放全部")
+                            Text(tr("播放全部"))
                         }
                     }
                 }
@@ -461,7 +463,7 @@ fun SongsDetailContent(
                 songs == null -> item {
                     Box(Modifier.fillMaxWidth().padding(NekoSpace.xxl), Alignment.Center) { CircularProgressIndicator() }
                 }
-                songs.isEmpty() -> item { EmptyState(icon = Icons.Filled.SearchOff, title = "暂无歌曲") }
+                songs.isEmpty() -> item { EmptyState(icon = Icons.Filled.SearchOff, title = tr("暂无歌曲")) }
                 else -> items(songs, key = { songKey(it) }) { song ->
                     SongRow(
                         song = song,
@@ -485,17 +487,17 @@ fun AddToPlaylistDialog(vm: PlayerViewModel, song: Song, onDismiss: () -> Unit) 
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加到歌单") },
+        title = { Text(tr("添加到歌单")) },
         text = {
             Column {
                 ListItem(
-                    headlineContent = { Text("播放队列") },
+                    headlineContent = { Text(tr("播放队列")) },
                     leadingContent = { Icon(Icons.Filled.Add, null) },
                     colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
                     modifier = Modifier.clickable { vm.addToQueue(song); onDismiss() }
                 )
                 ListItem(
-                    headlineContent = { Text("新建歌单…") },
+                    headlineContent = { Text(tr("新建歌单…")) },
                     leadingContent = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, null) },
                     colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
                     modifier = Modifier.clickable { creating = true }
@@ -504,7 +506,7 @@ fun AddToPlaylistDialog(vm: PlayerViewModel, song: Song, onDismiss: () -> Unit) 
                 state.playlists.forEachIndexed { i, pl ->
                     ListItem(
                         headlineContent = { Text(pl.name) },
-                        supportingContent = { Text("${pl.songs.size} 首") },
+                        supportingContent = { Text(tr("{count} 首", "count" to pl.songs.size)) },
                         leadingContent = { Artwork(pl.songs.firstOrNull()?.pc, size = 40.dp) },
                         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
                         modifier = Modifier.clickable { vm.addToPlaylist(i, song); onDismiss() }
@@ -513,18 +515,18 @@ fun AddToPlaylistDialog(vm: PlayerViewModel, song: Song, onDismiss: () -> Unit) 
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss, colors = NekoDefaults.textButtonColors()) { Text("关闭") }
+            TextButton(onClick = onDismiss, colors = NekoDefaults.textButtonColors()) { Text(tr("关闭")) }
         }
     )
 
     if (creating) {
         AlertDialog(
             onDismissRequest = { creating = false },
-            title = { Text("新建歌单") },
+            title = { Text(tr("新建歌单")) },
             text = {
                 OutlinedTextField(
                     value = newName, onValueChange = { newName = it },
-                    singleLine = true, label = { Text("歌单名称") },
+                    singleLine = true, label = { Text(tr("歌单名称")) },
                     colors = NekoDefaults.textFieldColors()
                 )
             },
@@ -538,13 +540,13 @@ fun AddToPlaylistDialog(vm: PlayerViewModel, song: Song, onDismiss: () -> Unit) 
                         }
                         newName = ""; creating = false; onDismiss()
                     }
-                ) { Text("创建并添加") }
+                ) { Text(tr("创建并添加")) }
             },
             dismissButton = {
                 TextButton(
                     onClick = { creating = false },
                     colors = NekoDefaults.textButtonColors()
-                ) { Text("取消") }
+                ) { Text(tr("取消")) }
             }
         )
     }

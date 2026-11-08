@@ -1,3 +1,4 @@
+import '../i18n/tr.dart';
 import 'package:flutter/material.dart';
 
 import '../data/account_library_sync.dart';
@@ -59,7 +60,7 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
     if (widget.songLoader != null) {
       selected = AccountPlaylist(
         id: widget.collectionId ?? 'browse',
-        name: widget.title ?? '歌曲',
+        name: widget.title ?? tr('歌曲'),
       );
     }
     session = widget.repository.sessionKey;
@@ -79,7 +80,7 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
         ? null
         : AccountPlaylist(
             id: widget.collectionId ?? 'browse',
-            name: widget.title ?? '歌曲',
+            name: widget.title ?? tr('歌曲'),
           );
     load(reset: true);
   }
@@ -168,7 +169,7 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
       }
     } catch (_) {
       if (mounted && current == generation) {
-        setState(() => error = '读取失败，请检查网络后重试。');
+        setState(() => error = tr('读取失败，请检查网络后重试。'));
       }
     } finally {
       if (mounted && current == generation) setState(() => busy = false);
@@ -176,12 +177,12 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
   }
 
   String label(AccountCollection value) => switch (value) {
-    AccountCollection.playlists => '账号歌单',
-    AccountCollection.likes => '红心歌曲',
-    AccountCollection.history => '最近一周记录',
-    AccountCollection.recommendations => '每日推荐',
-    AccountCollection.newSongs => '新歌速递',
-    AccountCollection.following => '关注歌手',
+    AccountCollection.playlists => tr('账号歌单'),
+    AccountCollection.likes => tr('红心歌曲'),
+    AccountCollection.history => tr('最近一周记录'),
+    AccountCollection.recommendations => tr('每日推荐'),
+    AccountCollection.newSongs => tr('新歌速递'),
+    AccountCollection.following => tr('关注歌手'),
   };
 
   Future<void> save([
@@ -199,26 +200,30 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
     final sourcePlaylist = selected;
     final sourceLoader = widget.songLoader;
     final target = switch (destination) {
-      AccountLibraryDestination.playlist => '本机歌单',
-      AccountLibraryDestination.favorites => '本机收藏',
-      AccountLibraryDestination.history => '本机历史',
+      AccountLibraryDestination.playlist => tr('本机歌单'),
+      AccountLibraryDestination.favorites => tr('本机收藏'),
+      AccountLibraryDestination.history => tr('本机历史'),
     };
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('将全部歌曲合并到$target？'),
+        title: Text(tr('将全部歌曲合并到{target}？', {'target': target})),
         content: Text(
-          '将逐页读取「$name」，不只保存当前已加载的歌曲。读取完成后一次合并，取消或读取失败不保存部分结果；不会修改平台账号或下载音频。'
-          '${destination == AccountLibraryDestination.history ? '\n本机历史最多保留 200 首，已有记录优先保留。' : ''}',
+          tr('将逐页读取「{name}」，不只保存当前已加载的歌曲。读取完成后一次合并，取消或读取失败不保存部分结果；不会修改平台账号或下载音频。{note}', {
+            'name': name,
+            'note': destination == AccountLibraryDestination.history
+                ? '\n${tr('本机历史最多保留 200 首，已有记录优先保留。')}'
+                : '',
+          }),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child:       Text(tr('取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('开始同步'),
+            child:       Text(tr('开始同步')),
           ),
         ],
       ),
@@ -256,8 +261,11 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
           SnackBar(
             content: Text(
               count == null
-                  ? '已取消同步，未保存部分结果。'
-                  : '已读取 $count 首歌曲并合并到$target；未修改平台账号。',
+                  ? tr('已取消同步，未保存部分结果。')
+                  : tr('已读取 {count} 首歌曲并合并到{target}；未修改平台账号。', {
+                      'count': count,
+                      'target': target,
+                    }),
             ),
           ),
         );
@@ -271,7 +279,7 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
             content: Text(
               failure is MusicSearchException
                   ? failure.message
-                  : '同步失败，请检查网络与本机存储后重试。',
+                  : tr('同步失败，请检查网络与本机存储后重试。'),
             ),
           ),
         );
@@ -342,8 +350,8 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
           const SizedBox(height: NekoSpace.sm),
           Text(
             provider == MusicProvider.kugou
-                ? '原版 / 概念版跟随平台账号设置。只读浏览，不会修改平台上的歌单。'
-                : '只读浏览平台内容；保存到本机不等于收藏到平台账号。',
+                ? tr('原版 / 概念版跟随平台账号设置。只读浏览，不会修改平台上的歌单。')
+                : tr('只读浏览平台内容；保存到本机不等于收藏到平台账号。'),
             style: text.bodySmall,
           ),
         ],
@@ -368,12 +376,14 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
                 onPressed: () =>
                     widget.player.play(songs.map(Track.fromOnline).toList(), 0),
                 icon: const Icon(Icons.play_arrow_rounded),
-                label: Text('播放已加载的 ${songs.length} 首'),
+                label: Text(
+                  tr('播放已加载的 {count} 首', {'count': songs.length}),
+                ),
               ),
               OutlinedButton.icon(
                 onPressed: sync.busy || busy ? null : () => save(),
                 icon: const Icon(Icons.playlist_add_rounded, size: 18),
-                label: const Text('保存全部歌曲到本机歌单'),
+                label:       Text(tr('保存全部歌曲到本机歌单')),
               ),
               if (syncable)
                 OutlinedButton.icon(
@@ -387,8 +397,8 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
                   icon: const Icon(Icons.sync_rounded, size: 18),
                   label: Text(
                     collection == AccountCollection.likes
-                        ? '全部同步到我喜欢'
-                        : '全部同步到最近播放',
+                        ? tr('全部同步到我喜欢')
+                        : tr('全部同步到最近播放'),
                   ),
                 ),
             ],
@@ -398,15 +408,18 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
         if (busy) const LinearProgressIndicator(),
         if (sync.busy)
           InlineNotice(
-            '已读取 ${sync.pages} 页 · ${sync.count} 首。'
-            '${sync.committing
-                ? '正在保存到本机…'
-                : sync.cancelled
-                ? '等待当前请求结束后取消…'
-                : '全部读取成功后合并到本机。'}',
+            tr('已读取 {pages} 页 · {count} 首。{status}', {
+              'pages': sync.pages,
+              'count': sync.count,
+              'status': sync.committing
+                  ? tr('正在保存到本机…')
+                  : sync.cancelled
+                  ? tr('等待当前请求结束后取消…')
+                  : tr('全部读取成功后合并到本机。'),
+            }),
             action: TextButton(
               onPressed: sync.cancelled || sync.committing ? null : sync.cancel,
-              child: const Text('取消同步'),
+              child:       Text(tr('取消同步')),
             ),
           ),
         if (error case final message?)
@@ -415,7 +428,7 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
             error: true,
             action: TextButton(
               onPressed: busy ? null : () => load(reset: page == 0),
-              child: const Text('重试'),
+              child:       Text(tr('重试')),
             ),
           ),
       ],
@@ -438,7 +451,7 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
     );
     final tracks = songs.map(Track.fromOnline).toList();
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title ?? '平台曲库')),
+      appBar: AppBar(title: Text(widget.title ?? tr('平台曲库'))),
       body: ListenableBuilder(
         listenable: Listenable.merge([widget.player, widget.player.engine]),
         builder: (context, _) => CustomScrollView(
@@ -448,12 +461,12 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
               sliver: SliverToBoxAdapter(child: _header(context)),
             ),
             if (!busy && error == null && playlists.isEmpty && songs.isEmpty)
-              const SliverFillRemaining(
+                    SliverFillRemaining(
                 hasScrollBody: false,
                 child: EmptyState(
                   icon: Icons.inbox_outlined,
-                  title: '暂无内容',
-                  description: '这里还没有歌曲；也可能需要先在“音乐平台账号”中登录。',
+                  title: tr('暂无内容'),
+                  description: tr('这里还没有歌曲；也可能需要先在“音乐平台账号”中登录。'),
                 ),
               )
             else
@@ -476,7 +489,7 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
                       return Center(
                         child: TextButton(
                           onPressed: busy ? null : load,
-                          child: const Text('加载更多'),
+                          child:       Text(tr('加载更多')),
                         ),
                       );
                     }
@@ -497,7 +510,7 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         subtitle: playlist.count > 0
-                            ? Text('${playlist.count} 首')
+                            ? Text(tr('{count} 首', {'count': playlist.count}))
                             : null,
                         trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () {
