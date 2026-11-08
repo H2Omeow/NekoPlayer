@@ -27,6 +27,10 @@ class DesktopIntegration extends ChangeNotifier {
   bool closeToTray = false;
   bool overlay = false;
   bool locked = false;
+  // Optional pieces of the desktop lyrics window; each can be turned off.
+  bool overlayTitle = true;
+  bool overlayProgress = true;
+  bool overlayControls = true;
   double fontSize = 30;
   double opacity = .9;
   String? error;
@@ -56,6 +60,9 @@ class DesktopIntegration extends ChangeNotifier {
       if (!size.isFinite || !alpha.isFinite) throw const FormatException();
       overlay = value['overlay'] as bool;
       locked = value['locked'] as bool;
+      overlayTitle = value['overlayTitle'] as bool? ?? true;
+      overlayProgress = value['overlayProgress'] as bool? ?? true;
+      overlayControls = value['overlayControls'] as bool? ?? true;
       fontSize = size.clamp(18, 64);
       opacity = alpha.clamp(.25, 1);
     } catch (_) {
@@ -71,6 +78,9 @@ class DesktopIntegration extends ChangeNotifier {
       'version': 1,
       'overlay': overlay,
       'locked': locked,
+      'overlayTitle': overlayTitle,
+      'overlayProgress': overlayProgress,
+      'overlayControls': overlayControls,
       'fontSize': fontSize,
       'opacity': opacity,
     });
@@ -184,15 +194,27 @@ class DesktopIntegration extends ChangeNotifier {
   void configureOverlay({
     bool? enabled,
     bool? lock,
+    bool? showTitle,
+    bool? showProgress,
+    bool? showControls,
     double? size,
     double? alpha,
   }) {
     if (!lyricsAvailable || _disposed) return;
     overlay = enabled ?? overlay;
     locked = lock ?? locked;
+    overlayTitle = showTitle ?? overlayTitle;
+    overlayProgress = showProgress ?? overlayProgress;
+    overlayControls = showControls ?? overlayControls;
     if (size != null && size.isFinite) fontSize = size.clamp(18, 64);
     if (alpha != null && alpha.isFinite) opacity = alpha.clamp(.25, 1);
-    if (enabled != null || lock != null || size != null || alpha != null) {
+    if (enabled != null ||
+        lock != null ||
+        showTitle != null ||
+        showProgress != null ||
+        showControls != null ||
+        size != null ||
+        alpha != null) {
       _saveSettings();
     }
     _signature = null;
@@ -254,6 +276,9 @@ class DesktopIntegration extends ChangeNotifier {
       'lyricsLocked': locked,
       'lyricsSize': fontSize,
       'lyricsOpacity': opacity,
+      'showTitle': overlayTitle,
+      'showProgress': overlayProgress,
+      'showControls': overlayControls,
     };
   }
 

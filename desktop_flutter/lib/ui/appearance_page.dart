@@ -48,6 +48,7 @@ class AppearancePage extends StatelessWidget {
     double max,
     ValueChanged<double>? change, {
     String Function(double) format = percent,
+    int divisions = 20,
   }) => SettingsControlTile(
     title: title,
     value: format(value),
@@ -55,7 +56,7 @@ class AppearancePage extends StatelessWidget {
       value: value.clamp(min, max),
       min: min,
       max: max,
-      divisions: 20,
+      divisions: divisions,
       onChanged: change,
     ),
   );
@@ -175,11 +176,12 @@ class AppearancePage extends StatelessWidget {
               slider(
                 '面板不透明度',
                 controller.controls,
-                .55,
+                .2,
                 1,
                 wallpaperOn
                     ? (value) => controller.update(controlAlpha: value)
                     : null,
+                divisions: 80,
               ),
             ],
           ),

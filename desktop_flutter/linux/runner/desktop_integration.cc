@@ -1,5 +1,6 @@
 #include "desktop_integration.h"
 
+#include <algorithm>
 #include <cmath>
 #include <dlfcn.h>
 #include <string>
@@ -11,6 +12,12 @@ struct DesktopIntegration {
   GtkWidget* lyrics_window = nullptr;
   GtkWidget* lyric = nullptr;
   GtkWidget* next_lyric = nullptr;
+  GtkWidget* lyric_title = nullptr;
+  GtkWidget* progress = nullptr;
+  GtkWidget* progress_time = nullptr;
+  GtkWidget* controls = nullptr;
+  GtkWidget* play_button = nullptr;
+  GtkWidget* progress_row = nullptr;
   GDBusConnection* bus = nullptr;
   GDBusNodeInfo* node = nullptr;
   guint owner = 0;
@@ -348,6 +355,33 @@ static gboolean lyrics_press(GtkWidget* widget, GdkEventButton* event, gpointer 
   return TRUE;
 }
 
+static void lyrics_control(GtkButton* button, gpointer data) {
+  auto* self = static_cast<DesktopIntegration*>(data);
+  const auto* name = static_cast<const char*>(g_object_get_data(G_OBJECT(button), "neko-action"));
+  if (name != nullptr) action(self, name);
+}
+
+static void format_time(gint64 microseconds, char* out, size_t length) {
+  const gint64 seconds = std::max<gint64>(0, microseconds) / 1000000;
+  g_snprintf(out, length, "%lld:%02lld", static_cast<long long>(seconds / 60), static_cast<long long>(seconds % 60));
+}
+
+static void resize_lyrics(DesktopIntegration* self) {
+  if (self->lyrics_window == nullptr) return;
+  GtkWidget* box = gtk_bin_get_child(GTK_BIN(self->lyrics_window));
+  if (box == nullptr) return;
+  gint minimum_width = 0;
+  gint natural_width = 0;
+  gint minimum_height = 0;
+  gint natural_height = 0;
+  gtk_widget_get_preferred_width(box, &minimum_width, &natural_width);
+  gtk_widget_get_preferred_height(box, &minimum_height, &natural_height);
+  gint width = gtk_widget_get_allocated_width(self->lyrics_window);
+  if (width < 320) width = std::max(natural_width, 760);
+  const auto border = gtk_container_get_border_width(GTK_CONTAINER(box));
+  gtk_window_resize(GTK_WINDOW(self->lyrics_window), width, natural_height + border * 2);
+}
+
 static void create_lyrics(DesktopIntegration* self) {
   self->lyrics_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   auto* window = GTK_WINDOW(self->lyrics_window);
@@ -363,27 +397,52 @@ static void create_lyrics(DesktopIntegration* self) {
   if (visual != nullptr) gtk_widget_set_visual(self->lyrics_window, visual);
   GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
   gtk_container_set_border_width(GTK_CONTAINER(box), 14);
+  self->lyric_title = gtk_label_new("");
   self->lyric = gtk_label_new("");
   self->next_lyric = gtk_label_new("");
-  for (auto* label : {self->lyric, self->next_lyric}) {
+  for (auto* label : {self->lyric_title, self->lyric, self->next_lyric}) {
     gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
     gtk_label_set_max_width_chars(GTK_LABEL(label), 60);
     gtk_box_pack_start(GTK_BOX(box), label, FALSE, FALSE, 0);
   }
+  self->progress_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  self->progress = gtk_progress_bar_new();
+  gtk_progress_bar_set_show_text(GTK_PROGRESS_BAR(self->progress), FALSE);
+  gtk_widget_set_valign(self->progress, GTK_ALIGN_CENTER);
+  gtk_box_pack_start(GTK_BOX(self->progress_row), self->progress, TRUE, TRUE, 0);
+  self->progress_time = gtk_label_new("0:00 / 0:00");
+  gtk_box_pack_end(GTK_BOX(self->progress_row), self->progress_time, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(box), self->progress_row, FALSE, FALSE, 0);
+  self->controls = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  gtk_widget_set_halign(self->controls, GTK_ALIGN_CENTER);
+  const auto add_button = [self](const char* name, const char* label) {
+    GtkWidget* button = gtk_button_new_with_label(label);
+    gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
+    g_object_set_data(G_OBJECT(button), "neko-action", const_cast<char*>(name));
+    g_signal_connect(button, "clicked", G_CALLBACK(lyrics_control), self);
+    gtk_box_pack_start(GTK_BOX(self->controls), button, FALSE, FALSE, 0);
+    return button;
+  };
+  add_button("previous", "◀◀");
+  self->play_button = add_button("toggle", "▶");
+  add_button("next", "▶▶");
+  gtk_box_pack_start(GTK_BOX(box), self->controls, FALSE, FALSE, 0);
   gtk_container_add(GTK_CONTAINER(window), box);
   gtk_widget_add_events(self->lyrics_window, GDK_BUTTON_PRESS_MASK);
   g_signal_connect(self->lyrics_window, "button-press-event", G_CALLBACK(lyrics_press), self);
   g_signal_connect(self->lyrics_window, "delete-event", G_CALLBACK(lyrics_delete), self);
   GtkCssProvider* css = gtk_css_provider_new();
-  gtk_css_provider_load_from_data(css, "window { background-color: rgba(17,17,22,0.82); border-radius: 14px; }", -1, nullptr);
+  gtk_css_provider_load_from_data(css,
+      "window { background-color: rgba(17,17,22,0.82); border-radius: 14px; }\n"
+      "label { font-family: 'Noto Sans CJK SC', sans-serif; }\n"
+      "progressbar trough { min-height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.16); }\n"
+      "progressbar progress { min-height: 5px; border-radius: 3px; background-color: #ff8c96; }\n"
+      "button { background: rgba(255,255,255,0.08); color: #f8f3fa; border: none; border-radius: 8px; padding: 4px 16px; }\n"
+      "button:hover { background: rgba(255,255,255,0.18); }",
+      -1, nullptr);
   gtk_style_context_add_provider(gtk_widget_get_style_context(self->lyrics_window), GTK_STYLE_PROVIDER(css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-  for (auto* label : {self->lyric, self->next_lyric}) {
-    GtkCssProvider* font_css = gtk_css_provider_new();
-    gtk_css_provider_load_from_data(font_css, "label { font-family: 'Noto Sans CJK SC', sans-serif; }", -1, nullptr);
-    gtk_style_context_add_provider(gtk_widget_get_style_context(label), GTK_STYLE_PROVIDER(font_css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-    g_object_unref(font_css);
-  }
   g_object_unref(css);
+  gtk_widget_show_all(self->lyrics_window);
 }
 
 static FlValue* lookup(FlValue* values, const char* key) {
@@ -437,15 +496,36 @@ static void update(DesktopIntegration* self, FlValue* values) {
   if (self->lyrics_window == nullptr) create_lyrics(self);
   const auto lyric = text(values, "lyric");
   const auto next = text(values, "nextLyric");
+  const auto caption = text(values, "title") +
+      (text(values, "artist").empty() ? "" : " · " + text(values, "artist"));
   g_autofree char* escaped = g_markup_escape_text(lyric.c_str(), -1);
   g_autofree char* escaped_next = g_markup_escape_text(next.c_str(), -1);
+  g_autofree char* escaped_title = g_markup_escape_text(caption.c_str(), -1);
   const double size = CLAMP(number(values, "lyricsSize"), 18, 64);
+  g_autofree char* title_markup = g_strdup_printf("<span foreground='#9d94ad' size='%d'>%s</span>", static_cast<int>(MAX(11.0, size * .45) * PANGO_SCALE), escaped_title);
   g_autofree char* markup = g_strdup_printf("<span foreground='#ff8c96' size='%d' weight='bold'>%s</span>", static_cast<int>(size * PANGO_SCALE), escaped);
   g_autofree char* next_markup = g_strdup_printf("<span foreground='#cac2dc' size='%d'>%s</span>", static_cast<int>(size * .65 * PANGO_SCALE), escaped_next);
+  gtk_label_set_markup(GTK_LABEL(self->lyric_title), title_markup);
   gtk_label_set_markup(GTK_LABEL(self->lyric), markup);
   gtk_label_set_markup(GTK_LABEL(self->next_lyric), next_markup);
+  gtk_widget_set_visible(self->lyric_title, boolean(values, "showTitle"));
+  gtk_widget_set_visible(self->progress_row, boolean(values, "showProgress"));
+  gtk_widget_set_visible(self->controls, boolean(values, "showControls"));
+  const gint64 position = number(values, "position");
+  const gint64 duration = number(values, "duration");
+  gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(self->progress),
+      duration > 0 ? CLAMP(static_cast<double>(position) / duration, 0, 1) : 0);
+  char left[16];
+  char right[16];
+  char both[40];
+  format_time(position, left, sizeof(left));
+  format_time(duration, right, sizeof(right));
+  g_snprintf(both, sizeof(both), "%s / %s", left, right);
+  gtk_label_set_text(GTK_LABEL(self->progress_time), both);
+  gtk_button_set_label(GTK_BUTTON(self->play_button), self->playing ? "❚❚" : "▶");
   gtk_widget_set_opacity(self->lyrics_window, CLAMP(number(values, "lyricsOpacity"), .25, 1));
-  gtk_widget_show_all(self->lyrics_window);
+  gtk_widget_show(self->lyrics_window);
+  resize_lyrics(self);
   if (gtk_widget_get_realized(self->lyrics_window)) {
     cairo_region_t* region = boolean(values, "lyricsLocked") ? cairo_region_create() : nullptr;
     gdk_window_input_shape_combine_region(gtk_widget_get_window(self->lyrics_window), region, 0, 0);

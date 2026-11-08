@@ -9,6 +9,7 @@
 #include <winrt/Windows.Media.h>
 #include <winrt/base.h>
 #include <shellapi.h>
+#include <windowsx.h>
 
 #include <algorithm>
 #include <cmath>
@@ -73,7 +74,14 @@ struct DesktopIntegration::State {
   winrt::event_token shuffle_token{};
   std::wstring lyric;
   std::wstring next_lyric;
+  std::wstring title_line;
   int font_size = 30;
+  int64_t position = 0;
+  int64_t duration = 0;
+  bool playing = false;
+  bool show_title = false;
+  bool show_progress = false;
+  bool show_controls = false;
   bool locked = false;
   bool visible = false;
   std::string metadata_key;
@@ -86,6 +94,48 @@ struct DesktopIntegration::State {
   std::shared_ptr<bool> alive = std::make_shared<bool>(true);
   bool close_to_tray = false;
   bool quitting = false;
+
+
+  int OverlayHeight() const {
+    int height = 20;
+    if (show_title) height += 22;
+    height += font_size * 3 / 2 + font_size;
+    if (show_progress) height += 24;
+    if (show_controls) height += 38;
+    return std::max(100, height);
+  }
+
+  RECT ControlsRect(const RECT& area) const {
+    const int width = 72 * 3 + 12 * 2;
+    const int top = area.bottom - 38;
+    return RECT{(area.right - width) / 2, top, (area.right + width) / 2, top + 28};
+  }
+
+  void ResizeLyrics() {
+    if (lyrics_window == nullptr) return;
+    RECT frame{};
+    GetWindowRect(lyrics_window, &frame);
+    const int height = OverlayHeight();
+    if (height == frame.bottom - frame.top) return;
+    const int width = frame.right - frame.left;
+    SetWindowPos(lyrics_window, nullptr, frame.left, frame.bottom - height, width, height,
+                 SWP_NOZORDER | SWP_NOACTIVATE);
+  }
+
+  void PaintControls(HDC buffer, const RECT& area) {
+    const RECT row = ControlsRect(area);
+    const int width = 72;
+    const wchar_t* labels[3] = {L"◀◀", playing ? L"II" : L"▶", L"▶▶"};
+    for (int index = 0; index < 3; index++) {
+      RECT button{row.left + index * (width + 12), row.top,
+                  row.left + index * (width + 12) + width, row.bottom};
+      HBRUSH shade = CreateSolidBrush(index == 1 ? RGB(255, 140, 150) : RGB(46, 42, 54));
+      FillRect(buffer, &button, shade);
+      DeleteObject(shade);
+      SetTextColor(buffer, index == 1 ? RGB(20, 19, 27) : RGB(232, 226, 240));
+      DrawText(buffer, labels[index], -1, &button, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+    }
+  }
 
   void ShowMain() {
     ShowWindow(main_window, IsIconic(main_window) ? SW_RESTORE : SW_SHOW);
@@ -236,6 +286,21 @@ struct DesktopIntegration::State {
       case WM_NCHITTEST: return self->locked ? HTTRANSPARENT : HTCLIENT;
       case WM_LBUTTONDOWN:
         if (!self->locked) {
+          RECT area;
+          GetClientRect(window, &area);
+          const POINT point{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+          if (self->show_controls) {
+            const RECT row = self->ControlsRect(area);
+            if (PtInRect(&row, point)) {
+              const int button_width = 72;
+              const int index =
+                  (point.x - row.left) / (button_width + 12);
+              if (index >= 0 && index <= 2 && point.x < row.left + index * (button_width + 12) + button_width) {
+                self->Action(index == 0 ? "previous" : index == 1 ? "toggle" : "next");
+                return 0;
+              }
+            }
+          }
           ReleaseCapture();
           SendMessage(window, WM_NCLBUTTONDOWN, HTCAPTION, lparam);
         }
@@ -260,19 +325,67 @@ struct DesktopIntegration::State {
         DeleteObject(background);
         SetBkMode(buffer, TRANSPARENT);
         const int dpi = GetDpiForWindow(window);
-        HFONT primary = CreateFont(-MulDiv(self->font_size, dpi, 96), 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei");
-        const auto old_font = SelectObject(buffer, primary);
-        SetTextColor(buffer, RGB(255, 140, 150));
-        RECT first = {12, 8, area.right - 12, area.bottom / 2 + 6};
-        DrawText(buffer, self->lyric.c_str(), -1, &first, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
-        HFONT secondary = CreateFont(-MulDiv(self->font_size * 2 / 3, dpi, 96), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei");
-        SelectObject(buffer, secondary);
-        SetTextColor(buffer, RGB(202, 194, 220));
-        RECT second = {12, area.bottom / 2, area.right - 12, area.bottom - 8};
-        DrawText(buffer, self->next_lyric.c_str(), -1, &second, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+        const auto font = [dpi](int points, int weight) {
+          return CreateFont(-MulDiv(points, dpi, 96), 0, 0, 0, weight, FALSE, FALSE, FALSE,
+                            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                            CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei");
+        };
+        HFONT title_font = font(std::max(11, self->font_size * 2 / 5), FW_NORMAL);
+        HFONT primary = font(self->font_size, FW_BOLD);
+        HFONT secondary = font(self->font_size * 2 / 3, FW_NORMAL);
+        HFONT small = font(12, FW_NORMAL);
+        const int padding = 12;
+        int y = 10;
+        const auto line = [&](const std::wstring& text, HFONT font_handle, COLORREF color, int height) {
+          const auto previous = SelectObject(buffer, font_handle);
+          SetTextColor(buffer, color);
+          RECT rect{padding, y, area.right - padding, y + height};
+          DrawText(buffer, text.c_str(), -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+          SelectObject(buffer, previous);
+          y += height;
+        };
+        if (self->show_title) line(self->title_line, title_font, RGB(157, 148, 173), 22);
+        line(self->lyric, primary, RGB(255, 140, 150), self->font_size * 3 / 2);
+        line(self->next_lyric, secondary, RGB(202, 194, 220), self->font_size);
+        if (self->show_progress) {
+          const auto previous = SelectObject(buffer, small);
+          wchar_t left[16];
+          wchar_t right[16];
+          wchar_t both[40];
+          const auto clock = [](int64_t microseconds, wchar_t* out, size_t size) {
+            const int64_t seconds = std::max<int64_t>(0, microseconds) / 1000000;
+            swprintf_s(out, size, L"%lld:%02lld", static_cast<long long>(seconds / 60),
+                       static_cast<long long>(seconds % 60));
+          };
+          clock(self->position, left, 16);
+          clock(self->duration, right, 16);
+          swprintf_s(both, L"%s / %s", left, right);
+          const int text_width = 96;
+          RECT time_rect{area.right - padding - text_width, y, area.right - padding, y + 20};
+          SetTextColor(buffer, RGB(157, 148, 173));
+          DrawText(buffer, both, -1, &time_rect, DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+          RECT track{padding, y + 8, area.right - padding - text_width - 8, y + 14};
+          HBRUSH back = CreateSolidBrush(RGB(60, 55, 70));
+          FillRect(buffer, &track, back);
+          DeleteObject(back);
+          const double progress = self->duration > 0
+              ? std::clamp(static_cast<double>(self->position) / static_cast<double>(self->duration), 0., 1.)
+              : 0.;
+          RECT filled{track.left, track.top,
+                      track.left + static_cast<int>((track.right - track.left) * progress), track.bottom};
+          HBRUSH accent = CreateSolidBrush(RGB(255, 140, 150));
+          FillRect(buffer, &filled, accent);
+          DeleteObject(accent);
+          SelectObject(buffer, previous);
+          y += 24;
+        }
+        if (self->show_controls) {
+          const auto previous = SelectObject(buffer, small);
+          self->PaintControls(buffer, area);
+          SelectObject(buffer, previous);
+        }
         BitBlt(target, 0, 0, area.right, area.bottom, buffer, 0, 0, SRCCOPY);
-        SelectObject(buffer, old_font);
-        DeleteObject(primary); DeleteObject(secondary);
+        DeleteObject(title_font); DeleteObject(primary); DeleteObject(secondary); DeleteObject(small);
         SelectObject(buffer, old_bitmap); DeleteObject(bitmap); DeleteDC(buffer);
         EndPaint(window, &paint);
         return 0;
@@ -284,6 +397,19 @@ struct DesktopIntegration::State {
   void Lyrics(const EncodableMap& values) {
     visible = Boolean(values, "lyricsVisible");
     if (!visible) { if (lyrics_window != nullptr) ShowWindow(lyrics_window, SW_HIDE); return; }
+    lyric = Wide(Text(values, "lyric"));
+    next_lyric = Wide(Text(values, "nextLyric"));
+    const std::wstring artist = Wide(Text(values, "artist"));
+    title_line = Wide(Text(values, "title"));
+    if (!artist.empty()) title_line += L" · " + artist;
+    font_size = static_cast<int>(std::clamp(Number(values, "lyricsSize"), 18., 64.));
+    position = static_cast<int64_t>(Number(values, "position"));
+    duration = static_cast<int64_t>(Number(values, "duration"));
+    playing = Boolean(values, "playing");
+    show_title = Boolean(values, "showTitle");
+    show_progress = Boolean(values, "showProgress");
+    show_controls = Boolean(values, "showControls");
+    locked = Boolean(values, "lyricsLocked");
     if (lyrics_window == nullptr) {
       WNDCLASS registration{};
       registration.lpfnWndProc = LyricsProc;
@@ -296,17 +422,16 @@ struct DesktopIntegration::State {
       MONITORINFO info{sizeof(MONITORINFO)};
       GetMonitorInfo(monitor, &info);
       const int width = std::min(760L, info.rcWork.right - info.rcWork.left);
+      const int height = OverlayHeight();
       lyrics_window = CreateWindowEx(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED, kLyricsClass, L"NekoPlayer 桌面歌词", WS_POPUP,
-        info.rcWork.left + (info.rcWork.right - info.rcWork.left - width) / 2, info.rcWork.bottom - 180, width, 130, nullptr, nullptr, registration.hInstance, this);
+        info.rcWork.left + (info.rcWork.right - info.rcWork.left - width) / 2, info.rcWork.bottom - 50 - height, width, height, nullptr, nullptr, registration.hInstance, this);
     }
     if (lyrics_window == nullptr) return;
-    lyric = Wide(Text(values, "lyric")); next_lyric = Wide(Text(values, "nextLyric"));
-    font_size = static_cast<int>(std::clamp(Number(values, "lyricsSize"), 18., 64.));
-    locked = Boolean(values, "lyricsLocked");
     LONG_PTR style = GetWindowLongPtr(lyrics_window, GWL_EXSTYLE);
     style = locked ? style | WS_EX_TRANSPARENT : style & ~WS_EX_TRANSPARENT;
     SetWindowLongPtr(lyrics_window, GWL_EXSTYLE, style);
     SetLayeredWindowAttributes(lyrics_window, 0, static_cast<BYTE>(std::clamp(Number(values, "lyricsOpacity"), .25, 1.) * 255), LWA_ALPHA);
+    ResizeLyrics();
     SetWindowPos(lyrics_window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
     InvalidateRect(lyrics_window, nullptr, FALSE);
   }

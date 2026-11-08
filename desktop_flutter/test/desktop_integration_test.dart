@@ -246,7 +246,15 @@ void main() {
         settings: settings,
       );
       await desktop.initialize();
-      desktop.configureOverlay(enabled: true, lock: true, size: 42, alpha: .6);
+      desktop.configureOverlay(
+        enabled: true,
+        lock: true,
+        size: 42,
+        alpha: .6,
+        showTitle: false,
+        showProgress: false,
+        showControls: true,
+      );
       await desktop.configureTray(true);
       await desktop.flushed;
       expect(settings.value, isNot(contains('closeToTray')));
@@ -261,6 +269,12 @@ void main() {
       expect(desktop.locked, isTrue);
       expect(desktop.fontSize, 42);
       expect(desktop.opacity, .6);
+      expect(desktop.overlayTitle, isFalse);
+      expect(desktop.overlayProgress, isFalse);
+      expect(desktop.overlayControls, isTrue);
+      expect(desktop.state()['showTitle'], isFalse);
+      expect(desktop.state()['showProgress'], isFalse);
+      expect(desktop.state()['showControls'], isTrue);
       expect(desktop.closeToTray, isFalse);
       await send('overlayClosed');
       await desktop.flushed;

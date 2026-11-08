@@ -93,7 +93,7 @@ jobs:
           gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "NekoPlayer ${RELEASE_TAG#v}" \
             --notes-file "docs/RELEASE_${RELEASE_TAG}.md" --draft dist/*
           gh release view "$RELEASE_TAG" --json assets --jq '.assets | length' | grep -qx 10
-          if [[ "$RELEASE_TAG" == *-pre ]]; then
+          if [[ "$RELEASE_TAG" == *-pre* ]]; then
             gh release edit "$RELEASE_TAG" --draft=false --prerelease=true --latest=false
           else
             gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest

@@ -59,6 +59,34 @@ class DesktopSettingsPage extends StatelessWidget {
                   integration.configureOverlay();
                 },
               ),
+              SettingsSwitchTile(
+                icon: Icons.title_rounded,
+                title: '显示歌名',
+                subtitle: '在歌词上方显示当前歌曲名称',
+                value: integration.overlayTitle,
+                onChanged: lyrics
+                    ? (value) => integration.configureOverlay(showTitle: value)
+                    : null,
+              ),
+              SettingsSwitchTile(
+                icon: Icons.linear_scale_rounded,
+                title: '显示进度条',
+                value: integration.overlayProgress,
+                onChanged: lyrics
+                    ? (value) =>
+                          integration.configureOverlay(showProgress: value)
+                    : null,
+              ),
+              SettingsSwitchTile(
+                icon: Icons.play_circle_outline_rounded,
+                title: '显示播放控制',
+                subtitle: '上一首、播放 / 暂停、下一首；锁定时不可点击',
+                value: integration.overlayControls,
+                onChanged: lyrics
+                    ? (value) =>
+                          integration.configureOverlay(showControls: value)
+                    : null,
+              ),
               SettingsControlTile(
                 title: '字号',
                 value: '${integration.fontSize.round()}',

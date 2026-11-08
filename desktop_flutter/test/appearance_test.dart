@@ -61,7 +61,7 @@ void main() {
       expect(appearance.scale, 1.4);
       expect(appearance.mask, .35);
       expect(appearance.blur, 20);
-      expect(appearance.controls, .55);
+      expect(appearance.controls, .2);
       appearance.update(
         playerMode: PlayerBackground.wallpaper,
         playerDarkness: 0,

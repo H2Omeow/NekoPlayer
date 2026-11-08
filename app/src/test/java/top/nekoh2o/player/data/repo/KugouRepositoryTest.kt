@@ -171,6 +171,15 @@ class KugouRepositoryTest {
         assertEquals(9L, SongPlaybackUri.decode(SongPlaybackUri.encode(old))!!.id)
     }
 
+    @Test fun cloudPlaylistRowsKeepCombinedNameSingerAndCover() {
+        val song = KugouRepository.song(Json.parseToJsonElement("""{"hash":"$hash","name":"PENGIN - ビューティフル","cover":"http://imge.kugou.com/stdmusic/{size}/20150718/cover.jpg","singerinfo":[{"name":"PENGIN"}],"albuminfo":{"id":900843,"name":"PENGIN FAMILY"},"mixsongid":31480287,"album_id":"900843"}""").jsonObject)
+        assertEquals("ビューティフル", song.nm)
+        assertEquals("PENGIN", song.ar)
+        assertEquals("http://imge.kugou.com/stdmusic/400/20150718/cover.jpg", song.pc)
+        assertEquals(31480287L, song.id)
+        assertEquals("900843", song.albumId)
+    }
+
     @Test fun songUrlsUseAudioFieldsAndSupportArraysWithoutChoosingArtwork() {
         val body = Json.parseToJsonElement("""{"url":["","https://audio.example/music.mp3"],"img":"https://image.example/cover.jpg"}""").jsonObject
         assertEquals("https://audio.example/music.mp3", KugouRepository.playableUrl(body))

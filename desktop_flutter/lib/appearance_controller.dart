@@ -44,7 +44,7 @@ class AppearanceController extends ChangeNotifier {
       scale = (body['scale'] as num).toDouble().clamp(.85, 1.4);
       mask = (body['mask'] as num).toDouble().clamp(.35, .95);
       blur = (body['blur'] as num).toDouble().clamp(0, 20);
-      controls = (body['controls'] as num).toDouble().clamp(.55, 1);
+      controls = (body['controls'] as num).toDouble().clamp(.2, 1);
       playerBackground = PlayerBackground.values.byName(
         body['playerBackground'] as String? ?? 'cover',
       );
@@ -120,7 +120,7 @@ class AppearanceController extends ChangeNotifier {
       blur = blurRadius.clamp(0, 20);
     }
     if (controlAlpha != null && controlAlpha.isFinite) {
-      controls = controlAlpha.clamp(.55, 1);
+      controls = controlAlpha.clamp(.2, 1);
     }
     wallpaper = clearWallpaper ? null : wallpaperPath ?? wallpaper;
     wallpaperEnabled = clearWallpaper

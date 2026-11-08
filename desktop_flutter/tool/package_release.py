@@ -16,9 +16,9 @@ HOMEPAGE = "https://github.com/H2Omeow/SuperPlayer_Kotlin"
 
 
 def release_version():
-    match = re.search(r"^version: (\d+\.\d+\.\d+(?:-pre)?)\+(\d+)$", (ROOT / "pubspec.yaml").read_text(), re.MULTILINE)
+    match = re.search(r"^version: (\d+\.\d+\.\d+(?:-pre(?:\.\d+)?)?)\+(\d+)$", (ROOT / "pubspec.yaml").read_text(), re.MULTILINE)
     if not match:
-        raise ValueError("A stable or -pre Flutter version and build number are required")
+        raise ValueError("A stable or prerelease Flutter version and build number are required")
     version, build = match.groups()
     android = dict(line.split("=", 1) for line in (ROOT.parent / "app/version.properties").read_text().splitlines() if "=" in line)
     if android.get("versionName") != version or android.get("versionCode") != build:

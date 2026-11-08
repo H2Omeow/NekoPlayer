@@ -232,13 +232,20 @@ class KugouRepository(
 
         internal fun song(item: JsonObject): Song {
             val hash = item.text("FileHash", "Hash", "hash")
-            val filename = item.text("FileName", "filename", "audio_name")
+            // Cloud playlists return a combined "歌手 - 歌名" in `name` and the
+            // cover in `cover`; search lists use the other spellings below.
+            val filename = item.text("FileName", "filename", "audio_name", "name")
+                .replace(Regex("\\.(mp3|flac|m4a|aac|wav|ogg|ape)$", RegexOption.IGNORE_CASE), "")
             val id = item.number("MixSongID", "mixsongid", "album_audio_id", "Audioid", "audio_id", "songid")
                 .takeIf { it > 0 } ?: hash.take(15).toLongOrNull(16) ?: 0
+            val artwork = item.text("Image", "img", "album_img", "cover")
+                .ifEmpty { item.obj("trans_param").text("union_cover") }
+                .replace("{size}", "400")
+                .let { if (it.startsWith("//")) "https:$it" else it }
             return Song(id = id,
-                nm = item.text("SongName", "OriSongName", "song_name", "songname").ifEmpty { filename.substringAfter(" - ", filename) },
-                ar = item.text("SingerName", "singername", "author_name").ifEmpty { item.items("singerinfo").joinToString(", ") { it.text("name") } }.ifEmpty { filename.substringBefore(" - ", "") },
-                pc = item.text("Image", "img", "album_img").replace("{size}", "400").takeIf(String::isNotEmpty),
+                nm = item.text("SongName", "OriSongName", "song_name", "songname", "songName").ifEmpty { filename.substringAfter(" - ", filename) },
+                ar = item.text("SingerName", "singername", "singer_name", "author_name").ifEmpty { item.items("singerinfo").joinToString(", ") { it.text("name") } }.ifEmpty { filename.substringBefore(" - ", "") },
+                pc = artwork.takeIf(String::isNotEmpty),
                 source = "kugou", hash = hash,
                 albumId = item.text("AlbumID", "album_id", "albumid"),
                 albumAudioId = item.number("MixSongID", "mixsongid", "album_audio_id"))

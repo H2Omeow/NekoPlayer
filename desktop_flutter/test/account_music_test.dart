@@ -555,4 +555,39 @@ void main() {
       player.dispose();
     },
   );
+
+  test('kugou cloud playlist rows keep name, artist and cover', () {
+    final song = AccountMusicRepository.kugouSong({
+      'hash': '8C275CADF059DF3E14369634565F4D5E',
+      'name': 'PENGIN - ビューティフル',
+      'cover':
+          'http://imge.kugou.com/stdmusic/{size}/20150718/20150718120357835322.jpg',
+      'singerinfo': [
+        {'name': 'PENGIN'},
+      ],
+      'albuminfo': {'id': 900843, 'name': 'PENGIN FAMILY'},
+      'mixsongid': 31480287,
+      'album_id': '900843',
+    });
+    expect(song, isNotNull);
+    expect(song!.title, 'ビューティフル');
+    expect(song.artist, 'PENGIN');
+    expect(song.album, 'PENGIN FAMILY');
+    expect(
+      song.artwork,
+      'http://imge.kugou.com/stdmusic/400/20150718/20150718120357835322.jpg',
+    );
+    expect(song.id, '31480287');
+  });
+
+  test('kugou song rows fall back to filename without extension', () {
+    final song = AccountMusicRepository.kugouSong({
+      'hash': '8C275CADF059DF3E14369634565F4D5E',
+      'filename': 'Neko - 夜曲.flac',
+      'album_img': '//imge.kugou.com/stdmusic/{size}/cover.jpg',
+    });
+    expect(song?.title, '夜曲');
+    expect(song?.artist, 'Neko');
+    expect(song?.artwork, 'https://imge.kugou.com/stdmusic/400/cover.jpg');
+  });
 }

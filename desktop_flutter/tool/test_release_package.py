@@ -10,11 +10,12 @@ from test_artifact import elf, pe
 
 class ReleasePackageTests(unittest.TestCase):
     def test_android_and_desktop_versions_match(self):
-        self.assertRegex(release_version(), r"^\d+\.\d+\.\d+(-pre)?$")
+        self.assertRegex(release_version(), r"^\d+\.\d+\.\d+(-pre(\.\d+)?)?$")
 
     def test_prerelease_uses_tilde_for_linux_packages(self):
         from package_release import package_version
         self.assertEqual(package_version("1.2.0-pre"), "1.2.0~pre")
+        self.assertEqual(package_version("1.2.0-pre.2"), "1.2.0~pre.2")
         self.assertEqual(package_version("1.2.0"), "1.2.0")
 
     def test_windows_installers_have_separate_native_architectures(self):

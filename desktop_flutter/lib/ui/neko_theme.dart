@@ -195,7 +195,7 @@ ThemeData nekoTheme({
 }) {
   final dark = brightness == Brightness.dark;
   final colors = dark ? _darkScheme : _lightScheme;
-  final alpha = wallpaper ? controlAlpha.clamp(0.55, 1.0) : 1.0;
+  final alpha = wallpaper ? controlAlpha.clamp(0.2, 1.0) : 1.0;
   final palette = NekoPalette(
     canvas: wallpaper
         ? Colors.transparent
@@ -219,7 +219,7 @@ ThemeData nekoTheme({
     fontFamilyFallback: _fontFallback,
     textTheme: text,
     scaffoldBackgroundColor: wallpaper ? Colors.transparent : colors.surface,
-    canvasColor: colors.surface,
+    canvasColor: wallpaper ? Colors.transparent : colors.surface,
     splashFactory: InkSparkle.splashFactory,
     hoverColor: palette.hover,
     visualDensity: VisualDensity.standard,
@@ -457,12 +457,22 @@ ThemeData nekoTheme({
         colors.onSurface.withValues(alpha: 0.22),
       ),
     ),
+    // FadeForwards paints colorScheme.surface between the two routes by
+    // default, which covers the window wallpaper during page changes.
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
-        TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
-        TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(),
-        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(
+          backgroundColor: Colors.transparent,
+        ),
+        TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(
+          backgroundColor: Colors.transparent,
+        ),
+        TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(
+          backgroundColor: Colors.transparent,
+        ),
+        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(
+          backgroundColor: Colors.transparent,
+        ),
       },
     ),
   );

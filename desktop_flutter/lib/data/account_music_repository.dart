@@ -212,9 +212,18 @@ class AccountMusicRepository {
       row['FileHash'] ?? row['Hash'] ?? row['hash'],
     ).toLowerCase();
     if (!RegExp(r'^[a-f0-9]{32}$').hasMatch(hash)) return null;
-    final filename = text(
-      row['FileName'] ?? row['filename'] ?? row['audio_name'],
-    );
+    // Cloud playlists return a combined "歌手 - 歌名" in `name` and the cover
+    // in `cover`; search lists use the other spellings handled below.
+    final filename =
+        text(
+          row['FileName'] ??
+              row['filename'] ??
+              row['audio_name'] ??
+              row['name'],
+        ).replaceFirst(
+          RegExp(r'\.(mp3|flac|m4a|aac|wav|ogg|ape)$', caseSensitive: false),
+          '',
+        );
     final separator = filename.indexOf(' - ');
     final audioId = text(
       row['MixSongID'] ??
@@ -228,11 +237,23 @@ class AccountMusicRepository {
       row['SongName'] ??
           row['OriSongName'] ??
           row['song_name'] ??
-          row['songname'],
+          row['songname'] ??
+          row['songName'],
     );
     final artist = text(
-      row['SingerName'] ?? row['singername'] ?? row['author_name'],
+      row['SingerName'] ??
+          row['singername'] ??
+          row['singer_name'] ??
+          row['author_name'],
     );
+    final album = object(row['albuminfo'] ?? row['album_info']);
+    final artwork = text(
+      row['Image'] ??
+          row['img'] ??
+          row['album_img'] ??
+          row['cover'] ??
+          object(row['trans_param'])['union_cover'],
+    ).replaceAll('{size}', '400');
     return OnlineSong(
       provider: MusicProvider.kugou,
       id: number(audioId) > 0
@@ -253,10 +274,14 @@ class AccountMusicRepository {
           ? filename.substring(0, separator)
           : '',
       hash: hash,
+      album: text(
+        row['AlbumName'] ??
+            row['album_name'] ??
+            row['albumname'] ??
+            album['name'],
+      ),
       albumId: text(row['AlbumID'] ?? row['album_id'] ?? row['albumid']),
-      artwork: text(
-        row['Image'] ?? row['img'] ?? row['album_img'],
-      ).replaceAll('{size}', '400'),
+      artwork: artwork.startsWith('//') ? 'https:$artwork' : artwork,
       albumAudioId: audioId,
     );
   }
