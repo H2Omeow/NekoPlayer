@@ -110,6 +110,9 @@ class DesktopIntegration extends ChangeNotifier {
       positioningAvailable = result?['positioning'] == true;
       trayAvailable = result?['tray'] == true;
       player.addListener(_changed);
+      // Position, play state and lyrics advance on the engine, not through
+      // PlayerController notifications.
+      player.engine.addListener(_changed);
       _changed();
     } on MissingPluginException {
       error = '当前运行环境没有桌面系统集成。';
@@ -316,6 +319,7 @@ class DesktopIntegration extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     player.removeListener(_changed);
+    player.engine.removeListener(_changed);
     channel.setMethodCallHandler(null);
     unawaited(channel.invokeMethod<void>('dispose').catchError((Object _) {}));
     super.dispose();
