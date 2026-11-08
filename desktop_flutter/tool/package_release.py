@@ -12,7 +12,7 @@ from check_artifact import DESKTOP_EXCLUDED_LIBRARIES, TARGETS, architecture, ve
 
 
 ROOT = Path(__file__).resolve().parents[1]
-HOMEPAGE = "https://github.com/H2Omeow/SuperPlayer_Kotlin"
+HOMEPAGE = "https://github.com/H2Omeow/NekoPlayer"
 
 
 def release_version():

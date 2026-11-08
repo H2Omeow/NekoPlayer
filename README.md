@@ -104,8 +104,8 @@ Android 与 Flutter 桌面端共用账号、云端同步、评论与社区能力
 
 ```bash
 # 克隆仓库
-git clone https://github.com/H2Omeow/SuperPlayer_Kotlin.git
-cd SuperPlayer_Kotlin
+git clone https://github.com/H2Omeow/NekoPlayer.git
+cd NekoPlayer
 
 # 编译 Debug 版本
 ./gradlew assembleDebug
