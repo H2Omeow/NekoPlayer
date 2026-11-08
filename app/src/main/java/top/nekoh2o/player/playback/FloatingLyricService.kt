@@ -8,6 +8,7 @@ import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.PixelFormat
 import android.graphics.Shader
+import android.graphics.Typeface
 import android.os.Build
 import android.os.IBinder
 import android.text.Layout
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import top.nekoh2o.player.data.store.SettingsStore
+import top.nekoh2o.player.ui.theme.CustomFont
 
 /**
  * 悬浮窗歌词服务。
@@ -106,6 +108,12 @@ class FloatingLyricService : Service() {
             maxWidth = maxW
             gravity = Gravity.CENTER_HORIZONTAL
             visibility = View.GONE
+        }
+
+        val customTypeface = CustomFont.loadTypeface(SettingsStore(this).load().customFontPath)
+        if (customTypeface != null) {
+            main.setTypeface(customTypeface)
+            second.typeface = customTypeface
         }
 
         root.addView(main)
@@ -216,6 +224,13 @@ class FloatingLyricService : Service() {
         }
 
         fun setMaxWidthPx(px: Int) { maxWidthPx = px }
+
+        fun setTypeface(typeface: Typeface?) {
+            if (paint.typeface === typeface) return
+            paint.typeface = typeface
+            buildLayout()
+            invalidate()
+        }
 
         fun setLine(newText: CharSequence, fraction: Float) {
             val f = fraction.coerceIn(0f, 1f)

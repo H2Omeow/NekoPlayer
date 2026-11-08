@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import top.nekoh2o.player.ui.PlayerViewModel
 import top.nekoh2o.player.ui.nav.MainScaffold
+import top.nekoh2o.player.ui.theme.CustomFont
 import top.nekoh2o.player.ui.theme.NekoTheme
 
 class MainActivity : ComponentActivity() {
@@ -56,11 +57,15 @@ class MainActivity : ComponentActivity() {
 
             // 壁纸开启且已拿到图时才让控件透明，否则白字会落到纯色底上
             val translucent = state.settings.globalBgEnabled && state.wallpaperUrl != null
+            val customFont = remember(state.settings.customFontPath) {
+                CustomFont.load(state.settings.customFontPath)
+            }
 
             NekoTheme(
                 controlAlpha = state.settings.controlAlpha,
                 translucent = translucent,
-                uiScale = state.settings.uiScale
+                uiScale = state.settings.uiScale,
+                customFont = customFont
             ) {
                 var fullPlayer by remember { mutableStateOf(false) }
 

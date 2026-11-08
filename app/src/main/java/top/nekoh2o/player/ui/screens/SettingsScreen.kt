@@ -3,6 +3,7 @@ package top.nekoh2o.player.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -46,8 +47,10 @@ import top.nekoh2o.player.ui.components.SettingsSection
 import top.nekoh2o.player.ui.components.SettingsSliderTile
 import top.nekoh2o.player.ui.components.SettingsSwitchTile
 import top.nekoh2o.player.ui.components.SettingsTile
+import top.nekoh2o.player.ui.theme.CustomFont
 import top.nekoh2o.player.ui.theme.NekoDefaults
 import top.nekoh2o.player.ui.theme.NekoSpace
+import java.io.File
 
 /** 设置页的各个子页面。 */
 enum class SettingsDestination(val title: String) {
@@ -169,6 +172,25 @@ private fun percent(value: Float) = "${(value * 100).toInt()}%"
 
 @Composable
 private fun PersonalizationSettings(vm: PlayerViewModel, s: AppSettings) {
+    val context = LocalContext.current
+    val fontPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            runCatching { CustomFont.install(context, uri) }
+                .onSuccess { installed ->
+                    vm.setCustomFont(installed.path, installed.name)
+                    Toast.makeText(context, "字体已应用", Toast.LENGTH_SHORT).show()
+                }
+                .onFailure {
+                    Toast.makeText(
+                        context,
+                        it.message ?: "字体加载失败",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+        }
+    }
     SettingsSection(title = "布局") {
         SettingsSwitchTile(
             title = "横屏模式",
@@ -185,6 +207,27 @@ private fun PersonalizationSettings(vm: PlayerViewModel, s: AppSettings) {
             valueRange = 0.8f..1.3f,
             steps = 9
         )
+    }
+    SettingsSection(
+        title = "字体",
+        description = "选择本地 TTF / OTF 字体应用到整个界面；字体缺少的中文会回退到系统字体。"
+    ) {
+        SettingsTile(
+            title = "界面字体",
+            subtitle = if (s.customFontPath.isBlank()) {
+                "使用系统默认字体"
+            } else {
+                s.customFontName.ifBlank { File(s.customFontPath).name }
+            },
+            onClick = { fontPicker.launch(arrayOf("*/*")) }
+        )
+        if (s.customFontPath.isNotBlank()) {
+            SettingsTile(
+                title = "恢复默认字体",
+                subtitle = "删除已复制的字体文件",
+                onClick = { vm.clearCustomFont() }
+            )
+        }
     }
     SettingsSection(
         title = "全局背景",

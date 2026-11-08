@@ -49,7 +49,9 @@ class SettingsStore(context: Context) {
             loudnessGain = prefs.getInt(KEY_LOUDNESS, 0),
             masteringPresetId = prefs.getInt(KEY_MASTERING_PRESET, 0),
             masteringMix = prefs.getInt(KEY_MASTERING_MIX, 100)
-        ).normalized()
+        ).normalized(),
+        customFontPath = prefs.getString(KEY_CUSTOM_FONT, "") ?: "",
+        customFontName = prefs.getString(KEY_CUSTOM_FONT_NAME, "") ?: ""
     )
 
     fun save(s: AppSettings) {
@@ -81,6 +83,8 @@ class SettingsStore(context: Context) {
             .putInt(KEY_LOUDNESS, s.audioEffects.loudnessGain)
             .putInt(KEY_MASTERING_PRESET, s.audioEffects.masteringPresetId)
             .putInt(KEY_MASTERING_MIX, s.audioEffects.masteringMix)
+            .putString(KEY_CUSTOM_FONT, s.customFontPath)
+            .putString(KEY_CUSTOM_FONT_NAME, s.customFontName)
             .apply()
     }
 
@@ -112,6 +116,8 @@ class SettingsStore(context: Context) {
         private const val KEY_LOUDNESS = "loudness_gain"
         private const val KEY_MASTERING_PRESET = "mastering_preset_id"
         private const val KEY_MASTERING_MIX = "mastering_mix"
+        private const val KEY_CUSTOM_FONT = "custom_font_path"
+        private const val KEY_CUSTOM_FONT_NAME = "custom_font_name"
 
         // 播放状态保存
         private const val KEY_PLAY_QUEUE = "play_queue"

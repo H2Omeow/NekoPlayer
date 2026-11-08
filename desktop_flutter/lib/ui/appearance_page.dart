@@ -1,5 +1,6 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as paths;
 
 import '../appearance_controller.dart';
 import '../domain/online_music.dart';
@@ -30,6 +31,29 @@ class AppearancePage extends StatelessWidget {
               failure is MusicSearchException
                   ? failure.message
                   : '无法选择图片，请检查文件权限。',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> pickFont(BuildContext context) async {
+    try {
+      final file = await openFile(
+        acceptedTypeGroups: [
+          const XTypeGroup(label: '字体', extensions: ['ttf', 'otf']),
+        ],
+      );
+      if (file != null) await controller.setCustomFont(file.path);
+    } catch (failure) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              failure is MusicSearchException
+                  ? failure.message
+                  : '无法读取字体文件，请检查文件权限。',
             ),
           ),
         );
@@ -109,6 +133,44 @@ class AppearancePage extends StatelessWidget {
                 1.4,
                 (value) => controller.update(textScale: value),
               ),
+            ],
+          ),
+          SettingsSection(
+            title: '字体',
+            description: '选择本地 TTF / OTF 字体应用到整个界面。字体缺少的中文会回退到内置字体。',
+            children: [
+              SettingsTile(
+                icon: Icons.text_fields_rounded,
+                title: '界面字体',
+                subtitle: controller.fontPath == null
+                    ? '使用内置字体'
+                    : paths.basename(controller.fontPath!),
+                onTap: () => pickFont(context),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(NekoSpace.lg),
+                child: Wrap(
+                  spacing: NekoSpace.sm,
+                  runSpacing: NekoSpace.sm,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => pickFont(context),
+                      icon: const Icon(Icons.font_download_outlined, size: 18),
+                      label: const Text('选择本地字体'),
+                    ),
+                    if (controller.fontPath != null)
+                      TextButton(
+                        onPressed: controller.clearCustomFont,
+                        child: const Text('恢复默认字体'),
+                      ),
+                  ],
+                ),
+              ),
+              if (controller.fontError case final message?)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: NekoSpace.lg),
+                  child: InlineNotice(message, error: true),
+                ),
             ],
           ),
           SettingsSection(

@@ -154,9 +154,9 @@ const _fontFallback = [bundledCjkFamily, 'Segoe UI', 'sans-serif'];
 
 // Component themes copy these styles directly, so the font family and
 // fallbacks must be part of each style rather than only of ThemeData.
-TextTheme _textTheme(ColorScheme colors) {
+TextTheme _textTheme(ColorScheme colors, String? customFont) {
   TextStyle style(double size, FontWeight weight, double height) => TextStyle(
-    fontFamily: _platformFont(),
+    fontFamily: customFont ?? _platformFont(),
     fontFamilyFallback: _fontFallback,
     fontSize: size,
     fontWeight: weight,
@@ -192,6 +192,7 @@ ThemeData nekoTheme({
   Brightness brightness = Brightness.dark,
   double controlAlpha = 1,
   bool wallpaper = false,
+  String? customFont,
 }) {
   final dark = brightness == Brightness.dark;
   final colors = dark ? _darkScheme : _lightScheme;
@@ -206,7 +207,7 @@ ThemeData nekoTheme({
     hover: colors.onSurface.withValues(alpha: dark ? 0.06 : 0.05),
     accent: colors.primary,
   );
-  final text = _textTheme(colors);
+  final text = _textTheme(colors, customFont);
   final control = RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(NekoRadius.control),
   );
@@ -215,7 +216,7 @@ ThemeData nekoTheme({
     brightness: brightness,
     colorScheme: colors,
     extensions: [palette],
-    fontFamily: _platformFont(),
+    fontFamily: customFont ?? _platformFont(),
     fontFamilyFallback: _fontFallback,
     textTheme: text,
     scaffoldBackgroundColor: wallpaper ? Colors.transparent : colors.surface,

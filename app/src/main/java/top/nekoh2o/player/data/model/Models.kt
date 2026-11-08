@@ -397,5 +397,9 @@ data class AppSettings(
     // UI 缩放：0.8x（放大文字）~ 1.3x（缩小内容），适配小屏设备
     val uiScale: Float = 1.0f,
     // 音效设置
-    val audioEffects: AudioEffectSettings = AudioEffectSettings()
+    val audioEffects: AudioEffectSettings = AudioEffectSettings(),
+    // 自定义界面字体：App 私有目录下的 TTF / OTF 路径（空串 = 内置字体）
+    val customFontPath: String = "",
+    // 自定义字体的原始文件名（用于设置页显示）
+    val customFontName: String = ""
 )

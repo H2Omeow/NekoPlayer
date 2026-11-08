@@ -89,10 +89,12 @@ class _NekoAppState extends State<NekoApp> {
           brightness: Brightness.light,
           controlAlpha: appearance.controls,
           wallpaper: wallpaper,
+          customFont: appearance.fontFamily,
         ),
         darkTheme: nekoTheme(
           controlAlpha: appearance.controls,
           wallpaper: wallpaper,
+          customFont: appearance.fontFamily,
         ),
         themeMode: appearance.theme,
         builder: (context, child) => AppearanceScope(

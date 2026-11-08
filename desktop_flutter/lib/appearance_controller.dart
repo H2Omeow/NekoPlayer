@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show FontLoader;
+import 'package:path/path.dart' as paths;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,6 +27,15 @@ class AppearanceController extends ChangeNotifier {
   double playerMask = .85;
   double playerBlur = 12;
   String? downloadDirectory;
+
+  /// Local TTF/OTF chosen by the user; null means the default font stack.
+  String? fontPath;
+
+  /// Family name registered for [fontPath], or null while the default is used.
+  String? fontFamily;
+  String? fontError;
+  static const maxFontBytes = 64 * 1024 * 1024;
+  int _fontGeneration = 0;
   bool readable = true;
   bool busy = false;
   String? error;
@@ -66,6 +78,7 @@ class AppearanceController extends ChangeNotifier {
       wallpaper = body['wallpaper'] as String?;
       wallpaperEnabled = body['wallpaperEnabled'] == true;
       downloadDirectory = body['downloadDirectory'] as String?;
+      fontPath = body['fontPath'] is String ? body['fontPath'] as String : null;
     } catch (_) {
       theme = ThemeMode.dark;
       scale = 1;
@@ -78,10 +91,63 @@ class AppearanceController extends ChangeNotifier {
       wallpaper = null;
       wallpaperEnabled = false;
       downloadDirectory = null;
+      fontPath = null;
+      fontFamily = null;
+      fontError = null;
       readable = false;
       error = '外观设置读取失败，已保留原数据；本次修改不会覆盖它。';
     }
+    if (fontPath != null) {
+      try {
+        fontFamily = await _registerFont(File(fontPath!));
+        fontError = null;
+      } catch (_) {
+        fontFamily = null;
+        fontError = '自定义字体加载失败，已使用默认字体。';
+      }
+    }
     if (!_disposed) notifyListeners();
+  }
+
+  Future<String> _registerFont(File file) async {
+    if (!await file.exists()) {
+      throw const MusicSearchException('字体文件不存在。');
+    }
+    final length = await file.length();
+    if (length <= 0 || length > maxFontBytes) {
+      throw const MusicSearchException('字体文件不可读或超过 64MB。');
+    }
+    final extension = paths.extension(file.path).toLowerCase();
+    if (extension != '.ttf' && extension != '.otf') {
+      throw const MusicSearchException('请选择 TTF 或 OTF 字体文件。');
+    }
+    final bytes = await file.readAsBytes();
+    final family = 'NekoCustom${++_fontGeneration}';
+    final loader = FontLoader(family);
+    loader.addFont(Future.value(ByteData.sublistView(bytes)));
+    await loader.load();
+    return family;
+  }
+
+  /// Applies [path] and saves it. Throws [MusicSearchException] for unreadable
+  /// or unsupported files; the previous font stays in effect in that case.
+  Future<void> setCustomFont(String path) async {
+    final family = await _registerFont(File(path));
+    if (_disposed) return;
+    fontPath = path;
+    fontFamily = family;
+    fontError = null;
+    _persist();
+    notifyListeners();
+  }
+
+  void clearCustomFont() {
+    if (_disposed) return;
+    fontPath = null;
+    fontFamily = null;
+    fontError = null;
+    _persist();
+    notifyListeners();
   }
 
   void update({
@@ -127,34 +193,38 @@ class AppearanceController extends ChangeNotifier {
         ? false
         : showWallpaper ?? wallpaperEnabled;
     downloadDirectory = resetDownloads ? null : downloads ?? downloadDirectory;
-    if (readable) {
-      final encoded = jsonEncode({
-        'version': 1,
-        'theme': theme.name,
-        'scale': scale,
-        'mask': mask,
-        'blur': blur,
-        'controls': controls,
-        'playerBackground': playerBackground.name,
-        'playerMask': playerMask,
-        'playerBlur': playerBlur,
-        'wallpaper': wallpaper,
-        'wallpaperEnabled': wallpaperEnabled,
-        'downloadDirectory': downloadDirectory,
-      });
-      _writes = _writes
-          .then(
-            (_) => SharedPreferencesAsync().setString(
-              'nekoplayer.flutter.appearance.v1',
-              encoded,
-            ),
-          )
-          .catchError((Object _) {
-            error = '设置已应用，但保存失败。';
-            if (!_disposed) notifyListeners();
-          });
-    }
+    _persist();
     if (!_disposed) notifyListeners();
+  }
+
+  void _persist() {
+    if (!readable || _disposed) return;
+    final encoded = jsonEncode({
+      'version': 1,
+      'theme': theme.name,
+      'scale': scale,
+      'mask': mask,
+      'blur': blur,
+      'controls': controls,
+      'playerBackground': playerBackground.name,
+      'playerMask': playerMask,
+      'playerBlur': playerBlur,
+      'wallpaper': wallpaper,
+      'wallpaperEnabled': wallpaperEnabled,
+      'downloadDirectory': downloadDirectory,
+      'fontPath': fontPath,
+    });
+    _writes = _writes
+        .then(
+          (_) => SharedPreferencesAsync().setString(
+            'nekoplayer.flutter.appearance.v1',
+            encoded,
+          ),
+        )
+        .catchError((Object _) {
+          error = '设置已应用，但保存失败。';
+          if (!_disposed) notifyListeners();
+        });
   }
 
   Future<void> localWallpaper(String path) async {

@@ -806,6 +806,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val updated = settingsVm.setUiScale(scale, _ui.value.settings)
         _ui.value = _ui.value.copy(settings = updated)
     }
+    fun setCustomFont(path: String, name: String) {
+        val updated = settingsVm.setCustomFontPath(path, name, _ui.value.settings)
+        _ui.value = _ui.value.copy(settings = updated)
+    }
+    fun clearCustomFont() {
+        val path = _ui.value.settings.customFontPath
+        if (path.isNotBlank()) {
+            runCatching { top.nekoh2o.player.ui.theme.CustomFont.clear(getApplication(), path) }
+        }
+        setCustomFont("", "")
+    }
     fun setQuality(level: String) {
         viewModelScope.launch { CookieStore.setLevel(level) }
         _ui.value = _ui.value.copy(quality = level)

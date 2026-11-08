@@ -12,6 +12,31 @@ import 'package:nekoplayer_desktop/ui/player_background.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('custom font loads, applies to the theme and clears', () async {
+    final appearance = AppearanceController()..readable = false;
+    await appearance.setCustomFont(
+      'assets/fonts/NotoSansCJKsc-Regular.otf',
+    );
+    expect(appearance.fontPath, endsWith('.otf'));
+    expect(appearance.fontFamily, startsWith('NekoCustom'));
+    final theme = nekoTheme(customFont: appearance.fontFamily);
+    expect(theme.textTheme.bodyLarge?.fontFamily, appearance.fontFamily);
+    appearance.clearCustomFont();
+    expect(appearance.fontPath, isNull);
+    expect(appearance.fontFamily, isNull);
+    appearance.dispose();
+  });
+
+  test('unsupported font files are rejected without changing the font', () async {
+    final appearance = AppearanceController()..readable = false;
+    await expectLater(
+      appearance.setCustomFont('assets/fonts/OFL.txt'),
+      throwsA(isA<MusicSearchException>()),
+    );
+    expect(appearance.fontFamily, isNull);
+    appearance.dispose();
+  });
+
   test(
     'late random wallpaper response cannot replace a newer local choice',
     () async {

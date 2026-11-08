@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -83,7 +84,13 @@ private val Scheme = darkColorScheme(
     scrim = Color(0xFF000000)
 )
 
-private fun style(size: Int, weight: FontWeight, height: Float) = TextStyle(
+private fun style(
+    size: Int,
+    weight: FontWeight,
+    height: Float,
+    family: FontFamily?
+) = TextStyle(
+    fontFamily = family,
     fontSize = size.sp,
     fontWeight = weight,
     lineHeight = (size * height).sp,
@@ -91,19 +98,19 @@ private fun style(size: Int, weight: FontWeight, height: Float) = TextStyle(
 )
 
 // 与桌面端字号层级一致；移动端正文略大一号以便阅读
-private val NekoTypography = Typography(
-    displaySmall = style(32, FontWeight.Bold, 1.25f),
-    headlineMedium = style(28, FontWeight.Bold, 1.3f),
-    headlineSmall = style(24, FontWeight.Bold, 1.3f),
-    titleLarge = style(20, FontWeight.SemiBold, 1.35f),
-    titleMedium = style(16, FontWeight.SemiBold, 1.4f),
-    titleSmall = style(14, FontWeight.SemiBold, 1.4f),
-    bodyLarge = style(16, FontWeight.Normal, 1.45f),
-    bodyMedium = style(14, FontWeight.Normal, 1.45f),
-    bodySmall = style(12, FontWeight.Normal, 1.45f),
-    labelLarge = style(14, FontWeight.SemiBold, 1.3f),
-    labelMedium = style(12, FontWeight.Medium, 1.3f),
-    labelSmall = style(11, FontWeight.Medium, 1.3f)
+private fun nekoTypography(family: FontFamily?) = Typography(
+    displaySmall = style(32, FontWeight.Bold, 1.25f, family),
+    headlineMedium = style(28, FontWeight.Bold, 1.3f, family),
+    headlineSmall = style(24, FontWeight.Bold, 1.3f, family),
+    titleLarge = style(20, FontWeight.SemiBold, 1.35f, family),
+    titleMedium = style(16, FontWeight.SemiBold, 1.4f, family),
+    titleSmall = style(14, FontWeight.SemiBold, 1.4f, family),
+    bodyLarge = style(16, FontWeight.Normal, 1.45f, family),
+    bodyMedium = style(14, FontWeight.Normal, 1.45f, family),
+    bodySmall = style(12, FontWeight.Normal, 1.45f, family),
+    labelLarge = style(14, FontWeight.SemiBold, 1.3f, family),
+    labelMedium = style(12, FontWeight.Medium, 1.3f, family),
+    labelSmall = style(11, FontWeight.Medium, 1.3f, family)
 )
 
 /**
@@ -119,6 +126,7 @@ fun NekoTheme(
     controlAlpha: Float = 1f,
     translucent: Boolean = false,
     uiScale: Float = 1.0f,
+    customFont: FontFamily? = null,
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
@@ -126,10 +134,11 @@ fun NekoTheme(
         Density(density.density * uiScale.coerceIn(0.8f, 1.3f), density.fontScale)
     }
     val colors = if (translucent) Scheme.withControlAlpha(controlAlpha) else Scheme
+    val typography = remember(customFont) { nekoTypography(customFont) }
 
     MaterialTheme(
         colorScheme = colors,
-        typography = NekoTypography,
+        typography = typography,
         shapes = Shapes(
             extraSmall = RoundedCornerShape(NekoRadius.cover),
             small = RoundedCornerShape(NekoRadius.control),

@@ -144,4 +144,16 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         settingsStore.save(updated)
         return updated
     }
+
+    // ==================== 自定义字体 ====================
+
+    fun setCustomFontPath(
+        path: String,
+        name: String,
+        current: AppSettings
+    ): AppSettings {
+        val updated = current.copy(customFontPath = path, customFontName = name)
+        settingsStore.save(updated)
+        return updated
+    }
 }
