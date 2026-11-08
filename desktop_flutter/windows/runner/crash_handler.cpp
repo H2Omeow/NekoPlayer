@@ -23,7 +23,7 @@ namespace {
 
 using MiniDumpWriteDumpFn = BOOL(WINAPI*)(HANDLE, DWORD, HANDLE, MINIDUMP_TYPE,
                                           PMINIDUMP_EXCEPTION_INFORMATION,
-                                          PMINIDUMP_USER_STREAM_PARAMETERS,
+                                          PMINIDUMP_USER_STREAM_INFORMATION,
                                           PMINIDUMP_CALLBACK_INFORMATION);
 
 constexpr DWORD kSyntheticExceptionCode = 0xE0000001;
