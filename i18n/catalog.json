@@ -10521,6 +10521,16 @@
       "zh-TW": "酷狗音樂 App",
       "en": "Kugou Music app",
       "ja": "酷狗音楽アプリ"
+    },
+    "正在刷新": {
+      "zh-TW": "正在重新整理",
+      "en": "Refreshing",
+      "ja": "更新中"
+    },
+    "✅ 已刷新壁纸：{name} ({width}x{height}，比例偏离 {percent}%)": {
+      "zh-TW": "✅ 已重新整理壁紙：{name} ({width}x{height}，比例偏差 {percent}%)",
+      "en": "✅ Wallpaper refreshed: {name} ({width}x{height}, aspect ratio off by {percent}%)",
+      "ja": "✅ 壁紙を更新しました：{name} ({width}x{height}、アスペクト比のずれ {percent}%)"
     }
   }
 }
