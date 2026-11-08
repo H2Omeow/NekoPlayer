@@ -174,7 +174,7 @@ class DecoderTests(unittest.TestCase):
     def test_source_download_is_checked_and_corrupt_cache_never_reused(self):
         cache = self.root / "cache"
         with patch("build_decoder.SOURCE", self.source):
-            with patch("build_decoder.urllib.request.urlopen", return_value=io.BytesIO(self.source_bytes)) as download:
+            with patch("download.urllib.request.urlopen", return_value=io.BytesIO(self.source_bytes)) as download:
                 archive = source_archive(cache)
                 self.assertEqual(archive.read_bytes(), self.source_bytes)
                 self.assertEqual(source_archive(cache), archive)
@@ -183,7 +183,7 @@ class DecoderTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Cached.*checksum"):
                 source_archive(cache)
             archive.unlink()
-            with patch("build_decoder.urllib.request.urlopen", return_value=io.BytesIO(b"wrong download")):
+            with patch("download.urllib.request.urlopen", return_value=io.BytesIO(b"wrong download")):
                 with self.assertRaisesRegex(ValueError, "Downloaded.*checksum"):
                     source_archive(cache)
             self.assertFalse(archive.exists())

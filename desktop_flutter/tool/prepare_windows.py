@@ -8,10 +8,10 @@ import re
 import shutil
 import subprocess
 import tarfile
-import urllib.request
 import zipfile
 
 from check_artifact import verify
+from download import fetch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,13 +23,7 @@ def download(name, directory):
     directory.mkdir(parents=True, exist_ok=True)
     destination = directory / specification["url"].rsplit("/", 1)[1]
     if not destination.exists():
-        temporary = destination.with_suffix(".part")
-        try:
-            with urllib.request.urlopen(specification["url"], timeout=90) as incoming, temporary.open("wb") as outgoing:
-                shutil.copyfileobj(incoming, outgoing)
-            temporary.replace(destination)
-        finally:
-            temporary.unlink(missing_ok=True)
+        fetch(specification["url"], destination)
     with destination.open("rb") as stream:
         if hashlib.file_digest(stream, "sha256").hexdigest() != specification["sha256"]:
             raise ValueError(f"Dependency checksum mismatch: {name}")

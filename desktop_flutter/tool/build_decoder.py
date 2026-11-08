@@ -9,9 +9,9 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
-import urllib.request
 
 from check_artifact import DECODER_SOURCE as SOURCE, TARGETS, WINDOWS_RUNTIME_LICENSES, verify, verify_decoder_directory
+from download import fetch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,16 +29,10 @@ def source_archive(cache):
         if sha256(archive) != SOURCE["sha256"]:
             raise ValueError("Cached FFmpeg source checksum mismatch")
         return archive
-    temporary = archive.with_suffix(".part")
-    try:
-        with urllib.request.urlopen(SOURCE["url"], timeout=60) as incoming:
-            with temporary.open("wb") as outgoing:
-                shutil.copyfileobj(incoming, outgoing)
-        if sha256(temporary) != SOURCE["sha256"]:
-            raise ValueError("Downloaded FFmpeg source checksum mismatch")
-        temporary.replace(archive)
-    finally:
-        temporary.unlink(missing_ok=True)
+    fetch(SOURCE["url"], archive, timeout=60)
+    if sha256(archive) != SOURCE["sha256"]:
+        archive.unlink(missing_ok=True)
+        raise ValueError("Downloaded FFmpeg source checksum mismatch")
     return archive
 
 
