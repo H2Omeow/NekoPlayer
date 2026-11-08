@@ -333,7 +333,7 @@ struct DesktopIntegration::State {
         HFONT title_font = font(std::max(11, self->font_size * 2 / 5), FW_NORMAL);
         HFONT primary = font(self->font_size, FW_BOLD);
         HFONT secondary = font(self->font_size * 2 / 3, FW_NORMAL);
-        HFONT small = font(12, FW_NORMAL);
+        HFONT small_font = font(12, FW_NORMAL);
         const int padding = 12;
         int y = 10;
         const auto line = [&](const std::wstring& text, HFONT font_handle, COLORREF color, int height) {
@@ -348,7 +348,7 @@ struct DesktopIntegration::State {
         line(self->lyric, primary, RGB(255, 140, 150), self->font_size * 3 / 2);
         line(self->next_lyric, secondary, RGB(202, 194, 220), self->font_size);
         if (self->show_progress) {
-          const auto previous = SelectObject(buffer, small);
+          const auto previous = SelectObject(buffer, small_font);
           wchar_t left[16];
           wchar_t right[16];
           wchar_t both[40];
@@ -380,12 +380,12 @@ struct DesktopIntegration::State {
           y += 24;
         }
         if (self->show_controls) {
-          const auto previous = SelectObject(buffer, small);
+          const auto previous = SelectObject(buffer, small_font);
           self->PaintControls(buffer, area);
           SelectObject(buffer, previous);
         }
         BitBlt(target, 0, 0, area.right, area.bottom, buffer, 0, 0, SRCCOPY);
-        DeleteObject(title_font); DeleteObject(primary); DeleteObject(secondary); DeleteObject(small);
+        DeleteObject(title_font); DeleteObject(primary); DeleteObject(secondary); DeleteObject(small_font);
         SelectObject(buffer, old_bitmap); DeleteObject(bitmap); DeleteDC(buffer);
         EndPaint(window, &paint);
         return 0;
