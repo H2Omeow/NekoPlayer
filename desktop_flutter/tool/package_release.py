@@ -16,14 +16,19 @@ HOMEPAGE = "https://github.com/H2Omeow/SuperPlayer_Kotlin"
 
 
 def release_version():
-    match = re.search(r"^version: (\d+\.\d+\.\d+)\+(\d+)$", (ROOT / "pubspec.yaml").read_text(), re.MULTILINE)
+    match = re.search(r"^version: (\d+\.\d+\.\d+(?:-pre)?)\+(\d+)$", (ROOT / "pubspec.yaml").read_text(), re.MULTILINE)
     if not match:
-        raise ValueError("A stable Flutter version and build number are required")
+        raise ValueError("A stable or -pre Flutter version and build number are required")
     version, build = match.groups()
     android = dict(line.split("=", 1) for line in (ROOT.parent / "app/version.properties").read_text().splitlines() if "=" in line)
     if android.get("versionName") != version or android.get("versionCode") != build:
         raise ValueError("Android and Flutter release versions must match")
     return version
+
+
+def package_version(version):
+    # DEB / RPM 不允许版本里出现 "-"，用 "~" 让 1.2.0~pre 排在 1.2.0 之前
+    return version.replace("-", "~")
 
 
 def run(arguments):
@@ -74,7 +79,7 @@ def linux_packages(target, bundle, output):
         control = package / "DEBIAN/control"
         control.parent.mkdir()
         control.write_text(
-            f"Package: nekoplayer\nVersion: {version}\nArchitecture: {deb_arch}\n"
+            f"Package: nekoplayer\nVersion: {package_version(version)}\nArchitecture: {deb_arch}\n"
             "Maintainer: H2Omeow\nSection: sound\nPriority: optional\n"
             "Depends: libgtk-3-0, libmpv2 | libmpv1, libsecret-1-0, libepoxy0, libgnutls30\n"
             "Recommends: libwebkit2gtk-4.1-0\n"
@@ -87,7 +92,7 @@ def linux_packages(target, bundle, output):
             (rpmbuild / directory).mkdir(parents=True)
         spec = rpmbuild / "SPECS/nekoplayer.spec"
         spec.write_text(
-            f"Name: nekoplayer\nVersion: {version}\nRelease: 1\nSummary: NekoPlayer Flutter music player\n"
+            f"Name: nekoplayer\nVersion: {package_version(version)}\nRelease: 1\nSummary: NekoPlayer Flutter music player\n"
             f"License: LicenseRef-NekoPlayer\nURL: {HOMEPAGE}\nBuildArch: {rpm_arch}\nAutoReqProv: no\n"
             "Requires: gtk3, (mpv-libs or libmpv2), libsecret, libepoxy, gnutls\n"
             "Recommends: webkit2gtk4.1\n"

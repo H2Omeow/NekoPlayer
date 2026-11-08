@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: 'Publish a stable release after all platforms pass validation'
+        description: 'Publish the release (stable or -pre) after all platforms pass validation'
         type: boolean
         default: false
   push:
@@ -78,7 +78,7 @@ jobs:
           path: dist/*
           if-no-files-found: error
           compression-level: 0
-      - name: Publish stable release atomically
+      - name: Publish release atomically
         if: github.event_name == 'push' || inputs.publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -93,4 +93,8 @@ jobs:
           gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "NekoPlayer ${RELEASE_TAG#v}" \
             --notes-file "docs/RELEASE_${RELEASE_TAG}.md" --draft dist/*
           gh release view "$RELEASE_TAG" --json assets --jq '.assets | length' | grep -qx 10
-          gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest
+          if [[ "$RELEASE_TAG" == *-pre ]]; then
+            gh release edit "$RELEASE_TAG" --draft=false --prerelease=true --latest=false
+          else
+            gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest
+          fi
