@@ -51,7 +51,8 @@ class SettingsStore(context: Context) {
             masteringMix = prefs.getInt(KEY_MASTERING_MIX, 100)
         ).normalized(),
         customFontPath = prefs.getString(KEY_CUSTOM_FONT, "") ?: "",
-        customFontName = prefs.getString(KEY_CUSTOM_FONT_NAME, "") ?: ""
+        customFontName = prefs.getString(KEY_CUSTOM_FONT_NAME, "") ?: "",
+        socialPushEnabled = prefs.getBoolean(KEY_SOCIAL_PUSH, true)
     )
 
     fun save(s: AppSettings) {
@@ -85,6 +86,7 @@ class SettingsStore(context: Context) {
             .putInt(KEY_MASTERING_MIX, s.audioEffects.masteringMix)
             .putString(KEY_CUSTOM_FONT, s.customFontPath)
             .putString(KEY_CUSTOM_FONT_NAME, s.customFontName)
+            .putBoolean(KEY_SOCIAL_PUSH, s.socialPushEnabled)
             .apply()
     }
 
@@ -118,6 +120,7 @@ class SettingsStore(context: Context) {
         private const val KEY_MASTERING_MIX = "mastering_mix"
         private const val KEY_CUSTOM_FONT = "custom_font_path"
         private const val KEY_CUSTOM_FONT_NAME = "custom_font_name"
+        private const val KEY_SOCIAL_PUSH = "social_push_enabled"
 
         // 播放状态保存
         private const val KEY_PLAY_QUEUE = "play_queue"

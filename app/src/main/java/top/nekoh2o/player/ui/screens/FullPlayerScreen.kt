@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -111,7 +112,8 @@ class PlayerControls(
     val onDownload: () -> Unit,
     val onComments: () -> Unit,
     val onFloating: () -> Unit,
-    val onDynamicLyrics: () -> Unit
+    val onDynamicLyrics: () -> Unit,
+    val onShare: () -> Unit
 )
 
 @Composable
@@ -149,7 +151,8 @@ fun FullPlayerScreen(vm: PlayerViewModel, onClose: () -> Unit) {
                 if (!Settings.canDrawOverlays(context)) showFloatingPermDialog = true
                 else vm.toggleFloatingLyric(context)
             },
-            onDynamicLyrics = { showDynamicLyrics = true }
+            onDynamicLyrics = { showDynamicLyrics = true },
+            onShare = { vm.socialVm.openShareComposer(vm.ui.value.current) }
         )
     }
 
@@ -329,6 +332,9 @@ private fun PlayerTopBar(song: Song?, controls: PlayerControls, modifier: Modifi
             if (song != null) {
                 Text(songSourceLabel(song), style = MaterialTheme.typography.labelSmall, color = TextSub.copy(alpha = 0.5f))
             }
+        }
+        IconButton(onClick = controls.onShare) {
+            Icon(Icons.Filled.Share, contentDescription = "分享歌曲", tint = TextMain)
         }
         IconButton(onClick = controls.onDynamicLyrics) {
             Icon(Icons.Filled.AutoAwesome, contentDescription = "动态歌词", tint = TextMain)

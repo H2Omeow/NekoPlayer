@@ -16,6 +16,8 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Person
@@ -34,19 +36,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import top.nekoh2o.player.data.model.Song
+import top.nekoh2o.player.SocialDeepLink
+import top.nekoh2o.player.SocialDeepLinks
 import top.nekoh2o.player.ui.PlayerViewModel
 import top.nekoh2o.player.ui.a11y.clickableRow
 import top.nekoh2o.player.ui.components.Artwork
+import top.nekoh2o.player.ui.components.LocalSongShareHandler
 import top.nekoh2o.player.ui.screens.HomeScreen
 import top.nekoh2o.player.ui.screens.LibraryTab
 import top.nekoh2o.player.ui.screens.MineScreen
 import top.nekoh2o.player.ui.screens.MusicScreen
+import top.nekoh2o.player.ui.social.SocialScreen
 import top.nekoh2o.player.ui.theme.NekoRadius
 import top.nekoh2o.player.ui.theme.NekoSpace
 
 enum class Tab(val label: String, val icon: ImageVector, val selectedIcon: ImageVector) {
     HOME("主页", Icons.Outlined.Home, Icons.Filled.Home),
     MUSIC("音乐", Icons.Outlined.LibraryMusic, Icons.Filled.LibraryMusic),
+    SOCIAL("社区", Icons.Outlined.ChatBubbleOutline, Icons.Filled.ChatBubble),
     MINE("我的", Icons.Outlined.Person, Icons.Filled.Person)
 }
 
@@ -57,6 +64,8 @@ fun MainScaffold(
     onStartSsoLogin: () -> Unit
 ) {
     val state by vm.ui.collectAsState()
+    val socialState by vm.socialVm.state.collectAsState()
+    val pendingDeepLink by SocialDeepLinks.pending.collectAsState()
     var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
     var libraryTab by rememberSaveable { mutableStateOf(LibraryTab.HISTORY) }
     val snackbar = remember { SnackbarHostState() }
@@ -65,6 +74,42 @@ fun MainScaffold(
         state.toast?.let {
             snackbar.showSnackbar(it)
             vm.clearToast()
+        }
+    }
+
+    LaunchedEffect(socialState.toast) {
+        socialState.toast?.let {
+            snackbar.showSnackbar(it)
+            vm.socialVm.clearToast()
+        }
+    }
+
+    LaunchedEffect(state.loggedIn) {
+        if (state.loggedIn) vm.socialVm.start() else vm.socialVm.stop()
+    }
+
+    LaunchedEffect(pendingDeepLink, state.loggedIn) {
+        val link = pendingDeepLink ?: return@LaunchedEffect
+        when (link) {
+            is SocialDeepLink.Share -> {
+                tab = Tab.SOCIAL
+                vm.socialVm.openShareToken(link.token)
+                SocialDeepLinks.consume()
+            }
+            is SocialDeepLink.Chat -> {
+                tab = Tab.SOCIAL
+                if (state.loggedIn) {
+                    vm.socialVm.openChat(link.peerId)
+                    SocialDeepLinks.consume()
+                }
+            }
+            is SocialDeepLink.User -> {
+                tab = Tab.SOCIAL
+                if (state.loggedIn) {
+                    vm.socialVm.loadProfile(link.userId)
+                    SocialDeepLinks.consume()
+                }
+            }
         }
     }
 
@@ -90,11 +135,15 @@ fun MainScaffold(
             )
         }
 
+        CompositionLocalProvider(
+            LocalSongShareHandler provides { song -> vm.socialVm.openShareComposer(song) }
+        ) {
         MainLayout(
             tab = tab,
             useRail = useRail,
             transparent = wallpaper != null,
             snackbar = snackbar,
+            socialUnread = socialState.unread,
             onSelect = ::select,
             miniPlayer = {
                 state.current?.let { song ->
@@ -118,6 +167,7 @@ fun MainScaffold(
                     onOpenLibrary = { libraryTab = it; select(Tab.MINE) }
                 )
                 Tab.MUSIC -> MusicScreen(vm)
+                Tab.SOCIAL -> SocialScreen(vm, onStartSsoLogin)
                 Tab.MINE -> MineScreen(
                     vm = vm,
                     libraryTab = libraryTab,
@@ -125,6 +175,7 @@ fun MainScaffold(
                     onStartSsoLogin = onStartSsoLogin
                 )
             }
+        }
         }
     }
 }
@@ -136,6 +187,7 @@ fun MainLayout(
     useRail: Boolean,
     transparent: Boolean,
     snackbar: SnackbarHostState,
+    socialUnread: Int,
     onSelect: (Tab) -> Unit,
     miniPlayer: @Composable () -> Unit,
     content: @Composable () -> Unit
@@ -169,7 +221,13 @@ fun MainLayout(
                         NavigationBarItem(
                             selected = tab == t,
                             onClick = { onSelect(t) },
-                            icon = { Icon(if (tab == t) t.selectedIcon else t.icon, contentDescription = null) },
+                            icon = {
+                                TabIcon(
+                                    tab = t,
+                                    selected = tab == t,
+                                    unread = if (t == Tab.SOCIAL) socialUnread else 0
+                                )
+                            },
                             label = { Text(t.label) },
                             colors = itemColors
                         )
@@ -195,7 +253,13 @@ fun MainLayout(
                     NavigationRailItem(
                         selected = tab == t,
                         onClick = { onSelect(t) },
-                        icon = { Icon(if (tab == t) t.selectedIcon else t.icon, null) },
+                        icon = {
+                            TabIcon(
+                                tab = t,
+                                selected = tab == t,
+                                unread = if (t == Tab.SOCIAL) socialUnread else 0
+                            )
+                        },
                         label = { Text(t.label) },
                         colors = railColors,
                         modifier = Modifier.padding(vertical = NekoSpace.sm)
@@ -204,6 +268,21 @@ fun MainLayout(
             }
             Box(Modifier.weight(1f)) { content() }
         }
+    }
+}
+
+/** 底部/侧边导航图标；社区未读用 Badge 叠在图标右上角。 */
+@Composable
+private fun TabIcon(tab: Tab, selected: Boolean, unread: Int) {
+    val icon = if (selected) tab.selectedIcon else tab.icon
+    if (unread > 0) {
+        BadgedBox(badge = {
+            Badge { Text(if (unread > 99) "99+" else unread.toString()) }
+        }) {
+            Icon(icon, contentDescription = null)
+        }
+    } else {
+        Icon(icon, contentDescription = null)
     }
 }
 

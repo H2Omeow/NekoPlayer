@@ -26,12 +26,14 @@ class FullPlayer extends StatefulWidget {
     required this.controller,
     this.onDownload,
     this.onComments,
+    this.onShare,
     this.onDynamicLyrics,
     this.dynamicLyricsUri,
   });
   final PlayerController controller;
   final void Function(OnlineSong)? onDownload;
   final void Function(OnlineSong)? onComments;
+  final void Function(Track)? onShare;
 
   /// Opens the dynamic lyrics page in the system browser.
   final Future<void> Function()? onDynamicLyrics;
@@ -111,6 +113,15 @@ class _FullPlayerState extends State<FullPlayer> {
           icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 28),
         ),
         const Spacer(),
+        if (controller.current != null && widget.onShare != null)
+          IconButton(
+            tooltip: '分享歌曲',
+            onPressed: () {
+              final current = controller.current;
+              if (current != null) widget.onShare!(current);
+            },
+            icon: const Icon(Icons.ios_share_rounded, size: 20),
+          ),
         if (widget.dynamicLyricsUri != null)
           SegmentedButton<bool>(
             showSelectedIcon: false,

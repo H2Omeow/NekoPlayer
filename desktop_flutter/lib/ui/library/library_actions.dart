@@ -15,11 +15,13 @@ class LibraryActions {
     required this.player,
     this.onDownload,
     this.onComments,
+    this.onShare,
   });
 
   final PlayerController player;
   final void Function(OnlineSong song)? onDownload;
   final void Function(OnlineSong song)? onComments;
+  final void Function(Track track)? onShare;
 
   List<SongAction> actionsFor(
     BuildContext context,
@@ -49,6 +51,12 @@ class LibraryActions {
         '查看评论',
         Icons.chat_bubble_outline_rounded,
         () => onComments!(track.online!),
+      ),
+    if (track.online != null && onShare != null)
+      SongAction(
+        '分享…',
+        Icons.ios_share_rounded,
+        () => onShare!(track),
       ),
     if (queueIndex != null) ...[
       SongAction(

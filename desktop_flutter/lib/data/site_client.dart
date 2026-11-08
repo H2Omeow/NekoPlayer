@@ -188,6 +188,28 @@ class SiteClient {
     );
   }
 
+  /// 社区接口。公开分享在未登录时也可读取；写操作要求有效本站令牌。
+  Future<Map<String, dynamic>> social(
+    String path,
+    String token, {
+    String method = 'GET',
+    Map<String, String>? query,
+    Map<String, dynamic>? body,
+    bool allowAnonymous = false,
+  }) {
+    if (!path.startsWith('social/') || path.contains('..') || path.contains('\\')) {
+      throw const MusicSearchException('社区地址无效。');
+    }
+    return _request(
+      path,
+      token,
+      method: method,
+      query: query,
+      body: body,
+      allowAnonymous: allowAnonymous,
+    );
+  }
+
   static Future<Map<String, dynamic>> _send(SiteRequest request) async {
     if (request.uri.scheme != 'https' ||
         request.uri.host != 'player.nekoh2o.top' ||

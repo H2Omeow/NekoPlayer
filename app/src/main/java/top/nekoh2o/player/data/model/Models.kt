@@ -401,5 +401,7 @@ data class AppSettings(
     // 自定义界面字体：App 私有目录下的 TTF / OTF 路径（空串 = 内置字体）
     val customFontPath: String = "",
     // 自定义字体的原始文件名（用于设置页显示）
-    val customFontName: String = ""
+    val customFontName: String = "",
+    // 社区后台消息推送（前台服务 + SSE，默认开启）
+    val socialPushEnabled: Boolean = true
 )

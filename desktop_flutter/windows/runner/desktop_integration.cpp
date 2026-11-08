@@ -94,6 +94,8 @@ struct DesktopIntegration::State {
   std::shared_ptr<bool> alive = std::make_shared<bool>(true);
   bool close_to_tray = false;
   bool quitting = false;
+  // Share / chat URL shown in the last balloon; forwarded to Dart on click.
+  std::string notification_uri;
 
 
   int OverlayHeight() const {
@@ -199,6 +201,19 @@ struct DesktopIntegration::State {
       case 5: quitting = true; PostMessage(main_window, WM_CLOSE, 0, 0); break;
       default: break;
     }
+  }
+
+  void Notify(const std::string& title, const std::string& body, const std::string& uri) {
+    if (!tray_available) StartTray();
+    if (!tray_available) return;
+    notification_uri = uri;
+    const std::wstring wide_title = Wide(title);
+    const std::wstring wide_body = Wide(body);
+    tray.uFlags |= NIF_INFO;
+    tray.dwInfoFlags = NIIF_INFO;
+    wcsncpy_s(tray.szInfoTitle, wide_title.empty() ? L"NekoPlayer" : wide_title.c_str(), _TRUNCATE);
+    wcsncpy_s(tray.szInfo, wide_body.c_str(), _TRUNCATE);
+    Shell_NotifyIconW(NIM_MODIFY, &tray);
   }
 
   void Action(const char* name) {
@@ -487,6 +502,10 @@ DesktopIntegration::DesktopIntegration(flutter::BinaryMessenger* messenger, HWND
         const auto* values = call.arguments() == nullptr ? nullptr : std::get_if<EncodableMap>(call.arguments());
         if (values == nullptr) { result->Error("invalid_state", "Expected state map"); return; }
         state_->Update(*values); result->Success();
+      } else if (call.method_name() == "notify") {
+        const auto* values = call.arguments() == nullptr ? nullptr : std::get_if<EncodableMap>(call.arguments());
+        if (values != nullptr) state_->Notify(Text(*values, "title"), Text(*values, "body"), Text(*values, "uri"));
+        result->Success();
       } else if (call.method_name() == "dispose") { state_->Stop(); result->Success(); }
       else result->NotImplemented();
     } catch (...) { result->Error("desktop_unavailable", "System integration update failed"); }
@@ -516,6 +535,15 @@ bool DesktopIntegration::HandleMessage(UINT message, WPARAM wparam, LPARAM lpara
   if (message == kTrayAction) {
     const auto event = LOWORD(lparam);
     if (event == NIN_SELECT || event == NIN_KEYSELECT) state_->ShowMain();
+    else if (event == NIN_BALLOONUSERCLICK) {
+      state_->ShowMain();
+      if (!state_->notification_uri.empty()) {
+        state_->channel->InvokeMethod(
+            "deepLink",
+            std::make_unique<EncodableValue>(EncodableMap{{EncodableValue("uri"), EncodableValue(state_->notification_uri)}}));
+        state_->notification_uri.clear();
+      }
+    }
     else if (event == WM_CONTEXTMENU) state_->TrayMenu();
     return true;
   }

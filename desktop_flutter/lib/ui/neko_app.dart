@@ -15,12 +15,14 @@ import '../data/comments_repository.dart';
 import '../data/library_store.dart';
 import '../data/native_music_catalog.dart';
 import '../desktop_integration.dart';
+import '../deep_links.dart';
 import '../domain/library.dart';
 import '../domain/online_music.dart';
 import '../dynamic_lyrics.dart';
 import '../player_controller.dart';
 import '../search_controller.dart' as online;
 import '../site_controller.dart';
+import '../social_controller.dart';
 import '../sync/account_verifier.dart';
 import '../sync/cloud_sync_controller.dart';
 import '../sync/sync_state_store.dart';
@@ -42,6 +44,7 @@ import 'shell/destinations.dart';
 import 'shell/player_bar.dart';
 import 'shell/queue_panel.dart';
 import 'shell/sidebar.dart';
+import 'social/social_page.dart';
 import 'widgets/settings_list.dart';
 
 export 'now_playing/now_playing_page.dart' show FullPlayer, LyricsView;
@@ -50,9 +53,10 @@ export 'widgets/artwork.dart';
 export 'widgets/empty_state.dart';
 
 class NekoApp extends StatefulWidget {
-  const NekoApp({super.key, required this.controller});
+  const NekoApp({super.key, required this.controller, this.deepLinks});
 
   final PlayerController controller;
+  final DeepLinkRouter? deepLinks;
 
   @override
   State<NekoApp> createState() => _NekoAppState();
@@ -135,7 +139,10 @@ class _NekoAppState extends State<NekoApp> {
             ),
           ),
         ),
-        home: PlayerShell(controller: widget.controller),
+        home: PlayerShell(
+          controller: widget.controller,
+          deepLinks: widget.deepLinks,
+        ),
       );
     },
   );
@@ -144,9 +151,10 @@ class _NekoAppState extends State<NekoApp> {
 /// The main window: sidebar, content panel with its own navigation stack,
 /// optional queue panel and the transport bar.
 class PlayerShell extends StatefulWidget {
-  const PlayerShell({super.key, required this.controller});
+  const PlayerShell({super.key, required this.controller, this.deepLinks});
 
   final PlayerController controller;
+  final DeepLinkRouter? deepLinks;
 
   @override
   State<PlayerShell> createState() => _PlayerShellState();
@@ -167,10 +175,12 @@ class _PlayerShellState extends State<PlayerShell> {
   late final NativeMusicCatalog catalog;
   late final online.SearchController onlineSearch;
   late final SiteController site;
+  late final SocialController social;
   late final CloudSyncController cloudSync;
   late final DesktopIntegration integration;
   late final LibraryActions actions;
   final contentNavigator = GlobalKey<NavigatorState>();
+  bool _profileOpen = false;
 
   Destination destination = const Destination(Section.home);
   bool queueOpen = false;
@@ -187,6 +197,14 @@ class _PlayerShellState extends State<PlayerShell> {
     onlineSearch = online.SearchController(catalog);
     catalog.subscriptions?.addListener(subscriptionChanged);
     site = SiteController(accounts: catalog.accounts, player: controller);
+    social = SocialController(
+      accounts: catalog.accounts,
+      client: site.client,
+      player: controller,
+      onSnack: snack,
+      onNotify: (title, body, uri) =>
+          unawaited(integration.notify(title, body, uri)),
+    );
     cloudSync = CloudSyncController(
       site: site,
       player: controller,
@@ -199,18 +217,107 @@ class _PlayerShellState extends State<PlayerShell> {
       settingsLoader: () async =>
           PreferencesDesktopStore(SharedPreferencesAsync()),
     );
+    integration.onUri = (uri) => widget.deepLinks?.open(uri);
     unawaited(integration.initialize());
     actions = LibraryActions(
       player: controller,
       onComments: openComments,
+      onShare: openShareTrack,
       onDownload: controller.downloads == null
           ? null
           : (song) => unawaited(downloadSong(song)),
+    );
+    site.addListener(siteChanged);
+    social.addListener(socialChanged);
+    widget.deepLinks?.addListener(deepLinkChanged);
+    if (site.user != null) social.start();
+    WidgetsBinding.instance.addPostFrameCallback((_) => deepLinkChanged());
+  }
+
+  void siteChanged() {
+    if (site.user != null) {
+      social.start();
+      // A chat/user deep link received before login stays pending; retry it
+      // once the account becomes available.
+      WidgetsBinding.instance.addPostFrameCallback((_) => deepLinkChanged());
+    } else {
+      social.stop();
+    }
+    if (mounted) setState(() {});
+  }
+
+  void socialChanged() {
+    if (!mounted) return;
+    setState(() {});
+    final profile = social.profile;
+    if (profile != null && !_profileOpen) {
+      _profileOpen = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted || social.profile == null) {
+          _profileOpen = false;
+          return;
+        }
+        await showSocialProfileDialog(context, social);
+        _profileOpen = false;
+      });
+    }
+  }
+
+  void deepLinkChanged() {
+    final link = widget.deepLinks?.link;
+    if (link == null) return;
+    if (link.shareToken != null) {
+      unawaited(social.openShareToken(link.shareToken!));
+      widget.deepLinks?.consume();
+      return;
+    }
+    void openSocial() {
+      navigate(const Destination(Section.social));
+    }
+
+    openSocial();
+    if (link.chatPeer != null) {
+      if (site.user != null) {
+        unawaited(social.openChat(link.chatPeer!));
+        widget.deepLinks?.consume();
+      }
+    } else if (link.userId != null) {
+      if (site.user != null) {
+        unawaited(social.loadProfile(link.userId!));
+        widget.deepLinks?.consume();
+      }
+    } else {
+      widget.deepLinks?.consume();
+    }
+  }
+
+  Future<void> openShareTrack(Track track) async {
+    if (track.online == null) {
+      snack('本地文件不能生成分享链接。');
+      return;
+    }
+    final isCurrent = controller.current?.path == track.path;
+    final lyric = isCurrent && controller.lyricIndex >= 0 &&
+            controller.lyricIndex < controller.lyrics.length
+        ? controller.lyrics[controller.lyricIndex].text
+        : '';
+    await showSongShareDialog(
+      context,
+      social: social,
+      track: track,
+      isCurrent: isCurrent,
+      lyric: lyric,
+      position: controller.position,
+      duration: controller.duration,
     );
   }
 
   @override
   void dispose() {
+    widget.deepLinks?.removeListener(deepLinkChanged);
+    site.removeListener(siteChanged);
+    social.removeListener(socialChanged);
+    social.dispose();
     unawaited(dynamicLyrics.dispose());
     integration.dispose();
     catalog.subscriptions?.removeListener(subscriptionChanged);
@@ -362,6 +469,7 @@ class _PlayerShellState extends State<PlayerShell> {
           reverseTransitionDuration: const Duration(milliseconds: 250),
           pageBuilder: (_, _, _) => FullPlayer(
             controller: controller,
+            onShare: openShareTrack,
             onDynamicLyrics: openDynamicLyrics,
             dynamicLyricsUri: dynamicLyrics.start,
             onComments: (song) {
@@ -454,6 +562,13 @@ class _PlayerShellState extends State<PlayerShell> {
       onRecent: () => navigate(const Destination(Section.recent)),
     ),
     Section.discover => searchPage(),
+    Section.social => SocialPage(
+      site: site,
+      social: social,
+      player: controller,
+      onLogin: () => navigate(const Destination(Section.settings)),
+      onOpenShare: (track) => unawaited(openShareTrack(track)),
+    ),
     Section.library => LibraryOverviewPage(
       player: controller,
       onSelect: (next) => pushContent(collectionPage(next)),
@@ -540,6 +655,7 @@ class _PlayerShellState extends State<PlayerShell> {
           final bar = PlayerBar(
             controller: controller,
             onOpenPlayer: openPlayer,
+            onShare: openShareTrack,
             integration: integration,
             queueOpen: queueOpen,
             onToggleQueue: () {
@@ -575,14 +691,16 @@ class _PlayerShellState extends State<PlayerShell> {
                 selectedIndex: switch (destination.section) {
                   Section.home => 0,
                   Section.discover => 1,
-                  Section.settings => 3,
-                  _ => 2,
+                  Section.social => 2,
+                  Section.settings => 4,
+                  _ => 3,
                 },
                 onDestinationSelected: (index) => navigate(
                   Destination(
                     [
                       Section.home,
                       Section.discover,
+                      Section.social,
                       Section.library,
                       Section.settings,
                     ][index],
@@ -592,12 +710,21 @@ class _PlayerShellState extends State<PlayerShell> {
                   for (final section in [
                     Section.home,
                     Section.discover,
+                    Section.social,
                     Section.library,
                     Section.settings,
                   ])
                     NavigationDestination(
-                      icon: Icon(section.icon),
-                      selectedIcon: Icon(section.selectedIcon),
+                      icon: Badge(
+                        isLabelVisible: section == Section.social && social.unread > 0,
+                        label: Text('${social.unread}'),
+                        child: Icon(section.icon),
+                      ),
+                      selectedIcon: Badge(
+                        isLabelVisible: section == Section.social && social.unread > 0,
+                        label: Text('${social.unread}'),
+                        child: Icon(section.selectedIcon),
+                      ),
                       label: section.label,
                     ),
                 ],
@@ -631,6 +758,7 @@ class _PlayerShellState extends State<PlayerShell> {
                                 collapsed: collapsed,
                                 showDownloads: controller.downloads != null,
                                 showPlatform: true,
+                                socialUnread: social.unread,
                                 accountLabel: site.user == null
                                     ? null
                                     : '${site.user!['nickname'] ?? site.user!['username'] ?? ''}',

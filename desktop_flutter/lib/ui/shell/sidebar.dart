@@ -17,6 +17,7 @@ class Sidebar extends StatelessWidget {
     required this.collapsed,
     this.showDownloads = false,
     this.showPlatform = false,
+    this.socialUnread = 0,
     this.accountLabel,
   });
 
@@ -27,6 +28,7 @@ class Sidebar extends StatelessWidget {
   final bool collapsed;
   final bool showDownloads;
   final bool showPlatform;
+  final int socialUnread;
   final String? accountLabel;
 
   @override
@@ -111,6 +113,14 @@ class Sidebar extends StatelessWidget {
               children: [
                 item(Section.home),
                 item(Section.discover),
+                item(
+                  Section.social,
+                  trailing: socialUnread <= 0 || collapsed
+                      ? null
+                      : socialUnread > 99
+                      ? '99+'
+                      : '$socialUnread',
+                ),
                 heading('音乐库'),
                 item(
                   Section.favorites,

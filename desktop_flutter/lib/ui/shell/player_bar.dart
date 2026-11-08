@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart' hide RepeatMode;
 
 import '../../desktop_integration.dart';
+import '../../domain/library.dart';
 import '../../playback/playback_engine.dart';
 import '../../player_controller.dart';
 import '../neko_theme.dart';
@@ -18,6 +19,7 @@ class PlayerBar extends StatelessWidget {
     super.key,
     required this.controller,
     required this.onOpenPlayer,
+    this.onShare,
     this.onToggleQueue,
     this.queueOpen = false,
     this.integration,
@@ -25,6 +27,7 @@ class PlayerBar extends StatelessWidget {
 
   final PlayerController controller;
   final VoidCallback onOpenPlayer;
+  final void Function(Track track)? onShare;
   final VoidCallback? onToggleQueue;
   final bool queueOpen;
   final DesktopIntegration? integration;
@@ -83,6 +86,13 @@ class PlayerBar extends StatelessWidget {
             ),
           ),
         ),
+        if (track != null)
+          IconButton(
+            tooltip: '分享歌曲',
+            onPressed: onShare == null ? null : () => onShare!(track),
+            iconSize: 20,
+            icon: const Icon(Icons.ios_share_rounded),
+          ),
         if (track != null)
           IconButton(
             tooltip: favorite ? '取消收藏' : '收藏',

@@ -87,6 +87,10 @@ object ApiFactory {
         retrofit(BASE).create(UserApi::class.java)
     }
 
+    val social: top.nekoh2o.player.data.social.SocialApi by lazy {
+        retrofit(BASE).create(top.nekoh2o.player.data.social.SocialApi::class.java)
+    }
+
     val netease: NeteaseApi by lazy {
         retrofit(BASE, nativeNetease).create(NeteaseApi::class.java)
     }

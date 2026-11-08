@@ -7,6 +7,8 @@
     <!-- 后台播放前台服务 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- 社区私信常驻同步 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
     <!-- Android 13+ 通知栏需要 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- 请求忽略电池优化，缓解国产 ROM 后台清理 -->
@@ -46,6 +48,25 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="nekoplayer" android:host="auth" />
             </intent-filter>
+            <!-- 分享 / 私信 / 用户主页深链 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="nekoplayer" android:host="share" />
+                <data android:scheme="nekoplayer" android:host="chat" />
+                <data android:scheme="nekoplayer" android:host="user" />
+            </intent-filter>
+            <!-- App Links：https://player.nekoh2o.top/s/<token>，需 /.well-known/assetlinks.json -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="player.nekoh2o.top"
+                    android:pathPrefix="/s/" />
+            </intent-filter>
         </activity>
 
         <!-- 后台播放核心：Media3 会话服务 -->
@@ -62,6 +83,12 @@
         <service
             android:name=".playback.FloatingLyricService"
             android:exported="false" />
+
+        <!-- 社区私信实时连接与通知 -->
+        <service
+            android:name=".social.SocialPushService"
+            android:exported="false"
+            android:foregroundServiceType="remoteMessaging" />
 
     </application>
 </manifest>

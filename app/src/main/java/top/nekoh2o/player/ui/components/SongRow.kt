@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -59,6 +60,7 @@ fun SongRow(
     onAddToPlaylist: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null
 ) {
+    val share = LocalSongShareHandler.current
     Row(
         modifier
             .fillMaxWidth()
@@ -93,7 +95,9 @@ fun SongRow(
         }
         if (onFav != null) FavoriteButton(isFav, onFav)
         trailing?.invoke()
-        if (onAdd != null || onAddToPlaylist != null) SongMenu(onAdd, onAddToPlaylist)
+        if (onAdd != null || onAddToPlaylist != null || share != null) {
+            SongMenu(onAdd, onAddToPlaylist, share?.let { handler -> { handler(song) } })
+        }
     }
 }
 
@@ -135,7 +139,7 @@ fun FavoriteButton(
 }
 
 @Composable
-private fun SongMenu(onAdd: (() -> Unit)?, onAddToPlaylist: (() -> Unit)?) {
+private fun SongMenu(onAdd: (() -> Unit)?, onAddToPlaylist: (() -> Unit)?, onShare: (() -> Unit)?) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) {
@@ -158,6 +162,13 @@ private fun SongMenu(onAdd: (() -> Unit)?, onAddToPlaylist: (() -> Unit)?) {
                     text = { Text("加入歌单…") },
                     leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, null) },
                     onClick = { open = false; onAddToPlaylist() }
+                )
+            }
+            if (onShare != null) {
+                DropdownMenuItem(
+                    text = { Text("分享…") },
+                    leadingIcon = { Icon(Icons.Filled.Share, null) },
+                    onClick = { open = false; onShare() }
                 )
             }
         }

@@ -157,6 +157,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     val libraryVm = top.nekoh2o.player.ui.viewmodel.LibraryViewModel(app)
     val neteaseVm = top.nekoh2o.player.ui.viewmodel.NeteaseAccountViewModel(app)
     val kugouVm = top.nekoh2o.player.ui.viewmodel.KugouAccountViewModel(app)
+    val socialVm = top.nekoh2o.player.ui.social.SocialViewModel(app) { song, progress ->
+        playSharedSong(song, progress)
+    }
 
     private val _ui = MutableStateFlow(UiState())
     val ui: StateFlow<UiState> = _ui
@@ -754,6 +757,22 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         saveCurrentPlaybackState()
     }
 
+    /** 从分享链接打开歌曲，并跳到分享者给出的播放进度。 */
+    fun playSharedSong(song: Song, progressMs: Long) {
+        if (controller == null) {
+            toast("播放器尚未就绪，请稍后再试")
+            return
+        }
+        playAll(listOf(song))
+        if (progressMs > 0) {
+            viewModelScope.launch {
+                kotlinx.coroutines.delay(900)
+                controller?.seekTo(progressMs.coerceAtLeast(0))
+                syncFromController()
+            }
+        }
+    }
+
     private fun pushMineToState() {
         _ui.value = _ui.value.copy(
             history = local.history.toList(),
@@ -791,6 +810,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun setCacheEnabled(v: Boolean) {
         val updated = settingsVm.setCacheEnabled(v, _ui.value.settings)
+        _ui.value = _ui.value.copy(settings = updated)
+    }
+    fun setSocialPushEnabled(v: Boolean) {
+        val updated = settingsVm.setSocialPushEnabled(v, _ui.value.settings)
         _ui.value = _ui.value.copy(settings = updated)
     }
     fun setControlAlpha(v: Float) {

@@ -26,8 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import top.nekoh2o.player.ui.PlayerViewModel
 import top.nekoh2o.player.ui.nav.MainScaffold
+import top.nekoh2o.player.ui.social.ShareSongSheet
 import top.nekoh2o.player.ui.theme.CustomFont
 import top.nekoh2o.player.ui.theme.NekoTheme
+import top.nekoh2o.player.social.SocialPushService
 
 class MainActivity : ComponentActivity() {
 
@@ -43,8 +45,17 @@ class MainActivity : ComponentActivity() {
         }
         // 冷启动时若由深链拉起（浏览器登录完成回跳），处理携带的 token
         handleAuthDeepLink(intent)
+        SocialDeepLinks.handle(intent)
         setContent {
             val state by vm.ui.collectAsState()
+
+            LaunchedEffect(state.loggedIn, state.settings.socialPushEnabled) {
+                if (state.loggedIn && state.settings.socialPushEnabled) {
+                    SocialPushService.start(applicationContext)
+                } else {
+                    SocialPushService.stop(applicationContext)
+                }
+            }
 
             // 根据横屏模式设置锁定屏幕方向
             LaunchedEffect(state.settings.landscapeMode) {
@@ -94,6 +105,9 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 if (fullPlayer) BackHandler { fullPlayer = false }
+
+                // 分享弹窗放在最上层，歌曲列表、聊天和全屏播放器共用
+                ShareSongSheet(vm)
             }
         }
     }
@@ -101,7 +115,17 @@ class MainActivity : ComponentActivity() {
     // 回到前台时检查云同步（同步层自带 60 秒节流，未登录则忽略）
     override fun onStart() {
         super.onStart()
+        AppVisibility.onStart()
         vm.onAppForeground()
+        val state = vm.ui.value
+        if (state.loggedIn && state.settings.socialPushEnabled) {
+            SocialPushService.start(applicationContext)
+        }
+    }
+
+    override fun onStop() {
+        AppVisibility.onStop()
+        super.onStop()
     }
 
     // 已在栈顶（singleTop）时，回跳深链通过 onNewIntent 送达
@@ -109,6 +133,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleAuthDeepLink(intent)
+        SocialDeepLinks.handle(intent)
     }
 
     // 跳转系统浏览器打开账户中心登录，登录完成后账户中心 302 回跳 nekoplayer://auth?token=<JWT>

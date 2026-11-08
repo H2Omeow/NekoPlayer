@@ -368,6 +368,18 @@ private fun AccountSettings(onOpenCookies: (String) -> Unit) {
 
 @Composable
 private fun AdvancedSettings(vm: PlayerViewModel, context: Context) {
+    val state by vm.ui.collectAsState()
+    SettingsSection(
+        title = "社区",
+        description = "开启后使用前台服务保持私信实时连接并显示系统通知。国产系统若限制后台，请同时允许自启动。"
+    ) {
+        SettingsSwitchTile(
+            title = "后台消息推送",
+            subtitle = "关闭后仅在打开 App 时接收消息",
+            checked = state.settings.socialPushEnabled,
+            onCheckedChange = vm::setSocialPushEnabled
+        )
+    }
     SettingsSection(
         title = "电池优化",
         description = "允许应用忽略电池优化，防止系统在后台暂停播放。部分机型长时间熄屏后仍可能结束播放，请同时设置自启动白名单。"

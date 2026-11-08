@@ -2,7 +2,7 @@
 # Installs the prebuilt release bundle. Run `updpkgsums` after bumping pkgver
 # (checksums are published in the release's SHA256SUMS file).
 pkgname=nekoplayer-bin
-pkgver=1.1.0
+pkgver=1.2.0
 pkgrel=1
 pkgdesc='NekoPlayer Flutter music player (prebuilt desktop bundle)'
 arch=('x86_64' 'aarch64')
@@ -22,6 +22,11 @@ sha256sums_x86_64=('SKIP')
 sha256sums_aarch64=('SKIP')
 noextract=("NekoPlayer-v${pkgver}-linux-x64.tar.gz" "NekoPlayer-v${pkgver}-linux-arm64.tar.gz")
 
+post_install() {
+  update-desktop-database -q /usr/share/applications 2>/dev/null || true
+  xdg-mime default nekoplayer.desktop x-scheme-handler/nekoplayer 2>/dev/null || true
+}
+
 package() {
   install -dm755 "$pkgdir/usr/lib/nekoplayer"
   tar -xzf "$srcdir/NekoPlayer-v${pkgver}-linux-"*.tar.gz -C "$pkgdir/usr/lib/nekoplayer" --strip-components=1 --no-same-owner
@@ -38,6 +43,7 @@ Exec=nekoplayer %U
 Icon=nekoplayer
 Terminal=false
 Categories=AudioVideo;Audio;Player;
+MimeType=x-scheme-handler/nekoplayer;
 DESKTOP
 
   install -Dm644 "$srcdir/nekoplayer-${pkgver}.png" "$pkgdir/usr/share/icons/hicolor/192x192/apps/nekoplayer.png"

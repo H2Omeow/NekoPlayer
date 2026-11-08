@@ -34,6 +34,9 @@ class DesktopIntegration extends ChangeNotifier {
   double fontSize = 30;
   double opacity = .9;
   String? error;
+  /// Receives URLs forwarded by native notifications (or the OS protocol
+  /// handler, when the platform can route it through the channel).
+  void Function(String uri)? onUri;
   bool _disposed = false;
   bool _sending = false;
   bool _dirty = false;
@@ -139,6 +142,11 @@ class DesktopIntegration extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    if (call.method == 'deepLink') {
+      final uri = arguments['uri'];
+      if (uri is String && uri.isNotEmpty) onUri?.call(uri);
+      return;
+    }
     if (call.method != 'action') return;
     switch (action) {
       case 'play':
@@ -223,6 +231,22 @@ class DesktopIntegration extends ChangeNotifier {
     _signature = null;
     _changed();
     notifyListeners();
+  }
+
+  /// Shows a system notification. Clicking it forwards [uri] through
+  /// [onUri] on platforms where notifications support actions.
+  Future<void> notify(String title, String body, String? uri) async {
+    if (_disposed) return;
+    try {
+      await channel.invokeMethod<void>('notify', {
+        'title': title,
+        'body': body,
+        'uri': uri ?? '',
+      });
+    } catch (_) {
+      // Desktop notifications are best effort; a failure must not disturb
+      // message handling.
+    }
   }
 
   Future<void> configureTray(bool enabled) async {

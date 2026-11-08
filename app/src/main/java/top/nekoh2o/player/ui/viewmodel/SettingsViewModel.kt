@@ -76,6 +76,12 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         return updated
     }
 
+    fun setSocialPushEnabled(enabled: Boolean, current: AppSettings): AppSettings {
+        val updated = current.copy(socialPushEnabled = enabled)
+        settingsStore.save(updated)
+        return updated
+    }
+
     // ==================== 控件透明度 ====================
 
     fun setControlAlpha(alpha: Float, current: AppSettings): AppSettings {

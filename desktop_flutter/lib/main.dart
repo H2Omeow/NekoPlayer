@@ -12,6 +12,7 @@ import 'data/native_music_catalog.dart';
 import 'data/account_store.dart';
 import 'data/plugin_subscriptions.dart';
 import 'data/plugins/plugin_runtime.dart';
+import 'deep_links.dart';
 import 'download_controller.dart';
 import 'playback/effects_playback_engine.dart';
 import 'player_controller.dart';
@@ -20,9 +21,13 @@ import 'ui/bundled_fonts.dart';
 import 'ui/diagnostics_page.dart';
 import 'ui/neko_theme.dart';
 
-void main() => CrashGuard.run(_start);
+void main(List<String> arguments) =>
+    CrashGuard.run(() => _start(arguments));
 
-Future<void> _start() async {
+Future<void> _start(List<String> arguments) async {
+  final deepLinks = await DeepLinkRouter.start(arguments);
+  // 第二个实例已把深链转发给正在运行的窗口，直接退出。
+  if (deepLinks == null) return;
   registerBundledFontLicense();
   try {
     MediaKit.ensureInitialized();
@@ -70,7 +75,7 @@ Future<void> _start() async {
       store: PreferencesLibraryStore(SharedPreferencesAsync()),
     );
     await controller.initialize();
-    runApp(NekoApp(controller: controller));
+    runApp(NekoApp(controller: controller, deepLinks: deepLinks));
   } catch (failure, stack) {
     CrashLog.error(
       'startup',

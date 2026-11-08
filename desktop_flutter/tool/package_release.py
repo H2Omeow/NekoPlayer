@@ -72,7 +72,7 @@ def linux_packages(target, bundle, output):
         launcher.chmod(0o755)
         desktop = package / "usr/share/applications/nekoplayer.desktop"
         desktop.parent.mkdir(parents=True)
-        desktop.write_text("[Desktop Entry]\nType=Application\nName=NekoPlayer\nComment=Music player\nExec=nekoplayer %U\nIcon=nekoplayer\nTerminal=false\nCategories=AudioVideo;Audio;Player;\n")
+        desktop.write_text("[Desktop Entry]\nType=Application\nName=NekoPlayer\nComment=Music player\nExec=nekoplayer %U\nIcon=nekoplayer\nTerminal=false\nCategories=AudioVideo;Audio;Player;\nMimeType=x-scheme-handler/nekoplayer;\n")
         icon = package / "usr/share/icons/hicolor/192x192/apps/nekoplayer.png"
         icon.parent.mkdir(parents=True)
         shutil.copy2(ROOT.parent / "app/src/main/res/mipmap-xxxhdpi/ic_launcher.png", icon)
@@ -85,6 +85,16 @@ def linux_packages(target, bundle, output):
             "Recommends: libwebkit2gtk-4.1-0\n"
             f"Homepage: {HOMEPAGE}\nDescription: NekoPlayer Flutter music player\n"
         )
+        postinst = package / "DEBIAN/postinst"
+        postinst.write_text(
+            "#!/bin/sh\n"
+            "if command -v update-desktop-database >/dev/null 2>&1; then "
+            "update-desktop-database -q /usr/share/applications || true; fi\n"
+            "if command -v xdg-mime >/dev/null 2>&1; then "
+            "xdg-mime default nekoplayer.desktop x-scheme-handler/nekoplayer || true; fi\n"
+            "exit 0\n"
+        )
+        postinst.chmod(0o755)
         run(["dpkg-deb", "--root-owner-group", "--build", package, output / (basename + ".deb")])
         shutil.rmtree(package / "DEBIAN")
         rpmbuild = work / "rpm"
@@ -98,6 +108,11 @@ def linux_packages(target, bundle, output):
             "Recommends: webkit2gtk4.1\n"
             "%description\nNekoPlayer Flutter music player.\n"
             f'%install\nmkdir -p "%{{buildroot}}"\ncp -a "{package}/usr" "%{{buildroot}}/"\n'
+            "%post\n"
+            "if command -v update-desktop-database >/dev/null 2>&1; then "
+            "update-desktop-database -q /usr/share/applications || :; fi\n"
+            "if command -v xdg-mime >/dev/null 2>&1; then "
+            "xdg-mime default nekoplayer.desktop x-scheme-handler/nekoplayer || :; fi\n"
             "%files\n/usr/bin/nekoplayer\n/usr/lib/nekoplayer\n/usr/share/applications/nekoplayer.desktop\n/usr/share/icons/hicolor/192x192/apps/nekoplayer.png\n"
         )
         run(["rpmbuild", "--define", f"_topdir {rpmbuild}", "--define", "__os_install_post %{nil}", "--define", "_build_id_links none", "--target", rpm_arch, "-bb", spec])
@@ -135,6 +150,11 @@ Source: "{payload}\*"; DestDir: "{{app}}"; Flags: ignoreversion recursesubdirs c
 [Icons]
 Name: "{{group}}\NekoPlayer"; Filename: "{{app}}\NekoPlayer.exe"
 Name: "{{autodesktop}}\NekoPlayer"; Filename: "{{app}}\NekoPlayer.exe"; Tasks: desktopicon
+[Registry]
+Root: HKCU; Subkey: "Software\Classes\nekoplayer"; ValueType: string; ValueName: ""; ValueData: "URL:NekoPlayer protocol"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\nekoplayer"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\nekoplayer\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{{app}}\NekoPlayer.exe,0"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\nekoplayer\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{{app}}\NekoPlayer.exe"" ""%1"""; Flags: uninsdeletekey
 [Run]
 Filename: "{{app}}\NekoPlayer.exe"; Description: "Launch NekoPlayer"; Flags: nowait postinstall skipifsilent
 '''

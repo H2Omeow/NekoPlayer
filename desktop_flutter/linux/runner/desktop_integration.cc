@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <dlfcn.h>
+#include <gio/gio.h>
 #include <string>
 #include <unistd.h>
 
@@ -44,6 +45,7 @@ struct DesktopIntegration {
   gulong close_handler = 0;
   gboolean close_to_tray = FALSE;
   gboolean quitting = FALSE;
+  gboolean notification_action = FALSE;
 };
 
 static const char* introspection = R"xml(
@@ -548,6 +550,41 @@ static void keep_alive_on_bus_close() {
   g_signal_connect(bus, "closed", G_CALLBACK(bus_closed), nullptr);
 }
 
+static void notification_open(GSimpleAction*, GVariant* parameter, gpointer data) {
+  auto* self = static_cast<DesktopIntegration*>(data);
+  if (self->main_window != nullptr) gtk_window_present(self->main_window);
+  const gchar* uri = g_variant_get_string(parameter, nullptr);
+  g_autoptr(FlValue) arguments = fl_value_new_map();
+  fl_value_set_string_take(arguments, "uri", fl_value_new_string(uri));
+  fl_method_channel_invoke_method(self->channel, "deepLink", arguments, nullptr, nullptr, nullptr);
+}
+
+static void show_notification(DesktopIntegration* self, FlValue* values) {
+  if (values == nullptr || fl_value_get_type(values) != FL_VALUE_TYPE_MAP) return;
+  GApplication* application = g_application_get_default();
+  if (application == nullptr) return;
+  if (!self->notification_action) {
+    static const GActionEntry entries[] = {
+        {"notify-open", notification_open, "s", nullptr, nullptr, {0, 0, 0}},
+    };
+    g_action_map_add_action_entries(G_ACTION_MAP(application), entries,
+                                    G_N_ELEMENTS(entries), self);
+    self->notification_action = TRUE;
+  }
+  const std::string title = text(values, "title");
+  const std::string body = text(values, "body");
+  const std::string uri = text(values, "uri");
+  g_autoptr(GNotification) notification =
+      g_notification_new(title.empty() ? "NekoPlayer" : title.c_str());
+  if (!body.empty()) g_notification_set_body(notification, body.c_str());
+  g_notification_set_priority(notification, G_NOTIFICATION_PRIORITY_NORMAL);
+  if (!uri.empty()) {
+    g_notification_set_default_action_and_target_value(
+        notification, "app.notify-open", g_variant_new_string(uri.c_str()));
+  }
+  g_application_send_notification(application, "neko-social", notification);
+}
+
 static void channel_call(FlMethodChannel*, FlMethodCall* call, gpointer data) {
   auto* self = static_cast<DesktopIntegration*>(data);
   const std::string method(fl_method_call_get_name(call));
@@ -578,6 +615,7 @@ static void channel_call(FlMethodChannel*, FlMethodCall* call, gpointer data) {
     fl_method_call_respond_success(call, enabled, nullptr);
     return;
   } else if (method == "state") update(self, fl_method_call_get_args(call));
+  else if (method == "notify") show_notification(self, fl_method_call_get_args(call));
   else if (method == "dispose") {
     stop_tray(self);
     stop_media(self);
