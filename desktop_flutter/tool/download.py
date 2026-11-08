@@ -12,8 +12,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-# Seconds to wait before attempts 2..5.
-RETRY_DELAYS = (5, 15, 30, 60)
+# Seconds to wait before attempts 2..7.
+RETRY_DELAYS = (10, 30, 60, 120, 180, 300)
 
 
 def fetch(url, destination, timeout=90, delays=RETRY_DELAYS):

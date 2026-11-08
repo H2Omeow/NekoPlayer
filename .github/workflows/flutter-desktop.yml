@@ -84,9 +84,21 @@ jobs:
         if: runner.os == 'Windows'
         with:
           arch: ${{ matrix.arch == 'arm64' && 'arm64' || 'amd64' }}
+      - uses: actions/cache@v4
+        if: runner.os == 'Windows'
+        with:
+          path: desktop_flutter/build/windows-dependencies
+          key: windows-deps-${{ matrix.target }}-${{ hashFiles('desktop_flutter/native/windows_dependencies.json') }}
       - name: Prepare verified native Windows graphics and media dependencies
         if: runner.os == 'Windows'
-        run: python tool/prepare_windows.py runtime --target '${{ matrix.target }}'
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if python tool/prepare_windows.py runtime --target '${{ matrix.target }}'; then exit 0; fi
+            echo "Dependency download attempt $attempt failed; retrying..." >&2
+            sleep 60
+          done
+          exit 1
       - name: Resolve pinned Flutter dependencies
         shell: bash
         run: |
