@@ -1,17 +1,18 @@
 # NekoPlayer
 
-支持 Android、Windows 和 Linux 的音乐播放器，接入网易云与酷狗音乐曲库。
+支持 Android、Windows 和 Linux 的音乐播放器，接入网易云与酷狗音乐曲库，并提供账号社区与歌曲分享。
 
-## UI 整理与新桌面开发
+## 跨平台版本
 
-Android 与原桌面版正在统一主题与导航。`desktop_flutter/` 为 Flutter 桌面迁移开发版，已接入本地与在线音乐、账号、下载、评论、MV、原版 DSP 和桌面系统集成，尚未完成四平台实机验收，不替代下述原桌面版。新端只面向 Windows / Linux 的 x86_64、ARM64；本地构建使用 `deploy/` 中的低占用脚本，不自动上传或发布。
+Android 与 Flutter 桌面端共用账号、云端同步、评论与社区能力。`desktop_flutter/` 是 1.2.0 起的正式桌面端，面向 Windows / Linux 的 x86_64、ARM64；原 Compose `desktop/` 已停止功能更新。本地构建使用 `deploy/` 中的低占用脚本，不自动上传或发布。
 
-## 桌面版（1.1.0-pre）
+## 桌面版（1.2.0）
 
-- Windows x64 提供标准 MSI/EXE 安装包，安装后创建桌面和开始菜单快捷方式；Linux 提供 x64、ARM64 的 DEB/RPM，所有安装包内置 Java 运行时。
-- Compose Desktop 横屏界面复用 Android 播放页结构，支持搜索、播放、音质选择、下载、登录、Cookie、歌词、歌单、评论和 MV。
-- 桌面播放输出为 48 kHz / 16-bit 双声道，下载保留原文件；大文件首次播放需等待完整缓冲。
-- [安装、功能范围与构建说明](desktop/README.md)。下列 Material Design、悬浮歌词、系统音效等设备专属功能指 Android 版本。
+- Windows x64 / ARM64 提供 EXE 安装包；Linux x64 / ARM64 提供 DEB、RPM 与 tar.gz 便携包，基于 Flutter，无需 Java 运行时。
+- 支持本地与在线音乐、平台账号、下载、评论、MV、动态歌词、音频缓存、云同步、专业 DSP 音效、系统媒体控制、桌面歌词与系统托盘。
+- 新增社区、歌曲分享和 `nekoplayer://` 协议注册；再次打开链接时会转交给已运行的窗口，保持单实例。
+- 安装包未配置 Windows 代码签名，系统可能提示未知发布者。
+- [桌面端说明](desktop_flutter/README.md)。浮动歌词、悬浮窗音效等设备专属功能仍以 Android 版本为准。
 
 ## 特性
 
@@ -63,6 +64,15 @@ Android 与原桌面版正在统一主题与导航。`desktop_flutter/` 为 Flut
 - 🔐 Cookie 管理
 - 「设置 → 账户信息 → 管理网易云 / 酷狗 Cookie」支持网易云及酷狗；酷狗账号页也提供入口。酷狗原版/概念版可分别查看、复制、保存和清除 Cookie，导入需包含有效格式的 token、userid
 - 📜 播放历史记录
+
+### 社区与歌曲分享（1.2.0）
+- 💬 一对一私信：文字与歌曲卡片，打开会话时实时推送，其余时间每 10 秒同步；断线后按消息序列补齐。
+- 👥 关注 / 粉丝、关注动态、用户搜索与公开主页；可设置私信接收范围（所有人 / 仅关注的人）并拉黑用户。
+- 🔔 Android 登录后运行可关闭的后台消息推送前台服务，应用在后台时显示系统通知；桌面端运行期间保持实时连接并使用系统通知。
+- 🔗 生成公开歌曲分享链接，网页、Android、桌面端均可查看；未登录也能播放网易云歌曲。
+- 🎛️ 分享时可选择携带分享者、留言、封面、专辑、歌词片段和播放进度；未选中的字段不会出现在接口与分享页。
+- 📲 Android 支持 `nekoplayer://share|chat|user` 与 `https://player.nekoh2o.top/s/...` 深链；桌面安装包注册自定义协议并保持单实例转发。
+- 🌐 网页播放器的分享页提供网页播放、复制链接、系统分享和「在 NekoPlayer 中打开」。
 
 ### 歌曲评论（1.0.9）
 - 播放页提供网易云、酷狗、本站三个评论入口；跨平台同名歌曲先选择对应版本。
@@ -117,6 +127,25 @@ KEY_PASSWORD=your_key_password
 
 未配置时本地 release 使用 debug 签名。GitHub Actions 从仓库 Secrets 读取正式签名，推送 `v*` 标签自动构建并更新 Release。
 
+### 桌面端构建
+
+Flutter 桌面端使用仓库内的低占用脚本，需要 Flutter SDK、CMake、Ninja、GTK 3 与同架构 libmpv：
+
+```bash
+# 设置 Flutter SDK 路径
+export FLUTTER_BIN=/path/to/flutter
+
+./deploy/flutter-low-resource.sh analyze
+./deploy/flutter-low-resource.sh test
+./deploy/flutter-low-resource.sh build linux --release
+
+# 生成 DEB / RPM / tar.gz（RPM 需要 rpmbuild）
+cd desktop_flutter
+python3 tool/package_release.py linux-x64 --bundle build/linux/x64/release/bundle
+```
+
+Windows 安装包由 GitHub Actions 构建；本地要求与打包说明见 [desktop_flutter/README.md](desktop_flutter/README.md)。
+
 ## 下载
 
 前往 [Releases](../../releases) 页面下载最新版本。
@@ -146,10 +175,12 @@ KEY_PASSWORD=your_key_password
 ## 隐私说明
 
 - 本应用在用户通过 SSO 账户中心登录后，会将用户的播放记录、收藏、歌单等数据保存到本站服务器
+- 社区私信、关注关系与分享记录保存在本站服务器；公开主页只展示昵称、头像和简介，不展示邮箱、第三方绑定或令牌
+- 分享链接按发送时选择的字段公开展示，不包含音频文件；删除分享或撤回消息后，链接与卡片随即失效
 - **网易云 Cookie 与酷狗原版/概念版登录 Cookie 会加密保存到云端**，用于多端同步；网易云和酷狗原生接口由 App 使用对应凭据访问，聚合音源统一经本站代理访问
 - 本站不保证数据绝对安全（如服务器遭到入侵等不可控因素）
 - 使用本站的云端同步功能即默认接受上述风险
-- 如不希望数据上传至服务器，请勿登录账户或使用云端同步功能
+- 如不希望数据上传至服务器，请勿登录账户或使用云端同步与社区功能
 
 ## 免责声明
 
