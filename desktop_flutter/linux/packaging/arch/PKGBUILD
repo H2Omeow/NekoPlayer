@@ -8,7 +8,7 @@ pkgdesc='NekoPlayer Flutter music player (prebuilt desktop bundle)'
 arch=('x86_64' 'aarch64')
 url='https://github.com/H2Omeow/SuperPlayer_Kotlin'
 license=('custom')
-depends=('gtk3' 'mpv' 'libsecret' 'libepoxy' 'gnutls')
+depends=('gtk3' 'mpv' 'libsecret' 'libepoxy' 'libglvnd' 'gnutls')
 optdepends=('libayatana-appindicator: tray icon'
             'webkit2gtk-4.1: embedded dynamic lyrics')
 provides=('nekoplayer')

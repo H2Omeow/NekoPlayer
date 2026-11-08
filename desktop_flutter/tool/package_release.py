@@ -81,7 +81,7 @@ def linux_packages(target, bundle, output):
         control.write_text(
             f"Package: nekoplayer\nVersion: {package_version(version)}\nArchitecture: {deb_arch}\n"
             "Maintainer: H2Omeow\nSection: sound\nPriority: optional\n"
-            "Depends: libgtk-3-0, libmpv2 | libmpv1, libsecret-1-0, libepoxy0, libgnutls30\n"
+            "Depends: libgtk-3-0, libmpv2 | libmpv1, libsecret-1-0, libepoxy0, libegl1, libgles2, libgnutls30\n"
             "Recommends: libwebkit2gtk-4.1-0\n"
             f"Homepage: {HOMEPAGE}\nDescription: NekoPlayer Flutter music player\n"
         )
@@ -94,7 +94,7 @@ def linux_packages(target, bundle, output):
         spec.write_text(
             f"Name: nekoplayer\nVersion: {package_version(version)}\nRelease: 1\nSummary: NekoPlayer Flutter music player\n"
             f"License: LicenseRef-NekoPlayer\nURL: {HOMEPAGE}\nBuildArch: {rpm_arch}\nAutoReqProv: no\n"
-            "Requires: gtk3, (mpv-libs or libmpv2), libsecret, libepoxy, gnutls\n"
+            "Requires: gtk3, (mpv-libs or libmpv2), libsecret, libepoxy, libglvnd-egl, libglvnd-gles, gnutls\n"
             "Recommends: webkit2gtk4.1\n"
             "%description\nNekoPlayer Flutter music player.\n"
             f'%install\nmkdir -p "%{{buildroot}}"\ncp -a "{package}/usr" "%{{buildroot}}/"\n'

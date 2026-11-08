@@ -262,7 +262,7 @@ jobs:
       - name: Install runtime dependencies only (libmpv2, no libmpv1)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-0t64 libmpv2 libsecret-1-0 libepoxy0 libgnutls30t64 xvfb dbus-x11
+          sudo apt-get install -y libgtk-3-0t64 libmpv2 libsecret-1-0 libepoxy0 libegl1 libgles2 libgnutls30t64 xvfb dbus-x11
           if dpkg -s libmpv1 >/dev/null 2>&1; then echo 'libmpv1 must not be installed'; exit 1; fi
       - name: Start the release bundle with libmpv.so.2
         run: |
