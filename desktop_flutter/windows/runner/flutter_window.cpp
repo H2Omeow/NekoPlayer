@@ -2,6 +2,7 @@
 
 #include <optional>
 
+#include "crash_handler.h"
 #include "flutter/generated_plugin_registrant.h"
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
@@ -27,6 +28,7 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
   desktop_integration_ = std::make_unique<DesktopIntegration>(flutter_controller_->engine()->messenger(), GetHandle());
+  lyrics_view_ = std::make_unique<LyricsView>(flutter_controller_->engine()->messenger(), GetHandle(), flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -41,19 +43,33 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  lyrics_view_.reset();
   desktop_integration_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
 
   Win32Window::OnDestroy();
+  crash_handler::MarkCleanExit();
 }
 
 LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  try {
+    return HandleMessageUnguarded(hwnd, message, wparam, lparam);
+  } catch (...) {
+    crash_handler::LogCaughtException("FlutterWindow::MessageHandler");
+    return ::DefWindowProc(hwnd, message, wparam, lparam);
+  }
+}
+
+LRESULT FlutterWindow::HandleMessageUnguarded(HWND hwnd, UINT const message,
+                                              WPARAM const wparam,
+                                              LPARAM const lparam) {
   if (desktop_integration_ && desktop_integration_->HandleMessage(message, wparam, lparam)) return 0;
+  if (lyrics_view_) lyrics_view_->HandleMessage(message, wparam, lparam);
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =
@@ -66,7 +82,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
 
   switch (message) {
     case WM_FONTCHANGE:
-      flutter_controller_->engine()->ReloadSystemFonts();
+      if (flutter_controller_) flutter_controller_->engine()->ReloadSystemFonts();
       break;
   }
 

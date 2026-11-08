@@ -1,17 +1,28 @@
 package top.nekoh2o.player.data.repo
 
-import top.nekoh2o.player.data.model.Playlist
-import top.nekoh2o.player.data.model.Song
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import top.nekoh2o.player.data.model.SectionMeta
+import top.nekoh2o.player.data.model.SectionsPatchRequest
+import top.nekoh2o.player.data.model.SectionsPatchResp
+import top.nekoh2o.player.data.model.SyncMeta
 import top.nekoh2o.player.data.model.User
-import top.nekoh2o.player.data.model.UserData
 import top.nekoh2o.player.data.model.NcAccountResp
 import top.nekoh2o.player.data.model.NcPlaylistItem
 import top.nekoh2o.player.data.model.NcRecordItem
 import top.nekoh2o.player.data.net.ApiFactory
+import top.nekoh2o.player.data.sync.FetchResult
+import top.nekoh2o.player.data.sync.PatchResult
+import top.nekoh2o.player.data.sync.SyncCodec
+import top.nekoh2o.player.data.sync.SyncRemote
+import top.nekoh2o.player.data.sync.SyncSection
 
-class UserRepository {
+class UserRepository : SyncRemote {
 
     private val api = ApiFactory.user
+    private val errorJson = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
     suspend fun fetchMe(): User? =
         runCatching {
@@ -25,23 +36,58 @@ class UserRepository {
             android.util.Log.e("UserRepository", "fetchMe() - network/parse error: ${e.message}", e)
         }.getOrNull()
 
-    suspend fun pull(): UserData? =
-        runCatching {
-            val resp = api.pullData()
-            if (resp.code == 0) resp.data else null
-        }.getOrNull()
+    // ==================== 云同步（见 data/sync）====================
 
-    suspend fun push(
-        history: List<Song>,
-        favorites: List<Song>,
-        playlists: List<Playlist>,
-        ncCookie: String,
-        kgToken: String = "",
-        kgPlatform: Int = 0,
-        kgCookies: List<String> = emptyList()
-    ) {
-        runCatching {
-            api.pushData(UserData(history, favorites, playlists, ncCookie, kgToken, kgPlatform, kgCookies))
+    override suspend fun fetch(): FetchResult = try {
+        val resp = api.pullData()
+        val body = resp.body()
+        when {
+            !resp.isSuccessful -> FetchResult.Failure(httpMessage(resp.code(), resp.errorBody()?.string(), "读取云端数据"))
+            body == null || body.code != 0 || body.data == null ->
+                FetchResult.Failure(body?.msg?.ifBlank { null } ?: "云端返回了无效数据")
+            else -> FetchResult.Ok(SyncCodec.snapshot(body.data, body.meta))
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        FetchResult.Failure("读取云端数据失败：" + (e.message ?: e.javaClass.simpleName))
+    }
+
+    override suspend fun patch(
+        device: String,
+        sections: Map<SyncSection, JsonElement>,
+        expected: Map<SyncSection, Long>?
+    ): PatchResult = try {
+        val request = SectionsPatchRequest(
+            device = device,
+            sections = JsonObject(sections.mapKeys { it.key.key }),
+            expected = expected?.mapKeys { it.key.key }
+        )
+        val resp = api.patchSections(request)
+        val body = resp.body()
+        when {
+            resp.isSuccessful && body != null && body.code == 0 -> PatchResult.Ok(SyncCodec.parseMeta(body.meta))
+            resp.code() == 409 -> {
+                val err = parseError(resp.errorBody()?.string())
+                PatchResult.Conflict(SyncCodec.parseMeta(err?.meta), err?.msg?.ifBlank { null } ?: "云端数据已被其他设备更新")
+            }
+            else -> PatchResult.Failure(httpMessage(resp.code(), resp.errorBody()?.string(), "上传到云端"))
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        PatchResult.Failure("上传到云端失败：" + (e.message ?: e.javaClass.simpleName))
+    }
+
+    private fun parseError(text: String?): SectionsPatchResp? =
+        text?.let { runCatching { errorJson.decodeFromString<SectionsPatchResp>(it) }.getOrNull() }
+
+    private fun httpMessage(code: Int, text: String?, action: String): String {
+        val msg = text?.let { runCatching { errorJson.decodeFromString<SectionsPatchResp>(it).msg }.getOrNull() }
+        return when {
+            code == 401 -> "登录已失效，请重新登录"
+            !msg.isNullOrBlank() -> "$action 失败：$msg"
+            else -> "$action 失败（HTTP $code）"
         }
     }
 

@@ -6,6 +6,8 @@ import 'dart:io';
 import 'data/audio_cache.dart';
 
 import 'data/library_store.dart';
+import 'diagnostics/crash_guard.dart';
+import 'diagnostics/crash_log.dart';
 import 'data/native_music_catalog.dart';
 import 'data/account_store.dart';
 import 'data/plugin_subscriptions.dart';
@@ -15,10 +17,12 @@ import 'playback/effects_playback_engine.dart';
 import 'player_controller.dart';
 import 'ui/neko_app.dart';
 import 'ui/bundled_fonts.dart';
+import 'ui/diagnostics_page.dart';
 import 'ui/neko_theme.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() => CrashGuard.run(_start);
+
+Future<void> _start() async {
   registerBundledFontLicense();
   try {
     MediaKit.ensureInitialized();
@@ -32,7 +36,14 @@ Future<void> main() async {
         store: PreferencesCacheStore(SharedPreferencesAsync()),
       );
       await cache.initialize();
-    } catch (_) {}
+    } catch (failure, stack) {
+      CrashLog.error(
+        'startup',
+        'Audio cache unavailable',
+        error: failure,
+        stack: stack,
+      );
+    }
     final subscriptions = PluginSubscriptions(
       store: PreferencesPluginStore(SharedPreferencesAsync()),
       runtime: NativePluginRuntime(
@@ -60,17 +71,45 @@ Future<void> main() async {
     );
     await controller.initialize();
     runApp(NekoApp(controller: controller));
-  } catch (_) {
+  } catch (failure, stack) {
+    CrashLog.error(
+      'startup',
+      'Player core initialization failed',
+      error: failure,
+      stack: stack,
+    );
     runApp(
       MaterialApp(
         theme: nekoTheme(),
-        home: const Scaffold(
+        home: Scaffold(
           body: Center(
             child: Padding(
-              padding: EdgeInsets.all(32),
-              child: SelectableText(
-                '播放内核初始化失败。\nLinux 请安装与你的系统架构匹配的 libmpv 和 GTK 3；Windows 请检查安装包中的播放依赖。',
-                textAlign: TextAlign.center,
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SelectableText(
+                    '播放内核初始化失败。\nLinux 请安装与你的系统架构匹配的 libmpv 和 GTK 3；Windows 请检查安装包中的播放依赖。',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  SelectableText(
+                    '错误详情已写入日志：${CrashGuard.logPath ?? defaultLogRoot().path}',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Builder(
+                    builder: (context) => OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const DiagnosticsPage(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.bug_report_outlined),
+                      label: const Text('查看崩溃日志'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

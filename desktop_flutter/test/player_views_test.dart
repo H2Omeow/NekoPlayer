@@ -12,6 +12,11 @@ void main() {
   testWidgets(
     'opening a paused player scrolls directly to its saved lyric line',
     (tester) async {
+      // Wide layout: lyrics sit beside the cover instead of behind a toggle.
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       final engine = FakeEngine();
       final player = PlayerController(engine: engine, store: MemoryStore());
       await player.initialize();
@@ -40,8 +45,8 @@ void main() {
           MaterialApp(home: FullPlayer(controller: player)),
         );
         await tester.pumpAndSettle();
-        expect(find.text('Lyric 35'), findsOneWidget);
-        expect(find.text('Lyric 0'), findsNothing);
+        expect(find.text('Lyric 35').hitTestable(), findsOneWidget);
+        expect(find.text('Lyric 0').hitTestable(), findsNothing);
         expect(engine.currentPath, isNull);
         expect(engine.playing, isFalse);
         expect(tester.takeException(), isNull);

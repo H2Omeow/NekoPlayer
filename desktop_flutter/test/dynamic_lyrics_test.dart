@@ -81,6 +81,15 @@ void main() {
     },
   );
 
+  test('embedded page address keeps the existing query', () {
+    final uri = embeddedLyricsUri(
+      Uri.parse('http://127.0.0.1:4321/?token=abc'),
+    );
+    expect(uri.queryParameters, {'token': 'abc', 'embedded': '1'});
+    expect(uri.host, '127.0.0.1');
+    expect(uri.port, 4321);
+  });
+
   test('payload never sends private paths, media URLs, or credentials', () {
     final value = snapshot();
     final track = value['track']! as Map;

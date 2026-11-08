@@ -13,6 +13,11 @@ class SiteRequest {
   final Map<String, dynamic>? body;
 }
 
+class SiteConflictException implements Exception {
+  const SiteConflictException(this.meta);
+  final Map<String, dynamic> meta;
+}
+
 typedef SiteTransport =
     Future<Map<String, dynamic>> Function(SiteRequest request);
 
@@ -41,6 +46,13 @@ class SiteClient {
           body: body,
         ),
       );
+      if (response['code'] == 409) {
+        throw SiteConflictException(
+          response['meta'] is Map<String, dynamic>
+              ? response['meta'] as Map<String, dynamic>
+              : const {},
+        );
+      }
       if (response['code'] != expectedCode) {
         throw const MusicSearchException('本站未确认操作成功，请检查登录状态后重试。');
       }
@@ -75,6 +87,40 @@ class SiteClient {
     return body['data'] as Map<String, dynamic>;
   }
 
+  /// 返回数据与每个分区的云端元数据（旧服务端没有 meta 时为空）。
+  Future<({Map<String, dynamic> data, Map<String, dynamic> meta})> fetch(
+    String token,
+  ) async {
+    final body = await _request('user/data', token);
+    final data = body['data'] ?? {};
+    if (data is! Map<String, dynamic>) {
+      throw const MusicSearchException('云端数据格式异常。');
+    }
+    final meta = body['meta'] ?? data['meta'];
+    return (
+      data: data,
+      meta: meta is Map<String, dynamic> ? meta : <String, dynamic>{},
+    );
+  }
+
+  /// 只替换给出的分区；[expected] 为各分区期望的云端 updatedAt（乐观锁）。
+  Future<Map<String, dynamic>> patchSections(
+    String token, {
+    required String device,
+    required Map<String, Object?> sections,
+    Map<String, int>? expected,
+  }) async {
+    final response = await _request(
+      'user/data/sections',
+      token,
+      method: 'PATCH',
+      body: {'device': device, 'sections': sections, 'expected': ?expected},
+    );
+    return response['meta'] is Map<String, dynamic>
+        ? response['meta'] as Map<String, dynamic>
+        : <String, dynamic>{};
+  }
+
   Future<void> push(String token, Map<String, dynamic> data) async {
     await _request('user/data', token, method: 'PUT', body: data);
   }
@@ -93,12 +139,20 @@ class SiteClient {
     );
     final rows = body['data'];
     if (rows is! List) throw const MusicSearchException('壁纸列表格式异常。');
+    // The site serves images from /data/wallpaper/; very large originals
+    // (tens of megapixels) are skipped because they exceed the download cap.
+    bool reasonable(Map<String, dynamic> row) {
+      final width = row['width'], height = row['height'];
+      return width is! num || height is! num || width * height <= 40e6;
+    }
+
     return [
           for (final row in rows.whereType<Map<String, dynamic>>())
-            Uri.https(
-              'player.nekoh2o.top',
-              '/',
-            ).resolve(row['url']?.toString() ?? ''),
+            if (reasonable(row))
+              Uri.https(
+                'player.nekoh2o.top',
+                '/',
+              ).resolve(row['url']?.toString() ?? ''),
         ]
         .where(
           (uri) =>
@@ -106,7 +160,8 @@ class SiteClient {
               uri.host == 'player.nekoh2o.top' &&
               uri.port == 443 &&
               uri.userInfo.isEmpty &&
-              uri.path.startsWith('/local/wallpaper/') &&
+              (uri.path.startsWith('/data/wallpaper/') ||
+                  uri.path.startsWith('/local/wallpaper/')) &&
               !uri.path.contains('..'),
         )
         .toList();
@@ -161,9 +216,14 @@ class SiteClient {
             request.uri.path == '/auth/sso/logout') {
           return {'code': 0};
         }
-        if (response.statusCode != 200) {
+        if (response.statusCode == 401) {
+          throw const MusicSearchException('本站登录已过期，请重新登录。');
+        }
+        if (response.statusCode != 200 && response.statusCode != 409) {
           throw MusicSearchException(
-            '本站请求失败（HTTP ${response.statusCode}），未发送至重定向地址。',
+            response.statusCode == 500
+                ? '云端数据读取或写入失败（HTTP 500），请稍后重试。'
+                : '本站请求失败（HTTP ${response.statusCode}），未发送至重定向地址。',
           );
         }
         final bytes = <int>[];

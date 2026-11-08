@@ -40,6 +40,26 @@ target_compile_definitions(nekoplayer_desktop_integration PRIVATE NOMINMAX _HAS_
 target_compile_options(nekoplayer_desktop_integration PRIVATE /EHsc /utf-8)
 target_link_libraries(nekoplayer_desktop_integration PRIVATE flutter flutter_wrapper_app windowsapp gdi32 user32 shell32)
 target_link_libraries(${BINARY_NAME} PRIVATE nekoplayer_desktop_integration)
+add_library(nekoplayer_lyrics_view STATIC "lyrics_view.cpp")
+target_compile_features(nekoplayer_lyrics_view PRIVATE cxx_std_20)
+target_compile_definitions(nekoplayer_lyrics_view PRIVATE NOMINMAX _HAS_EXCEPTIONS=1)
+target_compile_options(nekoplayer_lyrics_view PRIVATE /EHsc /utf-8)
+target_link_libraries(nekoplayer_lyrics_view PUBLIC flutter flutter_wrapper_app PRIVATE shell32 ole32 user32)
+if(NEKO_WEBVIEW2_AVAILABLE)
+  target_include_directories(nekoplayer_lyrics_view PRIVATE "${NEKO_WEBVIEW2_INCLUDE_DIR}")
+  target_link_libraries(nekoplayer_lyrics_view PRIVATE "${NEKO_WEBVIEW2_LIBRARY}" version oleaut32 advapi32)
+else()
+  target_compile_definitions(nekoplayer_lyrics_view PRIVATE NEKO_NO_WEBVIEW2)
+endif()
+target_link_libraries(${BINARY_NAME} PRIVATE nekoplayer_lyrics_view)
+# Native crash reporting (minidump + report) lives in its own library because
+# it uses C++ exceptions, which the runner target disables.
+add_library(nekoplayer_crash_handler STATIC "crash_handler.cpp")
+target_compile_features(nekoplayer_crash_handler PRIVATE cxx_std_20)
+target_compile_definitions(nekoplayer_crash_handler PRIVATE NOMINMAX _HAS_EXCEPTIONS=1)
+target_compile_options(nekoplayer_crash_handler PRIVATE /EHsc /utf-8)
+target_link_libraries(nekoplayer_crash_handler PRIVATE shell32 ole32 user32)
+target_link_libraries(${BINARY_NAME} PRIVATE nekoplayer_crash_handler)
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.

@@ -453,15 +453,34 @@ static void update(DesktopIntegration* self, FlValue* values) {
   }
 }
 
+static void bus_closed(GDBusConnection*, gboolean remote_peer_vanished, GError* error, gpointer) {
+  g_warning("Session bus closed (remote vanished: %d): %s", remote_peer_vanished,
+            error != nullptr ? error->message : "no error");
+}
+
+static void keep_alive_on_bus_close() {
+  static gboolean done = FALSE;
+  if (done) return;
+  g_autoptr(GDBusConnection) bus = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, nullptr);
+  if (bus == nullptr) return;
+  done = TRUE;
+  g_dbus_connection_set_exit_on_close(bus, FALSE);
+  g_signal_connect(bus, "closed", G_CALLBACK(bus_closed), nullptr);
+}
+
 static void channel_call(FlMethodChannel*, FlMethodCall* call, gpointer data) {
   auto* self = static_cast<DesktopIntegration*>(data);
   const std::string method(fl_method_call_get_name(call));
   g_autoptr(FlValue) result = fl_value_new_map();
   if (method == "initialize") {
+    // The session bus is a process-wide singleton: set this before the tray
+    // proxy uses it so a bus disconnect cannot exit() the whole app.
+    keep_alive_on_bus_close();
     start_tray(self);
     if (self->bus == nullptr) {
       self->bus = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, nullptr);
       if (self->bus != nullptr) {
+        g_dbus_connection_set_exit_on_close(self->bus, FALSE);
         self->node = g_dbus_node_info_new_for_xml(introspection, nullptr);
         self->root_registration = g_dbus_connection_register_object(self->bus, "/org/mpris/MediaPlayer2", self->node->interfaces[0], &vtable, self, nullptr, nullptr);
         self->player_registration = g_dbus_connection_register_object(self->bus, "/org/mpris/MediaPlayer2", self->node->interfaces[1], &vtable, self, nullptr, nullptr);

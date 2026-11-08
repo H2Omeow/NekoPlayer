@@ -10,6 +10,8 @@ add_executable(${BINARY_NAME}
   "main.cc"
   "my_application.cc"
   "desktop_integration.cc"
+  "crash_handler.cc"
+  "lyrics_view.cc"
   "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
 )
 
@@ -28,3 +30,7 @@ target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::FONTCONFIG)
 target_link_libraries(${BINARY_NAME} PRIVATE ${CMAKE_DL_LIBS})
 
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
+
+# Crash diagnostics: -rdynamic/-g1 give readable symbols in native backtraces.
+target_compile_options(${BINARY_NAME} PRIVATE -g1)
+target_link_options(${BINARY_NAME} PRIVATE -rdynamic)

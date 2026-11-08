@@ -8,7 +8,7 @@ import subprocess
 import tarfile
 import tempfile
 
-from check_artifact import TARGETS, architecture, verify_bundle
+from check_artifact import DESKTOP_EXCLUDED_LIBRARIES, TARGETS, architecture, verify_bundle
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +32,8 @@ def run(arguments):
 
 def stage_bundle(target, bundle, staging):
     verify_bundle(target, bundle, require_decoders=True)
-    shutil.copytree(bundle, staging, symlinks=True)
+    shutil.copytree(bundle, staging, symlinks=True, ignore=shutil.ignore_patterns(*DESKTOP_EXCLUDED_LIBRARIES))
+    verify_bundle(target, staging, require_decoders=True, packaged=True)
     (staging / "release-info.json").write_text(json.dumps({
         "version": release_version(), "target": target,
         "commit": os.environ.get("GITHUB_SHA", subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()),
@@ -75,7 +76,8 @@ def linux_packages(target, bundle, output):
         control.write_text(
             f"Package: nekoplayer\nVersion: {version}\nArchitecture: {deb_arch}\n"
             "Maintainer: H2Omeow\nSection: sound\nPriority: optional\n"
-            "Depends: libgtk-3-0, libmpv1 | libmpv2, libsecret-1-0, libepoxy0, libgnutls30\n"
+            "Depends: libgtk-3-0, libmpv2 | libmpv1, libsecret-1-0, libepoxy0, libgnutls30\n"
+            "Recommends: libwebkit2gtk-4.1-0\n"
             f"Homepage: {HOMEPAGE}\nDescription: NekoPlayer Flutter music player\n"
         )
         run(["dpkg-deb", "--root-owner-group", "--build", package, output / (basename + ".deb")])
@@ -87,7 +89,8 @@ def linux_packages(target, bundle, output):
         spec.write_text(
             f"Name: nekoplayer\nVersion: {version}\nRelease: 1\nSummary: NekoPlayer Flutter music player\n"
             f"License: LicenseRef-NekoPlayer\nURL: {HOMEPAGE}\nBuildArch: {rpm_arch}\nAutoReqProv: no\n"
-            "Requires: gtk3, mpv-libs, libsecret, libepoxy, gnutls\n"
+            "Requires: gtk3, (mpv-libs or libmpv2), libsecret, libepoxy, gnutls\n"
+            "Recommends: webkit2gtk4.1\n"
             "%description\nNekoPlayer Flutter music player.\n"
             f'%install\nmkdir -p "%{{buildroot}}"\ncp -a "{package}/usr" "%{{buildroot}}/"\n'
             "%files\n/usr/bin/nekoplayer\n/usr/lib/nekoplayer\n/usr/share/applications/nekoplayer.desktop\n/usr/share/icons/hicolor/192x192/apps/nekoplayer.png\n"

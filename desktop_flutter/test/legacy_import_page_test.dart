@@ -33,7 +33,7 @@ void main() {
           home: LegacyImportPage(player: player, accounts: AccountStore()),
         ),
       );
-      final credentials = find.text('同时读取并导入账号凭据（可选）');
+      final credentials = find.text('账号凭据');
       await tester.scrollUntilVisible(credentials, 120);
       expect(
         tester
@@ -46,7 +46,7 @@ void main() {
             .value,
         isFalse,
       );
-      final settings = find.text('导入兼容的播放设置（可选）');
+      final settings = find.text('播放设置');
       await tester.scrollUntilVisible(settings, 120);
       expect(
         tester
@@ -85,7 +85,7 @@ void main() {
         isFalse,
       );
       final select = find.text('选择备份并预览');
-      final queue = find.text('导入旧版播放队列和进度（可选）');
+      final queue = find.text('播放队列和进度');
       await tester.scrollUntilVisible(queue, 120);
       expect(
         tester
@@ -118,7 +118,7 @@ void main() {
         isTrue,
       );
       await tester.scrollUntilVisible(select, 120);
-      final effects = find.text('导入旧版专业音效参数（可选）');
+      final effects = find.text('专业音效参数');
       await tester.scrollUntilVisible(effects, -120);
       expect(
         tester

@@ -72,6 +72,10 @@ Map<String, Object?> dynamicLyricsSnapshot({
   };
 }
 
+/// The page variant shown inside the app window (track info lives in the app).
+Uri embeddedLyricsUri(Uri uri) =>
+    uri.replace(queryParameters: {...uri.queryParameters, 'embedded': '1'});
+
 class DynamicLyricsServer {
   DynamicLyricsServer({required this.snapshot, AssetBundle? bundle})
     : bundle = bundle ?? rootBundle;
@@ -129,9 +133,9 @@ class DynamicLyricsServer {
     response.headers.set('X-Frame-Options', 'DENY');
     response.headers.set(
       'Content-Security-Policy',
-      "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-          "img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; "
-          "worker-src 'none'; object-src 'none'; base-uri 'none'; "
+      "default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; "
+          "img-src 'self' data: blob:; font-src 'self'; connect-src 'self' data: blob:; "
+          "worker-src 'self' blob:; object-src 'none'; base-uri 'none'; "
           "form-action 'none'; frame-ancestors 'none'",
     );
     final origin = 'http://127.0.0.1:${_server!.port}';

@@ -187,25 +187,18 @@ class AppearanceController extends ChangeNotifier {
       if (_disposed || generation != _wallpaperGeneration) return;
       if (timedOut) throw TimeoutException('Wallpaper deadline exceeded');
       if (images.isEmpty) throw const MusicSearchException('本站暂时没有横屏壁纸。');
-      final uri = images[Random.secure().nextInt(images.length)];
-      final request = await client.getUrl(uri);
-      request.followRedirects = false;
-      final response = await request.close().timeout(
-        const Duration(seconds: 20),
-      );
-      if (response.statusCode != 200 ||
-          response.contentLength > 16 * 1024 * 1024 ||
-          !(response.headers.contentType?.mimeType.startsWith('image/') ??
-              false)) {
-        throw const MusicSearchException('壁纸服务返回的内容无效。');
-      }
-      final bytes = <int>[];
-      await for (final chunk in response.timeout(const Duration(seconds: 20))) {
-        if (bytes.length + chunk.length > 16 * 1024 * 1024) {
-          throw const MusicSearchException('壁纸超过 16MB，已停止加载。');
+      final candidates = List.of(images)..shuffle(Random.secure());
+      List<int>? bytes;
+      MusicSearchException? rejected;
+      for (final uri in candidates.take(3)) {
+        try {
+          bytes = await _downloadWallpaper(client, uri);
+          break;
+        } on MusicSearchException catch (failure) {
+          rejected = failure;
         }
-        bytes.addAll(chunk);
       }
+      if (bytes == null) throw rejected!;
       if (_disposed || generation != _wallpaperGeneration) return;
       if (timedOut) throw TimeoutException('Wallpaper deadline exceeded');
       final cache = await getApplicationCacheDirectory();
@@ -248,6 +241,28 @@ class AppearanceController extends ChangeNotifier {
       busy = false;
       if (!_disposed) notifyListeners();
     }
+  }
+
+  Future<List<int>> _downloadWallpaper(HttpClient client, Uri uri) async {
+    const limit = 16 * 1024 * 1024;
+    final request = await client.getUrl(uri);
+    request.followRedirects = false;
+    final response = await request.close().timeout(const Duration(seconds: 20));
+    if (response.statusCode != 200 ||
+        response.contentLength > limit ||
+        !(response.headers.contentType?.mimeType.startsWith('image/') ??
+            false)) {
+      await response.drain<void>().catchError((_) {});
+      throw const MusicSearchException('壁纸服务返回的内容无效。');
+    }
+    final bytes = <int>[];
+    await for (final chunk in response.timeout(const Duration(seconds: 20))) {
+      if (bytes.length + chunk.length > limit) {
+        throw const MusicSearchException('壁纸超过 16MB，已停止加载。');
+      }
+      bytes.addAll(chunk);
+    }
+    return bytes;
   }
 
   Future<void> _cleanWallpapers(Directory directory) async {

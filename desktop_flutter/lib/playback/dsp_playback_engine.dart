@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:path/path.dart' as paths;
 
+import '../diagnostics/crash_log.dart';
+import '../diagnostics/process_tail.dart';
 import '../domain/audio_effects.dart';
 import '../domain/library.dart';
 import '../domain/online_music.dart';
@@ -50,6 +52,7 @@ class DspPlaybackEngine extends PlaybackEngine {
   Uri? _uri;
   Map<String, String> _headers = const {};
   int _generation = 0;
+  int _reportedFaults = 0;
   bool _disposed = false;
   bool _playing = false;
   bool _playOnLoad = true;
@@ -116,6 +119,7 @@ class DspPlaybackEngine extends PlaybackEngine {
 
   Future<Duration> probe(Uri uri) async {
     Process? process;
+    ProcessTail? tail;
     try {
       process = await Process.start(executable('ffprobe'), [
         '-v',
@@ -129,7 +133,7 @@ class DspPlaybackEngine extends PlaybackEngine {
         'json',
         uri.scheme == 'file' ? uri.toFilePath() : uri.toString(),
       ], runInShell: false);
-      unawaited(process.stderr.drain<void>());
+      tail = ProcessTail(process.stderr);
       final bytes = <int>[];
       await for (final chunk in process.stdout.timeout(
         const Duration(seconds: 15),
@@ -137,7 +141,14 @@ class DspPlaybackEngine extends PlaybackEngine {
         if (bytes.length + chunk.length > 16384) return Duration.zero;
         bytes.addAll(chunk);
       }
-      if (await process.exitCode != 0) return Duration.zero;
+      final code = await process.exitCode;
+      if (code != 0) {
+        CrashLog.warn(
+          'ffprobe',
+          'ffprobe exited with $code: ${await tail.settled()}',
+        );
+        return Duration.zero;
+      }
       final body = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       final seconds = double.tryParse(
         (body['format'] as Map?)?['duration']?.toString() ?? '',
@@ -145,7 +156,8 @@ class DspPlaybackEngine extends PlaybackEngine {
       return seconds != null && seconds.isFinite && seconds > 0
           ? Duration(microseconds: (seconds * 1000000).round())
           : Duration.zero;
-    } catch (_) {
+    } catch (failure) {
+      CrashLog.warn('ffprobe', 'probe failed: $failure ${tail?.text ?? ''}');
       return Duration.zero;
     } finally {
       process?.kill();
@@ -157,7 +169,13 @@ class DspPlaybackEngine extends PlaybackEngine {
       if (_disposed) return;
       try {
         await action();
-      } catch (failure) {
+      } catch (failure, stack) {
+        CrashLog.error(
+          'dsp',
+          'DSP command failed',
+          error: failure,
+          stack: stack,
+        );
         _error = failure is MusicSearchException
             ? failure.message
             : '专业 DSP 播放失败，请检查 FFmpeg、系统音频设备和音源权限。';
@@ -184,7 +202,11 @@ class DspPlaybackEngine extends PlaybackEngine {
         process.kill(ProcessSignal.sigkill);
       }
     }
-    await _pump;
+    try {
+      await _pump;
+    } catch (failure, stack) {
+      CrashLog.error('dsp', 'Pump failed', error: failure, stack: stack);
+    }
     _pump = null;
     _sink?.dispose();
     _sink = null;
@@ -222,13 +244,11 @@ class DspPlaybackEngine extends PlaybackEngine {
   Future<void> _start(Uri uri, Duration offset, {bool play = true}) async {
     PcmSink? pendingSink;
     Process? pendingProcess;
+    ProcessTail? tail;
     StreamIterator<List<int>>? stream;
     _buffering = true;
     notifyListeners();
     try {
-      pendingSink = _sinkFactory();
-      pendingSink.configure(effects);
-      pendingSink.volume(_volume / 100);
       pendingProcess = await Process.start(executable('ffmpeg'), [
         '-hide_banner',
         '-loglevel',
@@ -259,7 +279,7 @@ class DspPlaybackEngine extends PlaybackEngine {
         '2',
         'pipe:1',
       ], runInShell: false);
-      unawaited(pendingProcess.stderr.drain<void>());
+      tail = ProcessTail(pendingProcess.stderr);
       stream = StreamIterator(pendingProcess.stdout);
       if (!await stream.moveNext().timeout(const Duration(seconds: 20))) {
         throw const MusicSearchException('FFmpeg 未解码出音频；请确认音源可播放。');
@@ -268,7 +288,13 @@ class DspPlaybackEngine extends PlaybackEngine {
           ? _duration
           : await probe(uri);
       if (_disposed) return;
+      // Release the previous audio device before opening the next one so two
+      // devices are never alive at once.
       await _stop();
+      if (_disposed) return;
+      pendingSink = _sinkFactory();
+      pendingSink.configure(effects);
+      pendingSink.volume(_volume / 100);
       final sink = pendingSink;
       final process = pendingProcess;
       final input = stream;
@@ -285,12 +311,35 @@ class DspPlaybackEngine extends PlaybackEngine {
       _buffering = false;
       sink.pause(!play);
       final generation = _generation;
-      _pump = _consume(input, process, sink, generation);
+      _pump = _consume(input, process, sink, generation, tail);
       _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) {
         if (_disposed) return;
         _buffering = _playing && sink.bufferedSamples == 0;
+        final faults = sink.faults;
+        if (faults > _reportedFaults) {
+          _reportedFaults = faults;
+          CrashLog.error(
+            'dsp',
+            'Audio callback raised an exception ($faults total); '
+                'native DSP produced silence for the affected buffers',
+          );
+        }
         notifyListeners();
       });
+    } catch (failure) {
+      if (pendingProcess != null) {
+        CrashLog.error(
+          'ffmpeg',
+          'DSP start failed: $failure\nffmpeg stderr tail: ${await tail?.settled() ?? ''}',
+        );
+      }
+      if (_sink == null) {
+        // The previous session was already torn down above.
+        _playing = false;
+        _ticker?.cancel();
+        _ticker = null;
+      }
+      rethrow;
     } finally {
       pendingProcess?.kill();
       await stream?.cancel();
@@ -303,6 +352,7 @@ class DspPlaybackEngine extends PlaybackEngine {
     Process process,
     PcmSink sink,
     int generation,
+    ProcessTail tail,
   ) async {
     final buffer = calloc<Int16>(32768);
     var carry = <int>[];
@@ -338,6 +388,11 @@ class DspPlaybackEngine extends PlaybackEngine {
       if (_disposed || generation != _generation) return;
       final code = await process.exitCode;
       if (code != 0 || carry.isNotEmpty) {
+        CrashLog.error(
+          'ffmpeg',
+          'ffmpeg exited with $code (partial frame bytes: ${carry.length})\n'
+              'ffmpeg stderr tail: ${await tail.settled()}',
+        );
         throw const MusicSearchException('FFmpeg 解码中断，请重新播放。');
       }
       while (sink.bufferedSamples > 0 &&
@@ -357,8 +412,16 @@ class DspPlaybackEngine extends PlaybackEngine {
           ).catchError((Object _) {}),
         );
       });
-    } catch (failure) {
+    } catch (failure, stack) {
       if (!_disposed && generation == _generation) {
+        if (failure is! MusicSearchException) {
+          CrashLog.error(
+            'dsp',
+            'Decode pump failed\nffmpeg stderr tail: ${tail.text}',
+            error: failure,
+            stack: stack,
+          );
+        }
         _error = failure is MusicSearchException
             ? failure.message
             : '音频解码中断，请重试。';
@@ -376,7 +439,17 @@ class DspPlaybackEngine extends PlaybackEngine {
 
   void configure(AudioEffects value) {
     effects = value;
-    _sink?.configure(value);
+    try {
+      _sink?.configure(value);
+    } catch (failure, stack) {
+      CrashLog.error(
+        'dsp',
+        'Applying DSP settings failed',
+        error: failure,
+        stack: stack,
+      );
+      rethrow;
+    }
   }
 
   Future<void> _advance(int direction, {bool automatic = false}) async {
@@ -467,9 +540,25 @@ class DspPlaybackEngine extends PlaybackEngine {
   @override
   void dispose() {
     _disposed = true;
+    _generation++;
     _ticker?.cancel();
-    _process?.kill();
-    unawaited(_commands.then((_) => _stop()));
+    _ticker = null;
+    // Tear down synchronously: the queued _stop below may never get to run.
+    _process?.kill(ProcessSignal.sigkill);
+    _sink?.dispose();
+    _sink = null;
+    unawaited(
+      _commands
+          .then((_) => _stop())
+          .catchError(
+            (Object failure, StackTrace stack) => CrashLog.error(
+              'dsp',
+              'Dispose cleanup failed',
+              error: failure,
+              stack: stack,
+            ),
+          ),
+    );
     super.dispose();
   }
 }

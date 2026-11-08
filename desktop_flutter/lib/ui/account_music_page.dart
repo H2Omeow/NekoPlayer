@@ -5,7 +5,12 @@ import '../data/account_music_repository.dart';
 import '../domain/library.dart';
 import '../domain/online_music.dart';
 import '../player_controller.dart';
-import 'playlist_picker.dart';
+import 'library/library_actions.dart';
+import 'neko_theme.dart';
+import 'widgets/artwork.dart';
+import 'widgets/empty_state.dart';
+import 'widgets/page_layout.dart';
+import 'widgets/settings_list.dart';
 
 class AccountMusicPage extends StatefulWidget {
   const AccountMusicPage({
@@ -274,6 +279,149 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
     }
   }
 
+  List<AccountCollection> get collections => provider == MusicProvider.netease
+      ? AccountCollection.values
+            .where((value) => value != AccountCollection.following)
+            .toList()
+      : const [
+          AccountCollection.playlists,
+          AccountCollection.history,
+          AccountCollection.recommendations,
+          AccountCollection.following,
+        ];
+
+  void selectProvider(MusicProvider value) {
+    provider = value;
+    selected = null;
+    collection = AccountCollection.playlists;
+    load(reset: true);
+  }
+
+  void selectCollection(AccountCollection value) {
+    collection = value;
+    selected = null;
+    load(reset: true);
+  }
+
+  Widget _header(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final browsing = widget.songLoader == null;
+    final syncable =
+        browsing &&
+        selected == null &&
+        [
+          AccountCollection.likes,
+          AccountCollection.history,
+        ].contains(collection);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (browsing) ...[
+          SegmentedButton<MusicProvider>(
+            showSelectedIcon: false,
+            segments: [
+              for (final value in [MusicProvider.netease, MusicProvider.kugou])
+                ButtonSegment(value: value, label: Text(value.label)),
+            ],
+            selected: {provider},
+            onSelectionChanged: (value) => selectProvider(value.single),
+          ),
+          const SizedBox(height: NekoSpace.md),
+          Wrap(
+            spacing: NekoSpace.sm,
+            runSpacing: NekoSpace.sm,
+            children: [
+              for (final value in collections)
+                ChoiceChip(
+                  label: Text(label(value)),
+                  selected: collection == value && selected == null,
+                  onSelected: (_) => selectCollection(value),
+                ),
+            ],
+          ),
+          const SizedBox(height: NekoSpace.sm),
+          Text(
+            provider == MusicProvider.kugou
+                ? '原版 / 概念版跟随平台账号设置。只读浏览，不会修改平台上的歌单。'
+                : '只读浏览平台内容；保存到本机不等于收藏到平台账号。',
+            style: text.bodySmall,
+          ),
+        ],
+        if (selected != null && browsing) ...[
+          const SizedBox(height: NekoSpace.md),
+          TextButton.icon(
+            onPressed: () {
+              selected = null;
+              load(reset: true);
+            },
+            icon: const Icon(Icons.arrow_back_rounded, size: 18),
+            label: Text(selected!.name),
+          ),
+        ],
+        if (songs.isNotEmpty) ...[
+          const SizedBox(height: NekoSpace.md),
+          Wrap(
+            spacing: NekoSpace.sm,
+            runSpacing: NekoSpace.sm,
+            children: [
+              FilledButton.icon(
+                onPressed: () =>
+                    widget.player.play(songs.map(Track.fromOnline).toList(), 0),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: Text('播放已加载的 ${songs.length} 首'),
+              ),
+              OutlinedButton.icon(
+                onPressed: sync.busy || busy ? null : () => save(),
+                icon: const Icon(Icons.playlist_add_rounded, size: 18),
+                label: const Text('保存全部歌曲到本机歌单'),
+              ),
+              if (syncable)
+                OutlinedButton.icon(
+                  onPressed: sync.busy || busy
+                      ? null
+                      : () => save(
+                          collection == AccountCollection.likes
+                              ? AccountLibraryDestination.favorites
+                              : AccountLibraryDestination.history,
+                        ),
+                  icon: const Icon(Icons.sync_rounded, size: 18),
+                  label: Text(
+                    collection == AccountCollection.likes
+                        ? '全部同步到我喜欢'
+                        : '全部同步到最近播放',
+                  ),
+                ),
+            ],
+          ),
+        ],
+        const SizedBox(height: NekoSpace.lg),
+        if (busy) const LinearProgressIndicator(),
+        if (sync.busy)
+          InlineNotice(
+            '已读取 ${sync.pages} 页 · ${sync.count} 首。'
+            '${sync.committing
+                ? '正在保存到本机…'
+                : sync.cancelled
+                ? '等待当前请求结束后取消…'
+                : '全部读取成功后合并到本机。'}',
+            action: TextButton(
+              onPressed: sync.cancelled || sync.committing ? null : sync.cancel,
+              child: const Text('取消同步'),
+            ),
+          ),
+        if (error case final message?)
+          InlineNotice(
+            message,
+            error: true,
+            action: TextButton(
+              onPressed: busy ? null : () => load(reset: page == 0),
+              child: const Text('重试'),
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final showingPlaylists =
@@ -282,188 +430,41 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
           AccountCollection.playlists,
           AccountCollection.following,
         ].contains(collection);
+    final gutter = pageGutter(context);
+    final actions = LibraryActions(
+      player: widget.player,
+      onDownload: widget.onDownload,
+      onComments: widget.onComments,
+    );
+    final tracks = songs.map(Track.fromOnline).toList();
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title ?? '平台音乐库')),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1000),
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (widget.songLoader == null)
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final value in [
-                              MusicProvider.netease,
-                              MusicProvider.kugou,
-                            ])
-                              ChoiceChip(
-                                label: Text(value.label),
-                                selected: provider == value,
-                                onSelected: (_) {
-                                  provider = value;
-                                  selected = null;
-                                  collection = AccountCollection.playlists;
-                                  load(reset: true);
-                                },
-                              ),
-                          ],
-                        ),
-                      if (widget.songLoader == null) ...[
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<AccountCollection>(
-                          key: ValueKey(collection),
-                          initialValue: collection,
-                          isExpanded: true,
-                          decoration: const InputDecoration(labelText: '浏览内容'),
-                          items: [
-                            for (final value
-                                in (provider == MusicProvider.netease
-                                    ? AccountCollection.values.where(
-                                        (value) =>
-                                            value !=
-                                            AccountCollection.following,
-                                      )
-                                    : [
-                                        AccountCollection.playlists,
-                                        AccountCollection.history,
-                                        AccountCollection.recommendations,
-                                        AccountCollection.following,
-                                      ]))
-                              DropdownMenuItem(
-                                value: value,
-                                child: Text(label(value)),
-                              ),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            collection = value;
-                            selected = null;
-                            load(reset: true);
-                          },
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      Text(
-                        provider == MusicProvider.kugou
-                            ? '标准版 / 概念版账号跟随平台账号设置。只读浏览，不修改远端歌单。'
-                            : '只读浏览平台内容；保存到本机不等于收藏到平台账号。',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      if (selected != null && widget.songLoader == null)
-                        TextButton.icon(
-                          onPressed: () {
-                            selected = null;
-                            load(reset: true);
-                          },
-                          icon: const Icon(Icons.arrow_back),
-                          label: Text('歌单 · ${selected!.name}'),
-                        ),
-                      if (songs.isNotEmpty)
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            FilledButton.tonalIcon(
-                              onPressed: () => widget.player.play(
-                                songs.map(Track.fromOnline).toList(),
-                                0,
-                              ),
-                              icon: const Icon(Icons.play_arrow),
-                              label: Text('播放已加载 ${songs.length} 首'),
-                            ),
-                            OutlinedButton.icon(
-                              onPressed: sync.busy || busy
-                                  ? null
-                                  : () => save(),
-                              icon: const Icon(Icons.playlist_add),
-                              label: const Text('保存全部歌曲到本机歌单'),
-                            ),
-                            if (widget.songLoader == null &&
-                                selected == null &&
-                                [
-                                  AccountCollection.likes,
-                                  AccountCollection.history,
-                                ].contains(collection))
-                              OutlinedButton.icon(
-                                onPressed: sync.busy || busy
-                                    ? null
-                                    : () => save(
-                                        collection == AccountCollection.likes
-                                            ? AccountLibraryDestination
-                                                  .favorites
-                                            : AccountLibraryDestination.history,
-                                      ),
-                                icon: const Icon(Icons.sync),
-                                label: Text(
-                                  collection == AccountCollection.likes
-                                      ? '全部同步到收藏'
-                                      : '全部同步到历史',
-                                ),
-                              ),
-                          ],
-                        ),
-                    ],
-                  ),
+      appBar: AppBar(title: Text(widget.title ?? '平台曲库')),
+      body: ListenableBuilder(
+        listenable: Listenable.merge([widget.player, widget.player.engine]),
+        builder: (context, _) => CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(gutter, NekoSpace.sm, gutter, 0),
+              sliver: SliverToBoxAdapter(child: _header(context)),
+            ),
+            if (!busy && error == null && playlists.isEmpty && songs.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: EmptyState(
+                  icon: Icons.inbox_outlined,
+                  title: '暂无内容',
+                  description: '这里还没有歌曲；也可能需要先在“音乐平台账号”中登录。',
                 ),
-              ),
-              if (busy)
-                const SliverToBoxAdapter(child: LinearProgressIndicator()),
-              if (sync.busy)
-                SliverToBoxAdapter(
-                  child: ListTile(
-                    title: Text('已读取 ${sync.pages} 页 · ${sync.count} 首'),
-                    subtitle: Text(
-                      sync.committing
-                          ? '正在保存到本机…'
-                          : sync.cancelled
-                          ? '等待当前请求结束后取消…'
-                          : '全部读取成功后合并到本机',
-                    ),
-                    trailing: TextButton(
-                      onPressed: sync.cancelled || sync.committing
-                          ? null
-                          : sync.cancel,
-                      child: const Text('取消同步'),
-                    ),
-                  ),
+              )
+            else
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  gutter - NekoSpace.sm,
+                  0,
+                  gutter - NekoSpace.sm,
+                  NekoSpace.xxl,
                 ),
-              if (error != null)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: busy ? null : () => load(reset: page == 0),
-                          child: const Text('重试'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              if (!busy && error == null && playlists.isEmpty && songs.isEmpty)
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(child: Text('暂无内容')),
-                )
-              else
-                SliverList.builder(
+                sliver: SliverList.builder(
                   itemCount:
                       (showingPlaylists ? playlists.length : songs.length) +
                       (more ? 1 : 0),
@@ -482,85 +483,39 @@ class _AccountMusicPageState extends State<AccountMusicPage> {
                     if (showingPlaylists) {
                       final playlist = playlists[index];
                       return ListTile(
-                        leading: const Icon(Icons.queue_music),
-                        title: Text(playlist.name),
-                        subtitle: Text('${playlist.count} 首'),
-                        trailing: const Icon(Icons.chevron_right),
+                        leading: Artwork(
+                          size: 48,
+                          label: playlist.name,
+                          radius: playlist.artist ? 24 : null,
+                          icon: playlist.artist
+                              ? Icons.person_rounded
+                              : Icons.queue_music_rounded,
+                        ),
+                        title: Text(
+                          playlist.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: playlist.count > 0
+                            ? Text('${playlist.count} 首')
+                            : null,
+                        trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () {
                           selected = playlist;
                           load(reset: true);
                         },
                       );
                     }
-                    final song = songs[index];
-                    return ListTile(
-                      leading: const Icon(Icons.music_note),
-                      title: Text(song.title),
-                      subtitle: Text(song.artist),
-                      onTap: () => widget.player.play(
-                        songs.map(Track.fromOnline).toList(),
-                        index,
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: '查看评论',
-                            icon: const Icon(Icons.comment_outlined),
-                            onPressed: () => widget.onComments(song),
-                          ),
-                          PopupMenuButton<String>(
-                            tooltip: '歌曲操作',
-                            onSelected: (action) {
-                              final track = Track.fromOnline(song);
-                              switch (action) {
-                                case 'queue':
-                                  widget.player.enqueue(track);
-                                case 'favorite':
-                                  widget.player.toggleFavorite(track);
-                                case 'playlist':
-                                  showPlaylistPicker(
-                                    context,
-                                    widget.player,
-                                    track,
-                                  );
-                                case 'download':
-                                  widget.onDownload?.call(song);
-                              }
-                            },
-                            itemBuilder: (_) => [
-                              const PopupMenuItem(
-                                value: 'queue',
-                                child: Text('加入播放队列'),
-                              ),
-                              PopupMenuItem(
-                                value: 'favorite',
-                                child: Text(
-                                  widget.player.favorites.contains(
-                                        Track.fromOnline(song).path,
-                                      )
-                                      ? '取消收藏'
-                                      : '收藏',
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'playlist',
-                                child: Text('加入本机歌单'),
-                              ),
-                              if (widget.onDownload != null)
-                                const PopupMenuItem(
-                                  value: 'download',
-                                  child: Text('下载歌曲'),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
+                    return actions.row(
+                      context,
+                      tracks[index],
+                      index: index,
+                      onTap: () => widget.player.play(tracks, index),
                     );
                   },
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );

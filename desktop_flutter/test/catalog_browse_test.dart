@@ -151,7 +151,7 @@ void main() {
       await tester.tap(find.text('Daily'));
       await tester.pumpAndSettle();
       expect(find.text('Music'), findsOneWidget);
-      expect(find.text('浏览内容'), findsNothing);
+      expect(find.text('账号歌单'), findsNothing);
       expect(find.text('保存全部歌曲到本机歌单'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

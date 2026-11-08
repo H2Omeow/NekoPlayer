@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from package_release import release_version, stage_windows_runtime, windows_installer_script
-from test_artifact import pe
+from test_artifact import elf, pe
 
 
 class ReleasePackageTests(unittest.TestCase):
@@ -20,6 +20,26 @@ class ReleasePackageTests(unittest.TestCase):
                 self.assertIn(f"OutputBaseFilename=NekoPlayer-v1.1.0-{target}-setup", script)
                 self.assertIn("UninstallDisplayIcon={app}\\NekoPlayer.exe", script)
                 self.assertNotIn("java", script.lower())
+
+    def test_linux_packages_declare_either_libmpv_soname(self):
+        source = Path(__file__).with_name("package_release.py").read_text()
+        self.assertIn("libmpv2 | libmpv1", source)
+        self.assertIn("(mpv-libs or libmpv2)", source)
+
+    def test_linux_staging_drops_the_jni_helper(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary) / "bundle"
+            (bundle / "lib").mkdir(parents=True)
+            (bundle / "lib/libdartjni.so").write_bytes(elf(62))
+            (bundle / "lib/libkeep.so").write_bytes(elf(62))
+            staged = []
+            with patch("package_release.verify_bundle", side_effect=lambda *a, **k: staged.append(k.get("packaged", False))), \
+                    patch("package_release.release_version", return_value="1.1.0"):
+                from package_release import stage_bundle
+                payload = stage_bundle("linux-x64", bundle, Path(temporary) / "staging")
+            self.assertFalse((payload / "lib/libdartjni.so").exists())
+            self.assertTrue((payload / "lib/libkeep.so").is_file())
+            self.assertEqual(staged, [False, True])
 
     def runtime_fixture(self, root, arch, machine):
         runtime = root / arch / "Microsoft.VC145.CRT"

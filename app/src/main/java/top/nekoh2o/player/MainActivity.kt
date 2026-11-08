@@ -93,6 +93,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // 回到前台时检查云同步（同步层自带 60 秒节流，未登录则忽略）
+    override fun onStart() {
+        super.onStart()
+        vm.onAppForeground()
+    }
+
     // 已在栈顶（singleTop）时，回跳深链通过 onNewIntent 送达
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)

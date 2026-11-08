@@ -1,6 +1,9 @@
 (() => {
   "use strict";
-  const native = new URLSearchParams(location.search).get("native") === "1";
+  const params = new URLSearchParams(location.search);
+  const native = params.get("native") === "1";
+  // The app window already shows track info, so only the style picker stays.
+  if (params.get("embedded") === "1") document.documentElement.classList.add("embedded");
   const status = document.getElementById("status");
   const title = document.getElementById("track");
   const mode = document.getElementById("mode");
@@ -8,12 +11,53 @@
   let disconnected = false;
   let timer;
   let polling = false;
+  let sentLyricsKey = null;
+  let sentLyrics = null;
+
+  const cjk = "\\u3040-\\u30ff\\u3400-\\u9fff\\uf900-\\ufaff\\uac00-\\ud7af";
+  const tokenPattern = new RegExp(`[${cjk}]\\s*|[^\\s${cjk}]+\\s*|\\s+`, "g");
+
+  // The engine animates word by word, so plain LRC lines get evenly spaced
+  // synthetic word timings; otherwise they would never become visible.
+  function timedWords(line) {
+    const text = String(line.fullText || "");
+    const tokens = text.match(tokenPattern) || [];
+    const weight = tokens.reduce((sum, token) => sum + Math.max(1, token.trim().length), 0);
+    if (!weight) return [];
+    const start = Number(line.startTime) || 0;
+    const end = Math.max(start + 0.001, Number(line.endTime) || start + 5);
+    const span = Math.min(end - start, 1 + weight * 0.3);
+    let cursor = start;
+    return tokens.map(token => {
+      const length = span * Math.max(1, token.trim().length) / weight;
+      const word = { text: token, startTime: cursor, endTime: cursor + length };
+      cursor += length;
+      return word;
+    });
+  }
+
+  function withWordTimings(lyrics) {
+    if (!lyrics || !Array.isArray(lyrics.lines)) return lyrics;
+    return {
+      ...lyrics,
+      lines: lyrics.lines.map(line => Array.isArray(line.words) && line.words.length
+        ? line
+        : { ...line, words: timedWords(line) })
+    };
+  }
 
   function render() {
     if (!snapshot) return;
     const hidden = document.hidden || disconnected;
+    const { lyrics, ...rest } = snapshot;
+    const lyricsKey = JSON.stringify([snapshot.track?.seed ?? null, lyrics ?? null]);
+    if (lyricsKey !== sentLyricsKey) {
+      sentLyricsKey = lyricsKey;
+      sentLyrics = withWordTimings(lyrics ?? null);
+    }
     const update = {
-      ...snapshot,
+      ...rest,
+      lyrics: sentLyrics,
       clock: { ...snapshot.clock, playing: !hidden && snapshot.clock.playing },
       appearance: {
         ...snapshot.appearance,

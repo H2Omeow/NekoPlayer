@@ -7,14 +7,23 @@
 
 #include "flutter/generated_plugin_registrant.h"
 #include "desktop_integration.h"
+#include "lyrics_view.h"
 
 struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
   DesktopIntegration* integration;
+  LyricsView* lyrics_view;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
+
+// Frees the desktop integration while the Flutter engine is still alive; by
+// GObject dispose time the engine (and its method channel) is already gone.
+static void window_destroy_cb(MyApplication* self, GtkWidget*) {
+  desktop_integration_free(self->integration);
+  self->integration = nullptr;
+}
 
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
@@ -68,7 +77,11 @@ static void my_application_activate(GApplication* application) {
   gdk_rgba_parse(&background_color, "#111116");
   fl_view_set_background_color(view, &background_color);
   gtk_widget_show(GTK_WIDGET(view));
-  gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
+  // The overlay lets the embedded lyrics web view sit above the Flutter view.
+  GtkWidget* overlay = gtk_overlay_new();
+  gtk_container_add(GTK_CONTAINER(overlay), GTK_WIDGET(view));
+  gtk_widget_show(overlay);
+  gtk_container_add(GTK_CONTAINER(window), overlay);
 
   // Show the window when Flutter renders.
   // Requires the view to be realized so we can start rendering.
@@ -78,6 +91,9 @@ static void my_application_activate(GApplication* application) {
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
   self->integration = desktop_integration_new(view, window);
+  g_signal_connect_swapped(window, "destroy", G_CALLBACK(window_destroy_cb),
+                           self);
+  self->lyrics_view = lyrics_view_new(view, GTK_OVERLAY(overlay));
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
@@ -124,6 +140,8 @@ static void my_application_shutdown(GApplication* application) {
 // Implements GObject::dispose.
 static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
+  lyrics_view_free(self->lyrics_view);
+  self->lyrics_view = nullptr;
   desktop_integration_free(self->integration);
   self->integration = nullptr;
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);

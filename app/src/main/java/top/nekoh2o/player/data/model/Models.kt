@@ -2,6 +2,9 @@ package top.nekoh2o.player.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 // ==================== 播放器内部统一歌曲结构（对应 web {id,nm,ar,pc}）====================
 @Serializable
@@ -17,7 +20,10 @@ data class Song(
     /** Underlying provider used by the external aggregation source (kg/kw/wy/tx/mg/bilibili). */
     val providerSource: String = "",
     val providerMediaId: String = "",
-    val pluginMetadata: String = ""
+    val pluginMetadata: String = "",
+    /** 桌面端写入的字段，本端不解释，仅在云同步中原样回传，避免上传时丢失。 */
+    val pluginSource: JsonElement? = null,
+    val pluginData: JsonElement? = null
 )
 
 // 自定义歌单（对应 web customPlaylists）
@@ -25,7 +31,9 @@ data class Song(
 data class Playlist(
     val id: String,
     val name: String,
-    val songs: MutableList<Song> = mutableListOf()
+    val songs: MutableList<Song> = mutableListOf(),
+    /** 云端歌单中本端无法解析的歌曲，原样保留并随歌单回传。 */
+    val foreignSongs: List<JsonElement> = emptyList()
 )
 
 // ==================== 搜索 /search?keywords= ====================
@@ -208,21 +216,45 @@ data class NcAccountInfo(
     val vipExpireTime: Long = 0  // 毫秒时间戳
 )
 
-// ==================== 云端用户数据 /user/data ====================
+// ==================== 云端用户数据 /user/data 与 /user/data/sections ====================
+@Serializable
+data class SectionMeta(
+    val updatedAt: Long = 0,
+    val device: String = ""
+)
+@Serializable
+data class SyncMeta(
+    val sections: Map<String, SectionMeta> = emptyMap()
+)
 @Serializable
 data class UserDataResp(
     val code: Int = 0,
-    val data: UserData? = null
+    val msg: String = "",
+    val data: UserData? = null,
+    val meta: SyncMeta? = null
 )
+// 歌曲/歌单保持原始 JSON，由同步层逐条解码，避免整包解析失败或丢字段
 @Serializable
 data class UserData(
-    val history: List<Song> = emptyList(),
-    val favorites: List<Song> = emptyList(),
-    val playlists: List<Playlist> = emptyList(),
+    val history: JsonArray = JsonArray(emptyList()),
+    val favorites: JsonArray = JsonArray(emptyList()),
+    val playlists: JsonArray = JsonArray(emptyList()),
     val ncCookie: String = "",
     val kgToken: String = "",
     val kgPlatform: Int = 0,
     val kgCookies: List<String> = emptyList()
+)
+@Serializable
+data class SectionsPatchRequest(
+    val device: String,
+    val sections: JsonObject,
+    val expected: Map<String, Long>? = null
+)
+@Serializable
+data class SectionsPatchResp(
+    val code: Int = 0,
+    val msg: String = "",
+    val meta: SyncMeta? = null
 )
 
 // ==================== 壁纸 /local/wallpaper/list ====================

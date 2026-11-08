@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,7 +25,15 @@ import top.nekoh2o.player.data.model.*
 import top.nekoh2o.player.data.net.KugouApiException
 import top.nekoh2o.player.data.net.kugouLoginError
 import top.nekoh2o.player.ui.PlayerViewModel
+import top.nekoh2o.player.ui.components.DetailTopBar
+import top.nekoh2o.player.ui.components.InlineNotice
+import top.nekoh2o.player.ui.components.NekoChip
+import top.nekoh2o.player.ui.components.PageContentPadding
+import top.nekoh2o.player.ui.components.SettingsControlTile
+import top.nekoh2o.player.ui.components.SettingsSection
 import top.nekoh2o.player.ui.theme.NekoDefaults
+import top.nekoh2o.player.ui.theme.NekoRadius
+import top.nekoh2o.player.ui.theme.NekoSpace
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,23 +121,25 @@ fun KugouLoginScreen(vm: PlayerViewModel, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("酷狗音乐登录") }, navigationIcon = {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
-        })
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("选择版本", style = MaterialTheme.typography.titleMedium)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("原版", "概念版").forEachIndexed { index, title ->
-                    FilterChip(selected = platform == index, enabled = !busy,
-                        onClick = { platform = index }, label = { Text(title) }, modifier = Modifier.weight(1f))
+        DetailTopBar("登录酷狗音乐", onBack)
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(PageContentPadding),
+            verticalArrangement = Arrangement.spacedBy(NekoSpace.lg)
+        ) {
+            SettingsSection(description = "两个版本的登录凭据分别保存，扫码时请使用对应版本的酷狗 App。") {
+                SettingsControlTile(title = "版本") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
+                        listOf("原版", "概念版").forEachIndexed { index, title ->
+                            NekoChip(title, platform == index, { if (!busy) platform = index })
+                        }
+                    }
                 }
-            }
-            Text("两个版本的登录凭据分别保存。扫码时请使用对应版本的酷狗 App。", style = MaterialTheme.typography.bodySmall)
-            HorizontalDivider()
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("验证码", "酷狗扫码").forEachIndexed { index, title ->
-                    FilterChip(selected = method == index, enabled = !busy,
-                        onClick = { method = index }, label = { Text(title) }, modifier = Modifier.weight(1f))
+                SettingsControlTile(title = "登录方式") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
+                        listOf("短信验证码", "App 扫码").forEachIndexed { index, title ->
+                            NekoChip(title, method == index, { if (!busy) method = index })
+                        }
+                    }
                 }
             }
             if (method == 0) {
@@ -153,7 +161,7 @@ fun KugouLoginScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                             } catch (e: Exception) { error = kugouLoginError(e)
                             } finally { busy = false }
                         }
-                    }) { Text(if (seconds > 0) seconds.toString() + "s" else "获取验证码") }
+                    }) { Text(if (seconds > 0) seconds.toString() + "s" else "发送验证码") }
                 }
                 Button(onClick = { submit() }, enabled = !busy && phone.length == 11 && code.length in 4..8, modifier = Modifier.fillMaxWidth()) {
                     Text(if (busy) "处理中…" else "登录")
@@ -167,7 +175,13 @@ fun KugouLoginScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                     }.getOrNull()
                 }
                 if (qr != null) {
-                    if (bitmap != null) Image(bitmap, "酷狗登录二维码", Modifier.size(240.dp).align(Alignment.CenterHorizontally))
+                    if (bitmap != null) Surface(
+                        color = androidx.compose.ui.graphics.Color.White,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(NekoRadius.card),
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Image(bitmap, "酷狗登录二维码", Modifier.padding(NekoSpace.md).size(220.dp))
+                    }
                     else Text("二维码图片无法显示，请刷新", color = MaterialTheme.colorScheme.error)
                 }
                 Button(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
@@ -185,8 +199,8 @@ fun KugouLoginScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 }) { Text(if (busy) "获取中…" else if (qr == null) "获取二维码" else "刷新二维码") }
                 if (polling) CircularProgressIndicator(Modifier.size(24.dp).align(Alignment.CenterHorizontally))
             }
-            if (message.isNotEmpty()) Text(message, style = MaterialTheme.typography.bodySmall)
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (message.isNotEmpty()) InlineNotice(message)
+            error?.let { InlineNotice(it, error = true) }
         }
     }
     if (accounts.isNotEmpty()) AlertDialog(onDismissRequest = { accounts = emptyList() }, title = { Text("选择酷狗账号") }, text = {

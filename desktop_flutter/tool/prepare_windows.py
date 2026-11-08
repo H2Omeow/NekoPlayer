@@ -106,6 +106,24 @@ def prepare_mpv(target, directory):
     verify(target, [mpv / "libmpv-2.dll"])
 
 
+def prepare_webview2(target, directory):
+    arch = target.split("-")[1]
+    package = download("webview2", directory)
+    webview2 = directory / ("webview2-" + arch)
+    shutil.rmtree(webview2, ignore_errors=True)
+    (webview2 / "include").mkdir(parents=True)
+    (webview2 / "lib").mkdir()
+    with zipfile.ZipFile(package) as packed:
+        for header in ("WebView2.h", "WebView2EnvironmentOptions.h"):
+            (webview2 / "include" / header).write_bytes(packed.read("build/native/include/" + header))
+        library = packed.read(f"build/native/{arch}/WebView2LoaderStatic.lib")
+        if not library.startswith(b"!<arch>\n"):
+            raise ValueError("WebView2 static loader is not a COFF archive")
+        (webview2 / "lib/WebView2LoaderStatic.lib").write_bytes(library)
+        (webview2 / "LICENSE.txt").write_bytes(packed.read("LICENSE.txt"))
+    return webview2
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("component", choices=("toolchain", "runtime", "installer"))
@@ -113,12 +131,15 @@ def main():
     parser.add_argument("--directory", type=Path, default=ROOT / "build/windows-dependencies")
     args = parser.parse_args()
     directory = args.directory.resolve()
+    extra = {}
     if args.component == "toolchain":
         result = prepare_toolchain(directory)
         key = "PATH"
     elif args.component == "runtime":
         result = prepare_angle(args.target, directory)
         prepare_mpv(args.target, directory)
+        webview2 = prepare_webview2(args.target, directory)
+        extra = {"NEKO_WINDOWS_WEBVIEW2_DIR": webview2, "NEKO_REQUIRE_WEBVIEW2": "ON"}
         key = "NEKO_WINDOWS_ANGLE_DIR"
     else:
         installer = download("inno_setup", directory)
@@ -130,7 +151,11 @@ def main():
     if destination:
         with open(destination, "a", encoding="utf-8") as stream:
             stream.write((str(result) if key == "PATH" else f"{key}={result}") + "\n")
+            for name, value in extra.items():
+                stream.write(f"{name}={value}\n")
     print(f"{key}={result}")
+    for name, value in extra.items():
+        print(f"{name}={value}")
 
 
 if __name__ == "__main__":

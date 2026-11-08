@@ -8,6 +8,11 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -52,12 +57,24 @@ fun DynamicLyricsScreen(
                         enabled = state.durationMs > 0,
                         onValueChange = { onSeek(it.toLong()) }
                     )
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        TextButton(onClick = onPrevious) { Text("上一曲") }
-                        FilledTonalButton(onClick = onToggle, enabled = state.current != null) {
-                            Text(if (state.isPlaying) "暂停" else "播放")
+                    Row(
+                        Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onPrevious) {
+                            Icon(Icons.Filled.SkipPrevious, contentDescription = "上一首", modifier = Modifier.size(32.dp))
                         }
-                        TextButton(onClick = onNext) { Text("下一曲") }
+                        FilledIconButton(onClick = onToggle, enabled = state.current != null, modifier = Modifier.size(60.dp)) {
+                            Icon(
+                                if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (state.isPlaying) "暂停" else "播放",
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
+                        IconButton(onClick = onNext) {
+                            Icon(Icons.Filled.SkipNext, contentDescription = "下一首", modifier = Modifier.size(32.dp))
+                        }
                     }
                 }
             }
@@ -101,7 +118,8 @@ private fun DynamicLyricsWebView(state: UiState, modifier: Modifier) {
                     settings.javaScriptEnabled = true
                     settings.allowFileAccess = false
                     settings.allowContentAccess = false
-                    settings.domStorageEnabled = false
+                    // The engine reads its display preferences from localStorage at startup.
+                    settings.domStorageEnabled = true
                     settings.javaScriptCanOpenWindowsAutomatically = false
                     settings.setSupportMultipleWindows(false)
                     webViewClient = object : WebViewClient() {
@@ -163,7 +181,7 @@ internal fun lyricAsset(assets: android.content.res.AssetManager, uri: Uri, meth
         else -> "application/octet-stream"
     }
     return WebResourceResponse(mime, "utf-8", 200, "OK", mapOf(
-        "Content-Security-Policy" to "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "Content-Security-Policy" to "default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
         "X-Content-Type-Options" to "nosniff",
         "Cache-Control" to "no-store"
     ), stream)

@@ -17,7 +17,12 @@ command -v systemd-run >/dev/null 2>&1 || {
 
 lock_root=${XDG_RUNTIME_DIR:-/tmp}
 exec 9>"$lock_root/nekoplayer-build-$(id -u).lock"
-flock -n 9 || {
+# NEKOPLAYER_LOCK_WAIT=<seconds> queues behind a running build instead of failing.
+if [ -n "${NEKOPLAYER_LOCK_WAIT:-}" ]; then
+    flock -w "$NEKOPLAYER_LOCK_WAIT" 9
+else
+    flock -n 9
+fi || {
     echo "Another NekoPlayer build is running; refusing a parallel build." >&2
     exit 1
 }

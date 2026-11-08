@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import '../data/comments_repository.dart';
 import '../domain/comments.dart';
 import '../domain/online_music.dart';
+import 'neko_theme.dart';
+import 'widgets/artwork.dart';
+import 'widgets/empty_state.dart';
+import 'widgets/page_layout.dart';
+import 'widgets/settings_list.dart';
 
 class CommentsPage extends StatefulWidget {
   const CommentsPage({
@@ -224,203 +229,273 @@ class _CommentsPageState extends State<CommentsPage> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(widget.parent == null ? '${widget.song.title} · 评论' : '评论回复'),
-    ),
-    body: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
+  Widget _comment(BuildContext context, SongComment comment) {
+    final text = Theme.of(context).textTheme;
+    final colors = Theme.of(context).colorScheme;
+    final palette = NekoPalette.of(context);
+    final name = comment.user.isEmpty ? '音乐爱好者' : comment.user;
+    final idle = posting || loading || comment.deleted;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: NekoSpace.md),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.parent == null)
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final value in CommentSource.values)
-                  ChoiceChip(
-                    label: Text(value.label),
-                    selected: source == value,
-                    onSelected: posting
-                        ? null
-                        : (_) {
-                            source = value;
-                            prepare();
-                          },
-                  ),
-              ],
-            ),
-          if (selected != null)
-            Text('${source.label} · ${selected!.title} · ${selected!.artist}'),
-          if (widget.parent != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                '${widget.parent!.user}：${widget.parent!.content}',
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          if (loading || posting) const LinearProgressIndicator(),
-          if (message != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(message!),
-            ),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
-          Wrap(
-            spacing: 8,
-            children: [
-              if (selected != null)
-                FilledButton.tonal(
-                  onPressed: posting || loading ? null : () => compose(),
-                  child: const Text('写评论'),
-                ),
-              OutlinedButton(
-                onPressed: posting || loading
-                    ? null
-                    : () => selected == null ? prepare() : fetch(reset: true),
-                child: const Text('刷新'),
-              ),
-            ],
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: colors.surfaceContainerHighest,
+            foregroundColor: colors.onSurfaceVariant,
+            child: Text(name.characters.first, style: text.labelLarge),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(width: NekoSpace.md),
           Expanded(
-            child: selected == null
-                ? ListView(
-                    children: [
-                      if (matches.isNotEmpty)
-                        const Text('请选择对应歌曲，避免查看到错误资源的评论。'),
-                      for (final song in matches)
-                        ListTile(
-                          title: Text(song.title),
-                          subtitle: Text(song.artist),
-                          onTap: () {
-                            setState(() {
-                              selected = song;
-                              matches = [];
-                            });
-                            fetch(reset: true);
-                          },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.titleSmall,
+                      ),
+                    ),
+                    const SizedBox(width: NekoSpace.sm),
+                    Text(comment.time, style: text.labelSmall),
+                  ],
+                ),
+                const SizedBox(height: NekoSpace.xs),
+                SelectableText(
+                  comment.deleted ? '评论已删除' : comment.content,
+                  style: text.bodyMedium?.copyWith(
+                    color: comment.deleted ? colors.onSurfaceVariant : null,
+                  ),
+                ),
+                if (comment.quotedContent.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: NekoSpace.sm),
+                    padding: const EdgeInsets.all(NekoSpace.md),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(NekoRadius.control),
+                    ),
+                    child: Text(
+                      '${comment.quotedUser}：${comment.quotedContent}',
+                      style: text.bodySmall,
+                    ),
+                  ),
+                const SizedBox(height: NekoSpace.xs),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (source != CommentSource.kugou)
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: comment.liked
+                              ? palette.accent
+                              : colors.onSurfaceVariant,
+                          visualDensity: VisualDensity.compact,
                         ),
-                    ],
-                  )
-                : comments.isEmpty
-                ? const Center(child: Text('暂无评论。'))
-                : ListView.builder(
-                    itemCount: comments.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == comments.length) {
-                        return page.hasMore
-                            ? Center(
-                                child: OutlinedButton(
-                                  onPressed: loading ? null : fetch,
-                                  child: const Text('加载更多'),
+                        onPressed: idle
+                            ? null
+                            : () => mutate(
+                                () => widget.repository.like(
+                                  source,
+                                  selected!,
+                                  comment,
                                 ),
-                              )
-                            : const SizedBox.shrink();
-                      }
-                      final comment = comments[index];
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                comment.user.isEmpty ? '音乐爱好者' : comment.user,
-                                style: Theme.of(context).textTheme.titleSmall,
+                                comment.liked ? '已取消点赞。' : '已点赞。',
                               ),
-                              Text(
-                                comment.time,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              const SizedBox(height: 8),
-                              SelectableText(
-                                comment.deleted ? '评论已删除' : comment.content,
-                              ),
-                              if (comment.quotedContent.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Text(
-                                    '${comment.quotedUser}：${comment.quotedContent}',
-                                  ),
-                                ),
-                              Wrap(
-                                spacing: 4,
-                                children: [
-                                  if (source != CommentSource.kugou)
-                                    TextButton.icon(
-                                      onPressed:
-                                          posting || loading || comment.deleted
-                                          ? null
-                                          : () => mutate(
-                                              () => widget.repository.like(
-                                                source,
-                                                selected!,
-                                                comment,
-                                              ),
-                                              comment.liked ? '已取消点赞。' : '已点赞。',
-                                            ),
-                                      icon: Icon(
-                                        comment.liked
-                                            ? Icons.favorite
-                                            : Icons.favorite_border,
-                                        size: 16,
-                                      ),
-                                      label: Text('${comment.likes}'),
-                                    ),
-                                  TextButton(
-                                    onPressed:
-                                        posting || loading || comment.deleted
-                                        ? null
-                                        : () => compose(comment),
-                                    child: const Text('回复'),
-                                  ),
-                                  if (comment.replies > 0)
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute<void>(
-                                              builder: (_) => CommentsPage(
-                                                repository: widget.repository,
-                                                song: selected!,
-                                                source: source,
-                                                parent: comment,
-                                                parentPage: page,
-                                              ),
-                                            ),
-                                          ),
-                                      child: Text('${comment.replies} 条回复'),
-                                    ),
-                                  if (comment.owned &&
-                                      source != CommentSource.kugou &&
-                                      !comment.deleted)
-                                    TextButton(
-                                      onPressed: posting || loading
-                                          ? null
-                                          : () => delete(comment),
-                                      child: const Text('删除'),
-                                    ),
-                                ],
-                              ),
-                            ],
+                        icon: Icon(
+                          comment.liked
+                              ? Icons.thumb_up_rounded
+                              : Icons.thumb_up_outlined,
+                          size: 16,
+                        ),
+                        label: Text('${comment.likes}'),
+                      ),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: colors.onSurfaceVariant,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: idle ? null : () => compose(comment),
+                      child: const Text('回复'),
+                    ),
+                    if (comment.replies > 0)
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => CommentsPage(
+                              repository: widget.repository,
+                              song: selected!,
+                              source: source,
+                              parent: comment,
+                              parentPage: page,
+                            ),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                        child: Text('${comment.replies} 条回复'),
+                      ),
+                    if (comment.owned &&
+                        source != CommentSource.kugou &&
+                        !comment.deleted)
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: colors.error,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        onPressed: posting || loading
+                            ? null
+                            : () => delete(comment),
+                        child: const Text('删除'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gutter = pageGutter(context);
+    final text = Theme.of(context).textTheme;
+    final header = <Widget>[
+      if (widget.parent == null)
+        Wrap(
+          spacing: NekoSpace.sm,
+          runSpacing: NekoSpace.sm,
+          children: [
+            for (final value in CommentSource.values)
+              ChoiceChip(
+                label: Text(value.label),
+                selected: source == value,
+                onSelected: posting
+                    ? null
+                    : (_) {
+                        source = value;
+                        prepare();
+                      },
+              ),
+          ],
+        ),
+      if (selected != null) ...[
+        const SizedBox(height: NekoSpace.sm),
+        Text(
+          '${source.label} · ${selected!.title} · ${selected!.artist}',
+          style: text.bodySmall,
+        ),
+      ],
+      if (widget.parent case final parent?) ...[
+        const SizedBox(height: NekoSpace.sm),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(NekoSpace.lg),
+            child: Text(
+              '${parent.user}：${parent.content}',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ],
+      const SizedBox(height: NekoSpace.md),
+      Row(
+        children: [
+          if (selected != null)
+            FilledButton.icon(
+              onPressed: posting || loading ? null : () => compose(),
+              icon: const Icon(Icons.edit_rounded, size: 18),
+              label: const Text('写评论'),
+            ),
+          const Spacer(),
+          IconButton(
+            tooltip: '刷新',
+            onPressed: posting || loading
+                ? null
+                : () => selected == null ? prepare() : fetch(reset: true),
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
+      const SizedBox(height: NekoSpace.sm),
+      if (loading || posting) const LinearProgressIndicator(),
+      if (message case final value?) InlineNotice(value),
+      if (error case final value?) InlineNotice(value, error: true),
+    ];
+    final List<Widget> body;
+    if (selected == null) {
+      body = [
+        if (matches.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: NekoSpace.sm),
+            child: Text('请选择对应的歌曲，避免看到其他版本的评论。', style: text.bodySmall),
+          ),
+        for (final song in matches)
+          ListTile(
+            leading: Artwork(size: 44, url: song.artwork, label: song.title),
+            title: Text(song.title),
+            subtitle: Text(song.artist),
+            onTap: () {
+              setState(() {
+                selected = song;
+                matches = [];
+              });
+              fetch(reset: true);
+            },
+          ),
+      ];
+    } else if (comments.isEmpty) {
+      body = [
+        if (!loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: NekoSpace.xxl),
+            child: EmptyState(
+              icon: Icons.forum_outlined,
+              title: '暂无评论',
+              description: '来写第一条吧。',
+            ),
+          ),
+      ];
+    } else {
+      body = [
+        for (final (index, comment) in comments.indexed) ...[
+          if (index > 0) const Divider(),
+          _comment(context, comment),
+        ],
+        if (page.hasMore)
+          Center(
+            child: TextButton(
+              onPressed: loading ? null : fetch,
+              child: const Text('加载更多'),
+            ),
+          ),
+      ];
+    }
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.parent == null ? '${widget.song.title} · 评论' : '评论回复',
+        ),
+      ),
+      body: Align(
+        alignment: Alignment.topLeft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 820),
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(gutter, NekoSpace.sm, gutter, gutter),
+            children: [...header, ...body],
+          ),
+        ),
+      ),
+    );
+  }
 }

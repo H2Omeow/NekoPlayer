@@ -4,6 +4,7 @@ import 'package:nekoplayer_desktop/domain/library.dart';
 import 'package:nekoplayer_desktop/domain/online_music.dart';
 import 'package:nekoplayer_desktop/player_controller.dart';
 import 'package:nekoplayer_desktop/ui/playback_options.dart';
+import 'package:nekoplayer_desktop/ui/widgets/song_row.dart';
 
 import 'fakes.dart';
 
@@ -106,23 +107,23 @@ void main() {
     (tester) async {
       await withPlayer(tester, (player, engine) async {
         await select(tester, '播放队列');
-        expect(find.text('播放队列 · 3'), findsOneWidget);
+        expect(find.text('3 首 · 拖动可调整顺序'), findsOneWidget);
         expect(
           tester
-              .widgetList<ListTile>(find.byType(ListTile))
-              .map((row) => row.selected),
+              .widgetList<SongRow>(find.byType(SongRow))
+              .map((row) => row.playing),
           [false, false, true],
         );
-        await tester.tap(find.byTooltip('队列操作 1'));
+        await tester.tap(find.byTooltip('歌曲操作').at(0));
         await tester.pumpAndSettle();
         await tester.tap(find.text('下移'));
         await tester.pumpAndSettle();
         expect(player.queue.map((track) => track.online!.id), ['2', '1', '1']);
         expect(player.queueIndex, 2);
         expect(player.position, const Duration(seconds: 23));
-        await tester.ensureVisible(find.byTooltip('队列操作 3'));
+        await tester.ensureVisible(find.byTooltip('歌曲操作').at(2));
         await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip('队列操作 3'));
+        await tester.tap(find.byTooltip('歌曲操作').at(2));
         await tester.pumpAndSettle();
         await tester.tap(find.text('从队列移除'));
         await tester.pumpAndSettle();

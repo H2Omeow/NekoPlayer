@@ -1,39 +1,117 @@
 package top.nekoh2o.player.ui.theme
 
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.TextFieldColors
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.Shapes
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.TextFieldColors
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 
-/** 柔和珊瑚色用于强调和选中状态。 */
-private val Primary = Color(0xFFFF8C96)
+/** 间距刻度，与桌面端 NekoSpace 一致。页面布局只用这些值。 */
+object NekoSpace {
+    val xs = 4.dp
+    val sm = 8.dp
+    val md = 12.dp
+    val lg = 16.dp
+    val xl = 24.dp
+    val xxl = 32.dp
+}
 
-// App 以壁纸为背景，全局文字统一白色
-private val White = Color(0xFFFFFFFF)
-private val WhiteVariant = Color(0xFFB8B9C5)
-private val WhiteOutline = Color(0xFF858592)
-private val WhiteDivider = Color(0xFF34343F)
+/** 圆角刻度，与桌面端 NekoRadius 一致。 */
+object NekoRadius {
+    val cover = 8.dp
+    val control = 10.dp
+    val card = 16.dp
+    val artwork = 20.dp
+    val sheet = 28.dp
+}
+
+// 与桌面端深色方案同色，两端视觉一致
+private val Scheme = darkColorScheme(
+    primary = Color(0xFFF0546E),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFF4B1A26),
+    onPrimaryContainer = Color(0xFFFFD9DF),
+    inversePrimary = Color(0xFFB8304B),
+    secondary = Color(0xFFC9C3CB),
+    onSecondary = Color(0xFF1D1B1E),
+    secondaryContainer = Color(0xFF333034),
+    onSecondaryContainer = Color(0xFFF2EEF2),
+    tertiary = Color(0xFF8FCBC4),
+    onTertiary = Color(0xFF00201D),
+    tertiaryContainer = Color(0xFF1F3B38),
+    onTertiaryContainer = Color(0xFFB7EDE6),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+    background = Color(0xFF0B0A0C),
+    onBackground = Color(0xFFEEEAEE),
+    surface = Color(0xFF141315),
+    onSurface = Color(0xFFEEEAEE),
+    surfaceVariant = Color(0xFF353336),
+    onSurfaceVariant = Color(0xFFABA6AE),
+    surfaceDim = Color(0xFF0B0A0C),
+    surfaceBright = Color(0xFF3A383B),
+    surfaceContainerLowest = Color(0xFF0B0A0C),
+    surfaceContainerLow = Color(0xFF1B1A1C),
+    surfaceContainer = Color(0xFF211F22),
+    surfaceContainerHigh = Color(0xFF2A282B),
+    surfaceContainerHighest = Color(0xFF353336),
+    outline = Color(0xFF7A757D),
+    outlineVariant = Color(0xFF302E32),
+    // 关掉 tonal elevation 染色，否则 Surface 会把调透明的颜色重新叠成不透明
+    surfaceTint = Color.Transparent,
+    inverseSurface = Color(0xFFEEEAEE),
+    inverseOnSurface = Color(0xFF1D1B1E),
+    scrim = Color(0xFF000000)
+)
+
+private fun style(size: Int, weight: FontWeight, height: Float) = TextStyle(
+    fontSize = size.sp,
+    fontWeight = weight,
+    lineHeight = (size * height).sp,
+    letterSpacing = 0.em
+)
+
+// 与桌面端字号层级一致；移动端正文略大一号以便阅读
+private val NekoTypography = Typography(
+    displaySmall = style(32, FontWeight.Bold, 1.25f),
+    headlineMedium = style(28, FontWeight.Bold, 1.3f),
+    headlineSmall = style(24, FontWeight.Bold, 1.3f),
+    titleLarge = style(20, FontWeight.SemiBold, 1.35f),
+    titleMedium = style(16, FontWeight.SemiBold, 1.4f),
+    titleSmall = style(14, FontWeight.SemiBold, 1.4f),
+    bodyLarge = style(16, FontWeight.Normal, 1.45f),
+    bodyMedium = style(14, FontWeight.Normal, 1.45f),
+    bodySmall = style(12, FontWeight.Normal, 1.45f),
+    labelLarge = style(14, FontWeight.SemiBold, 1.3f),
+    labelMedium = style(12, FontWeight.Medium, 1.3f),
+    labelSmall = style(11, FontWeight.Medium, 1.3f)
+)
 
 /**
- * 全局主题。
+ * 全局主题。始终为深色：壁纸背景上需要浅色文字。
  *
  * @param controlAlpha 控件不透明度，0 全透明、1 不透明。仅在 [translucent] 为 true 时生效。
- * @param translucent 是否开启壁纸背景。开启后所有 surface / container 系列颜色统一按
- *   [controlAlpha] 变半透明，这样 Card、ListItem、TabRow、TopAppBar、AlertDialog、
- *   ModalBottomSheet 等所有 Material3 控件都会跟着透明，不需要在每个调用点单独改颜色。
+ * @param translucent 是否开启壁纸背景。开启后 surface / container 系列颜色统一按
+ *   [controlAlpha] 变半透明，Card、ListItem、TopAppBar、对话框等控件都会跟着透明。
  * @param uiScale UI 缩放倍率（0.8 ~ 1.3），保留系统字体缩放，不重复放大文字
  */
 @Composable
@@ -43,67 +121,27 @@ fun NekoTheme(
     uiScale: Float = 1.0f,
     content: @Composable () -> Unit
 ) {
-    // 始终用深色配色：全局白字需要深色底衬，浅色方案会出现白字白底不可读
-    val base = darkColorScheme(
-        primary = Primary,
-        onPrimary = Color(0xFF351218),
-        primaryContainer = Color(0xFF512830),
-        secondary = Color(0xFFCAC2DC),
-        secondaryContainer = Color(0xFF35303F),
-        tertiary = Color(0xFF9FD5C4),
-        background = Color(0xFF111116),
-        surface = Color(0xFF19191F),
-        surfaceDim = Color(0xFF111116),
-        surfaceBright = Color(0xFF37373F),
-        surfaceVariant = Color(0xFF303039),
-        surfaceContainerLowest = Color(0xFF0D0D12),
-        surfaceContainerLow = Color(0xFF17171D),
-        surfaceContainer = Color(0xFF1E1E25),
-        surfaceContainerHigh = Color(0xFF25252D),
-        surfaceContainerHighest = Color(0xFF303039),
-        onPrimaryContainer = White,
-        onSecondary = White,
-        onSecondaryContainer = White,
-        onTertiary = White,
-        onTertiaryContainer = White,
-        onBackground = White,
-        onSurface = White,
-        onSurfaceVariant = WhiteVariant,
-        onError = White,
-        onErrorContainer = White,
-        outline = WhiteOutline,
-        outlineVariant = WhiteDivider,
-        // 关键：关掉 tonal elevation 染色。否则 Surface 会把 surfaceTint 按海拔叠回控件上，
-        // 把刚调透明的颜色重新叠成不透明。
-        surfaceTint = Color.Transparent,
-        // Snackbar 用的反色，保持深底白字
-        inverseSurface = Color(0xFF2A2A2A),
-        inverseOnSurface = White
-    )
-
     val density = LocalDensity.current
     val scaledDensity = remember(uiScale, density) {
         Density(density.density * uiScale.coerceIn(0.8f, 1.3f), density.fontScale)
     }
+    val colors = if (translucent) Scheme.withControlAlpha(controlAlpha) else Scheme
 
     MaterialTheme(
-        colorScheme = if (translucent) base.withControlAlpha(controlAlpha) else base,
+        colorScheme = colors,
+        typography = NekoTypography,
         shapes = Shapes(
-            extraSmall = RoundedCornerShape(8.dp),
-            small = RoundedCornerShape(12.dp),
-            medium = RoundedCornerShape(16.dp),
-            large = RoundedCornerShape(24.dp),
-            extraLarge = RoundedCornerShape(28.dp)
+            extraSmall = RoundedCornerShape(NekoRadius.cover),
+            small = RoundedCornerShape(NekoRadius.control),
+            medium = RoundedCornerShape(NekoRadius.card),
+            large = RoundedCornerShape(NekoRadius.artwork),
+            extraLarge = RoundedCornerShape(NekoRadius.sheet)
         )
     ) {
-        // 关键：把根级 LocalContentColor 强制成白色。
-        // 壁纸开启时 Scaffold 的 containerColor 是 Color.Transparent，Material3 会用
-        // contentColorFor(Transparent) 反推文字色，但 Transparent 不匹配任何配色，于是
-        // 回退到根级 LocalContentColor（默认黑），导致直接放在 Column/Box 里的裸 Text
-        // 变黑不可见，而 Surface/Card/ListItem 内的文字仍是白色——即”部分白字”现象。
-        // 在这里统一兜底为白色，Surface 系列仍会各自按 onSurface 覆盖，不受影响。
+        // 壁纸开启时 Scaffold 是透明色，contentColorFor(Transparent) 推不出文字色，
+        // 会回退到根级 LocalContentColor（默认黑）。这里兜底为 onSurface。
         CompositionLocalProvider(
-            LocalContentColor provides White,
+            LocalContentColor provides colors.onSurface,
             LocalDensity provides scaledDensity,
             content = content
         )
@@ -113,8 +151,7 @@ fun NekoTheme(
 /**
  * 把 surface / container 系列统一改成半透明，让壁纸透出来。
  *
- * 不动 background：壁纸层由 MainScaffold 自己铺，且壁纸缺失时需要一个不透明兜底色，
- * 否则白字会落到系统窗口底色上看不见。
+ * 不动 background：壁纸层由 MainScaffold 自己铺，壁纸缺失时需要不透明兜底色。
  */
 private fun ColorScheme.withControlAlpha(alpha: Float): ColorScheme {
     val a = alpha.coerceIn(0f, 1f)
@@ -133,36 +170,40 @@ private fun ColorScheme.withControlAlpha(alpha: Float): ColorScheme {
 }
 
 /**
- * 文字类控件的白色默认值。
+ * 文字类控件的中性默认值。
  *
- * TextButton / OutlinedButton 的默认 contentColor 是 primary（红），这里统一改白，
- * 同时保留 primary 作为强调色，不影响歌词渐变和 Slider / Switch / 收藏心形。
+ * TextButton / OutlinedButton 默认用 primary 着色，大面积使用时太跳；这里改为正文色，
+ * primary 只留给主要操作、选中状态和收藏。
  */
 object NekoDefaults {
 
     @Composable
     fun textButtonColors(): ButtonColors =
-        ButtonDefaults.textButtonColors(contentColor = White)
+        ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
 
     @Composable
     fun outlinedButtonColors(): ButtonColors =
-        ButtonDefaults.outlinedButtonColors(contentColor = White)
+        ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
 
-    /** 输入框：文字、标签、光标、描边全部白色 */
     @Composable
-    fun textFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = White,
-        unfocusedTextColor = White,
-        focusedLabelColor = White,
-        unfocusedLabelColor = WhiteVariant,
-        focusedPlaceholderColor = WhiteVariant,
-        unfocusedPlaceholderColor = WhiteVariant,
-        cursorColor = White,
-        focusedBorderColor = White,
-        unfocusedBorderColor = WhiteOutline,
-        focusedTrailingIconColor = White,
-        unfocusedTrailingIconColor = WhiteVariant,
-        focusedLeadingIconColor = White,
-        unfocusedLeadingIconColor = WhiteVariant
-    )
+    fun textFieldColors(): TextFieldColors {
+        val c = MaterialTheme.colorScheme
+        return OutlinedTextFieldDefaults.colors(
+            focusedTextColor = c.onSurface,
+            unfocusedTextColor = c.onSurface,
+            focusedLabelColor = c.primary,
+            unfocusedLabelColor = c.onSurfaceVariant,
+            focusedPlaceholderColor = c.onSurfaceVariant,
+            unfocusedPlaceholderColor = c.onSurfaceVariant,
+            cursorColor = c.primary,
+            focusedBorderColor = c.primary,
+            unfocusedBorderColor = c.outline,
+            focusedContainerColor = c.surfaceContainerLow,
+            unfocusedContainerColor = c.surfaceContainerLow,
+            focusedTrailingIconColor = c.onSurface,
+            unfocusedTrailingIconColor = c.onSurfaceVariant,
+            focusedLeadingIconColor = c.onSurface,
+            unfocusedLeadingIconColor = c.onSurfaceVariant
+        )
+    }
 }

@@ -142,12 +142,8 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        for (final entry in [('红心歌曲', '全部同步到收藏'), ('最近一周记录', '全部同步到历史')]) {
-          await tester.tap(
-            find.byType(DropdownButtonFormField<AccountCollection>),
-          );
-          await tester.pumpAndSettle();
-          await tester.tap(find.text(entry.$1).last);
+        for (final entry in [('红心歌曲', '全部同步到我喜欢'), ('最近一周记录', '全部同步到最近播放')]) {
+          await tester.tap(find.widgetWithText(ChoiceChip, entry.$1));
           await tester.pumpAndSettle();
           await tester.ensureVisible(find.text(entry.$2));
           await tester.pumpAndSettle();
@@ -205,25 +201,26 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('查看评论'));
+      await tester.tap(find.byTooltip('歌曲操作'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('查看评论'));
+      await tester.pumpAndSettle();
       expect(commented, same(song));
       await tester.tap(find.byTooltip('歌曲操作'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('下载歌曲'));
+      await tester.tap(find.text('下载'));
       await tester.pumpAndSettle();
       expect(downloaded, same(song));
       expect(player.engine.playing, isFalse);
-      await tester.tap(find.byTooltip('歌曲操作'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('收藏'));
+      await tester.tap(find.byTooltip('收藏'));
       await tester.pumpAndSettle();
       await player.flushed;
       final saved = LibraryData.decode(store.value!);
       expect(saved.favorites, contains(Track.fromOnline(song).path));
       expect(saved.tracks.single.online!.id, '42');
+      expect(find.byTooltip('取消收藏'), findsOneWidget);
       await tester.tap(find.byTooltip('歌曲操作'));
       await tester.pumpAndSettle();
-      expect(find.text('取消收藏'), findsOneWidget);
       await tester.tap(find.text('加入播放队列'));
       await tester.pumpAndSettle();
       expect(player.queue.single.online!.id, '42');

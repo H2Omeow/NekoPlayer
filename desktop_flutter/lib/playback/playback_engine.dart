@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
 
+import '../diagnostics/crash_log.dart';
+import '../diagnostics/mpv_logging.dart';
 import '../domain/library.dart';
 import '../domain/online_music.dart';
 import 'resolving_queue.dart';
@@ -40,6 +42,12 @@ abstract class PlaybackEngine extends ChangeNotifier {
 
 class MediaKitEngine extends PlaybackEngine {
   MediaKitEngine({OnlineAudioSource? onlineSource}) {
+    _player = Player(
+      configuration: const PlayerConfiguration(
+        title: 'NekoPlayer',
+        logLevel: mpvLogConfigurationLevel,
+      ),
+    );
     _queue = ResolvingQueue(
       source: onlineSource,
       load: (uri) async {
@@ -77,15 +85,15 @@ class MediaKitEngine extends PlaybackEngine {
         }
       }),
       _player.stream.error.listen((value) {
+        CrashLog.error('mpv', 'playback error: $value');
         _error = '音频无法播放，请确认文件可访问且格式受支持。';
         notifyListeners();
       }),
+      attachMpvLog(_player, 'mpv'),
     ]);
   }
 
-  final Player _player = Player(
-    configuration: const PlayerConfiguration(title: 'NekoPlayer'),
-  );
+  late final Player _player;
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   late final ResolvingQueue _queue;
   Future<void> _commands = Future.value();
@@ -95,7 +103,13 @@ class MediaKitEngine extends PlaybackEngine {
     final command = _commands.then((_) async {
       if (!_disposed) await action();
     });
-    _commands = command.catchError((Object failure) {
+    _commands = command.catchError((Object failure, StackTrace stack) {
+      CrashLog.error(
+        'playback',
+        'Playback command failed',
+        error: failure,
+        stack: stack,
+      );
       if (_disposed) return;
       _error = failure is MusicSearchException
           ? failure.message
@@ -173,20 +187,40 @@ class MediaKitEngine extends PlaybackEngine {
     notifyListeners();
   });
 
+  /// Direct (unqueued) command that is dropped once disposed and never throws
+  /// from a torn-down native player.
+  Future<void> _direct(String name, Future<void> Function() action) async {
+    if (_disposed) return;
+    try {
+      await action();
+    } catch (failure, stack) {
+      CrashLog.error(
+        'playback',
+        'Player command $name failed',
+        error: failure,
+        stack: stack,
+      );
+      if (!_disposed) rethrow;
+    }
+  }
+
   @override
-  Future<void> toggle() => _player.playOrPause();
+  Future<void> toggle() => _direct('toggle', _player.playOrPause);
   @override
-  Future<void> pause() => _player.pause();
+  Future<void> pause() => _direct('pause', _player.pause);
   @override
   Future<void> next() => _serialize(() => _advance(1));
   @override
   Future<void> previous() => _serialize(() => _advance(-1));
   @override
-  Future<void> seek(Duration position) => _player.seek(position);
+  Future<void> seek(Duration position) =>
+      _serialize(() => _player.seek(position));
   @override
-  Future<void> setVolume(double value) => _player.setVolume(value);
+  Future<void> setVolume(double value) =>
+      _serialize(() => _player.setVolume(value));
   @override
-  Future<void> setRate(double value) => _player.setRate(value);
+  Future<void> setRate(double value) =>
+      _serialize(() => _player.setRate(value));
   @override
   Future<void> setRepeatMode(RepeatMode mode) async {
     _queue.repeat = mode;
@@ -203,7 +237,20 @@ class MediaKitEngine extends PlaybackEngine {
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());
     }
-    unawaited(_player.dispose());
+    // Let the in-flight command finish before libmpv is torn down.
+    unawaited(
+      _commands.then((_) => _player.dispose()).catchError((
+        Object failure,
+        StackTrace stack,
+      ) {
+        CrashLog.error(
+          'playback',
+          'Player dispose failed',
+          error: failure,
+          stack: stack,
+        );
+      }),
+    );
     super.dispose();
   }
 }

@@ -32,13 +32,15 @@ void main() {
         home: AudioEffectsPage(engine: engine),
       ),
     );
+    // The page scrolls vertically; the equalizer has its own horizontal scroller.
+    final page = find.byType(Scrollable).first;
     final dropdown = find.byType(DropdownButtonFormField<int>);
-    await tester.scrollUntilVisible(dropdown, 180);
+    await tester.scrollUntilVisible(dropdown, 180, scrollable: page);
     expect(find.text('跨界·碎梦').hitTestable(), findsOneWidget);
     final description = find.text('跨界 · 强削波与极限压缩；刻意失真风格');
-    await tester.scrollUntilVisible(description, 100);
+    await tester.scrollUntilVisible(description, 100, scrollable: page);
     expect(description.hitTestable(), findsOneWidget);
-    await tester.scrollUntilVisible(dropdown, -100);
+    await tester.scrollUntilVisible(dropdown, -100, scrollable: page);
     await tester.tap(dropdown);
     await tester.pumpAndSettle();
     final next = find.text('跨界·战歌');

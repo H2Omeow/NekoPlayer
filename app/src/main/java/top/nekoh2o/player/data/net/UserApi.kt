@@ -1,7 +1,8 @@
 package top.nekoh2o.player.data.net
 
 import top.nekoh2o.player.data.model.MeResp
-import top.nekoh2o.player.data.model.UserData
+import top.nekoh2o.player.data.model.SectionsPatchRequest
+import top.nekoh2o.player.data.model.SectionsPatchResp
 import top.nekoh2o.player.data.model.UserDataResp
 import top.nekoh2o.player.data.model.WallpaperResp
 import top.nekoh2o.player.data.model.NcAccountResp
@@ -11,7 +12,8 @@ import top.nekoh2o.player.data.model.NcLikeListResp
 import top.nekoh2o.player.data.model.NcPlayRecordResp
 import retrofit2.http.Body
 import retrofit2.http.GET
-import retrofit2.http.PUT
+import retrofit2.http.PATCH
+import retrofit2.Response
 import retrofit2.http.POST
 import retrofit2.http.Query
 
@@ -23,10 +25,10 @@ interface UserApi {
     suspend fun logout(): retrofit2.Response<Unit>
 
     @GET("user/data")
-    suspend fun pullData(): UserDataResp
+    suspend fun pullData(): Response<UserDataResp>
 
-    @PUT("user/data")
-    suspend fun pushData(@Body data: UserData): UserDataResp
+    @PATCH("user/data/sections")
+    suspend fun patchSections(@Body body: SectionsPatchRequest): Response<SectionsPatchResp>
 
     @GET("local/wallpaper/list")
     suspend fun wallpaperList(@Query("orientation") orientation: String): WallpaperResp

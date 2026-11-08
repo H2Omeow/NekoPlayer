@@ -11,6 +11,10 @@
     "url": "https://api.nuget.org/v3-flatcontainer/avalonia.angle.windows.natives/2.1.27548.20260419/avalonia.angle.windows.natives.2.1.27548.20260419.nupkg",
     "sha256": "76d67901097e9173d155efc4c2b7d2c8e3122f2c2e0415028eb0c88478a386f9"
   },
+  "webview2": {
+    "url": "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.4314.35/microsoft.web.webview2.1.0.4314.35.nupkg",
+    "sha256": "90778deb1b77e36292828b4b5833c9255c27533f40e0ddd55891ae718944edc4"
+  },
   "mpv_x64": {
     "url": "https://github.com/media-kit/libmpv-win32-video-cmake/releases/download/20241021/mpv-dev-x86_64-20241021-git-0f78584.7z",
     "sha256": "e23701df0adc1fe57c8ede3ff313513b0b80519870058c2d35ff02754284a007"

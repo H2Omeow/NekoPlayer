@@ -1,344 +1,401 @@
 package top.nekoh2o.player.ui.screens
 
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.outlined.Audiotrack
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import top.nekoh2o.player.data.model.Playlist
 import top.nekoh2o.player.data.model.Song
 import top.nekoh2o.player.ui.PlayerViewModel
-import top.nekoh2o.player.ui.a11y.asButton
+import top.nekoh2o.player.ui.UiState
 import top.nekoh2o.player.ui.a11y.clickableRow
+import top.nekoh2o.player.ui.components.Artwork
+import top.nekoh2o.player.ui.components.ChipRow
+import top.nekoh2o.player.ui.components.DetailTopBar
+import top.nekoh2o.player.ui.components.EmptyState
+import top.nekoh2o.player.ui.components.ScreenHeader
+import top.nekoh2o.player.ui.components.SettingsSection
+import top.nekoh2o.player.ui.components.SettingsTile
+import top.nekoh2o.player.ui.components.SongActions
+import top.nekoh2o.player.ui.components.SongRow
+import top.nekoh2o.player.ui.components.songKey
 import top.nekoh2o.player.ui.theme.NekoDefaults
+import top.nekoh2o.player.ui.theme.NekoRadius
+import top.nekoh2o.player.ui.theme.NekoSpace
+
+enum class LibraryTab(val label: String) {
+    HISTORY("播放记录"),
+    FAVORITES("我的收藏"),
+    PLAYLISTS("歌单")
+}
+
+/** 「我的」页的回调。 */
+class MineCallbacks(
+    val onLogin: () -> Unit,
+    val onLogout: () -> Unit,
+    val onSettings: () -> Unit,
+    val onNetease: () -> Unit,
+    val onKugou: () -> Unit,
+    val onCloudSync: () -> Unit,
+    val onOpenPlaylist: (Int) -> Unit,
+    val onCreatePlaylist: () -> Unit,
+    val onDeletePlaylist: (Int) -> Unit
+)
+
+private enum class MinePage { HOME, SETTINGS, NETEASE, KUGOU, KUGOU_LOGIN, CLOUD_SYNC }
 
 @Composable
-fun MineScreen(vm: PlayerViewModel, onStartSsoLogin: () -> Unit) {
+fun MineScreen(
+    vm: PlayerViewModel,
+    libraryTab: LibraryTab,
+    onLibraryTab: (LibraryTab) -> Unit,
+    onStartSsoLogin: () -> Unit
+) {
     val state by vm.ui.collectAsState()
-    var tab by remember { mutableIntStateOf(0) }
+    val sync by vm.cloudSync.state.collectAsState()
+    var page by remember { mutableStateOf(MinePage.HOME) }
     var openedPlaylist by remember { mutableIntStateOf(-1) }
     var addTarget by remember { mutableStateOf<Song?>(null) }
-    var showQrLogin by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
-    var showNcScreen by remember { mutableStateOf(false) }
-    var showKgScreen by remember { mutableStateOf(false) }
-    var showKgLogin by remember { mutableStateOf(false) }
-    val titles = listOf("播放记录", "我的收藏", "自定义歌单")
+    var creating by remember { mutableStateOf(false) }
+    val actions = remember(vm) { vm.songActions { addTarget = it } }
 
-    if (showSettings) {
-        SettingsScreen(vm) { showSettings = false }
-        return
-    }
-    if (showNcScreen) {
-        NeteaseScreen(vm) { showNcScreen = false }
-        return
-    }
-    if (showKgLogin) {
-        KugouLoginScreen(vm) {
-            showKgLogin = false
-            showKgScreen = false
-        }
-        return
-    }
-    if (showKgScreen) {
-        KugouAccountScreen(
+    when {
+        page == MinePage.SETTINGS -> SettingsScreen(vm) { page = MinePage.HOME }
+        page == MinePage.NETEASE -> NeteaseScreen(vm) { page = MinePage.HOME }
+        page == MinePage.KUGOU_LOGIN -> KugouLoginScreen(vm) { page = MinePage.HOME }
+        page == MinePage.KUGOU -> KugouAccountScreen(
             vm = vm,
-            onBack = { showKgScreen = false },
-            onLogin = {
-                showKgScreen = false
-                showKgLogin = true
-            }
+            onBack = { page = MinePage.HOME },
+            onLogin = { page = MinePage.KUGOU_LOGIN }
         )
-        return
-    }
-    if (openedPlaylist in state.playlists.indices) {
-        PlaylistDetail(vm, openedPlaylist, onBack = { openedPlaylist = -1 })
-        return
-    }
-
-    Column(Modifier.fillMaxSize()) {
-        UserCard(
+        page == MinePage.CLOUD_SYNC -> CloudSyncScreen(vm) { page = MinePage.HOME }
+        openedPlaylist in state.playlists.indices -> PlaylistDetail(
+            playlist = state.playlists[openedPlaylist],
+            actions = actions,
+            onRemove = { vm.removeFromPlaylist(openedPlaylist, it) },
+            onBack = { openedPlaylist = -1 }
+        )
+        else -> MineContent(
             state = state,
-            onLogin = onStartSsoLogin,
-            onLogout = { vm.logout() },
-            onNetease = { showNcScreen = true },
-            onKugou = { showKgScreen = true },
-            onSettings = { showSettings = true }
-        )
-        TabRow(selectedTabIndex = tab) {
-            titles.forEachIndexed { i, t ->
-                Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) })
+            syncSummary = when {
+                !state.loggedIn -> "登录后可用"
+                sync.conflictCount > 0 -> "${sync.conflictCount} 项需要处理"
+                else -> null
+            },
+            libraryTab = libraryTab,
+            onLibraryTab = onLibraryTab,
+            actions = actions,
+            callbacks = remember(vm) {
+                MineCallbacks(
+                    onLogin = onStartSsoLogin,
+                    onLogout = {
+                        android.webkit.CookieManager.getInstance().removeAllCookies(null)
+                        android.webkit.CookieManager.getInstance().flush()
+                        vm.logout()
+                    },
+                    onSettings = { page = MinePage.SETTINGS },
+                    onNetease = { page = MinePage.NETEASE },
+                    onKugou = { page = MinePage.KUGOU },
+                    onCloudSync = { page = MinePage.CLOUD_SYNC },
+                    onOpenPlaylist = { openedPlaylist = it },
+                    onCreatePlaylist = { creating = true },
+                    onDeletePlaylist = vm::deletePlaylist
+                )
             }
-        }
-        when (tab) {
-            0 -> SongList(vm, state.history, "暂无播放记录") { addTarget = it }
-            1 -> SongList(vm, state.favorites, "暂无收藏") { addTarget = it }
-            2 -> PlaylistList(vm) { openedPlaylist = it }
-        }
+        )
     }
 
-    addTarget?.let { song ->
-        AddToPlaylistDialog(vm, song) { addTarget = null }
+    addTarget?.let { song -> AddToPlaylistDialog(vm, song) { addTarget = null } }
+    if (creating) CreatePlaylistDialog(
+        onCreate = { vm.createPlaylist(it) },
+        onDismiss = { creating = false }
+    )
+}
+
+@Composable
+fun MineContent(
+    state: UiState,
+    syncSummary: String?,
+    libraryTab: LibraryTab,
+    onLibraryTab: (LibraryTab) -> Unit,
+    actions: SongActions,
+    callbacks: MineCallbacks
+) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = NekoSpace.xl)) {
+        item {
+            ScreenHeader("我的") {
+                IconButton(onClick = callbacks.onSettings) {
+                    Icon(Icons.Outlined.Settings, contentDescription = "设置")
+                }
+            }
+        }
+        item {
+            ProfileCard(
+                state = state,
+                onLogin = callbacks.onLogin,
+                onLogout = callbacks.onLogout,
+                modifier = Modifier.padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm)
+            )
+        }
+        item {
+            SettingsSection(
+                modifier = Modifier.padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm)
+            ) {
+                SettingsTile(
+                    title = "网易云音乐",
+                    icon = Icons.Outlined.MusicNote,
+                    value = state.ncAccount.takeIf { it.isValid }?.nickname?.ifBlank { "已登录" } ?: "未登录",
+                    onClick = callbacks.onNetease
+                )
+                SettingsTile(
+                    title = "酷狗音乐",
+                    icon = Icons.Outlined.Audiotrack,
+                    value = state.kgAccount.takeIf { it.isValid }?.let { account ->
+                        account.nickname.ifBlank { "已登录" } + if (account.platform == 1) " · 概念版" else ""
+                    } ?: "未登录",
+                    onClick = callbacks.onKugou
+                )
+                SettingsTile(
+                    title = "云端同步",
+                    icon = Icons.Outlined.Cloud,
+                    value = syncSummary,
+                    onClick = callbacks.onCloudSync
+                )
+            }
+        }
+        item {
+            ChipRow(
+                items = LibraryTab.entries,
+                selected = libraryTab,
+                label = { it.label },
+                onSelect = onLibraryTab,
+                modifier = Modifier.padding(top = NekoSpace.lg, bottom = NekoSpace.sm)
+            )
+        }
+        when (libraryTab) {
+            LibraryTab.HISTORY -> songList(
+                state.history, state, actions,
+                empty = { EmptyState(Icons.Filled.History, "还没有播放记录", description = "播放过的歌曲会出现在这里。") }
+            )
+            LibraryTab.FAVORITES -> songList(
+                state.favorites, state, actions,
+                empty = { EmptyState(Icons.Filled.FavoriteBorder, "还没有收藏", description = "点歌曲旁的心形即可收藏。") }
+            )
+            LibraryTab.PLAYLISTS -> playlistList(state.playlists, callbacks)
+        }
     }
 }
 
 @Composable
-private fun UserCard(
-    state: top.nekoh2o.player.ui.UiState,
+private fun ProfileCard(
+    state: UiState,
     onLogin: () -> Unit,
     onLogout: () -> Unit,
-    onNetease: () -> Unit,
-    onKugou: () -> Unit,
-    onSettings: () -> Unit
+    modifier: Modifier = Modifier
 ) {
-    ElevatedCard(Modifier.fillMaxWidth().padding(12.dp)) {
+    val user = state.user
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(NekoRadius.artwork),
+        color = MaterialTheme.colorScheme.surfaceContainer
+    ) {
         Row(
-            Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+            Modifier.padding(NekoSpace.lg),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(NekoSpace.md)
         ) {
-            val u = state.user
-            AsyncImage(
-                model = u?.avatar,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(26.dp))
-            )
-            Spacer(Modifier.width(12.dp))
+            Artwork(user?.avatar, size = 56.dp, shape = CircleShape, thumbnail = null, placeholder = Icons.Filled.Person)
             Column(Modifier.weight(1f)) {
                 Text(
-                    u?.nickname ?: u?.username ?: "未登录用户",
+                    user?.nickname ?: user?.username ?: "未登录",
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    if (u != null) "ID: ${u.id}" else "登录以同步多端数据",
+                    if (state.loggedIn) "NekoPlayer 账号" else "登录后可在设备间同步收藏、歌单和播放记录",
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis
                 )
             }
-            IconButton(onClick = onSettings) {
-                Icon(Icons.Filled.Settings, contentDescription = "设置")
-            }
-            Column {
-                if (state.loggedIn) {
-                    TextButton(
-                        onClick = {
-                            android.webkit.CookieManager.getInstance().removeAllCookies(null)
-                            android.webkit.CookieManager.getInstance().flush()
-                            onLogout()
-                        },
-                        colors = NekoDefaults.textButtonColors()
-                    ) { Text("退出") }
-                } else {
-                    TextButton(onClick = onLogin, colors = NekoDefaults.textButtonColors()) { Text("登录") }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = onNetease, colors = NekoDefaults.textButtonColors()) { Text("网易云") }
-                    TextButton(onClick = onKugou, colors = NekoDefaults.textButtonColors()) { Text("酷狗") }
-                }
+            if (state.loggedIn) {
+                OutlinedButton(onClick = onLogout, colors = NekoDefaults.outlinedButtonColors()) { Text("退出") }
+            } else {
+                Button(onClick = onLogin) { Text("登录") }
             }
         }
     }
 }
 
-@Composable
-private fun SongList(
-    vm: PlayerViewModel,
+private fun LazyListScope.songList(
     songs: List<Song>,
-    emptyHint: String,
-    onAddToPlaylist: (Song) -> Unit
+    state: UiState,
+    actions: SongActions,
+    empty: @Composable () -> Unit
 ) {
     if (songs.isEmpty()) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) { Text(emptyHint) }
+        item { empty() }
         return
     }
-    LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            TextButton(
-                onClick = { vm.playAll(songs) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                colors = NekoDefaults.textButtonColors()
-            ) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("播放全部 (${songs.size} 首)")
-            }
-            HorizontalDivider()
-        }
-        items(songs, key = { it.source + ":" + it.hash.ifBlank { it.id.toString() } }) { song ->
-            SongRow(
-                song = song,
-                isFav = vm.isFav(song.id),
-                onPlay = { vm.playNow(song) },
-                onAdd = { vm.addToQueue(song) },
-                onFav = { vm.toggleFav(song) },
-                onAddToPlaylist = { onAddToPlaylist(song) },
-                modifier = Modifier.animateItem(
-                    fadeInSpec = androidx.compose.animation.core.spring(
-                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                    ),
-                    placementSpec = androidx.compose.animation.core.spring(
-                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                    ),
-                    fadeOutSpec = androidx.compose.animation.core.spring(
-                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                    )
-                )
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlaylistList(vm: PlayerViewModel, onOpen: (Int) -> Unit) {
-    val state by vm.ui.collectAsState()
-    var showCreate by remember { mutableStateOf(false) }
-    var newName by remember { mutableStateOf("") }
-
-    Column(Modifier.fillMaxSize()) {
-        Button(onClick = { showCreate = true }, modifier = Modifier.padding(12.dp)) {
-            Text("新建歌单")
-        }
-        if (state.playlists.isEmpty()) {
-            Box(Modifier.fillMaxSize(), Alignment.Center) { Text("暂无自定义歌单") }
-        } else {
-            LazyColumn(Modifier.fillMaxSize()) {
-                items(state.playlists.size) { i ->
-                    val pl = state.playlists[i]
-                    ListItem(
-                        headlineContent = { Text(pl.name) },
-                        supportingContent = { Text("${pl.songs.size} 首歌曲") },
-                        leadingContent = {
-                            AsyncImage(
-                                model = pl.songs.firstOrNull()?.pc?.let { "$it?param=100y100" },
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(6.dp))
-                            )
-                        },
-                        trailingContent = {
-                            IconButton(onClick = { vm.deletePlaylist(i) }) {
-                                Icon(Icons.Filled.Delete, contentDescription = "删除歌单")
-                            }
-                        },
-                        modifier = Modifier.asButton(actionLabel = "打开歌单") { onOpen(i) }
-                    )
-                    HorizontalDivider()
-                }
-            }
-        }
-    }
-
-    if (showCreate) {
-        AlertDialog(
-            onDismissRequest = { showCreate = false },
-            title = { Text("新建歌单") },
-            text = {
-                OutlinedTextField(
-                    value = newName, onValueChange = { newName = it },
-                    singleLine = true, label = { Text("歌单名称") },
-                    colors = NekoDefaults.textFieldColors()
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (newName.isNotBlank()) vm.createPlaylist(newName.trim())
-                        newName = ""; showCreate = false
-                    },
-                    colors = NekoDefaults.textButtonColors()
-                ) { Text("创建") }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showCreate = false },
-                    colors = NekoDefaults.textButtonColors()
-                ) { Text("取消") }
-            }
+    item { PlayAllRow(songs.size) { actions.playAll(songs) } }
+    items(songs, key = { songKey(it) }) { song ->
+        SongRow(
+            song = song,
+            isFav = actions.isFav(song),
+            playing = state.current?.let { songKey(it) == songKey(song) } == true,
+            onPlay = { actions.play(song) },
+            onFav = { actions.toggleFav(song) },
+            onAdd = { actions.queue(song) },
+            onAddToPlaylist = { actions.addToPlaylist(song) },
+            modifier = Modifier.animateItem()
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PlaylistDetail(vm: PlayerViewModel, index: Int, onBack: () -> Unit) {
-    val state by vm.ui.collectAsState()
-    val pl = state.playlists.getOrNull(index) ?: run { onBack(); return }
+private fun PlayAllRow(count: Int, onPlayAll: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = NekoSpace.lg, vertical = NekoSpace.xs),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FilledTonalButton(onClick = onPlayAll, contentPadding = PaddingValues(horizontal = NekoSpace.lg)) {
+            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(NekoSpace.xs))
+            Text("播放全部")
+        }
+        Spacer(Modifier.width(NekoSpace.md))
+        Text("$count 首", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
 
-    Column(Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text(pl.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                }
+private fun LazyListScope.playlistList(playlists: List<Playlist>, callbacks: MineCallbacks) {
+    item {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickableRow(rowLabel = "新建歌单", actionLabel = "新建", onClick = callbacks.onCreatePlaylist)
+                .padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(NekoSpace.md)
+        ) {
+            Surface(Modifier.size(52.dp), shape = RoundedCornerShape(NekoRadius.cover), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Add, contentDescription = null) }
             }
-        )
-        if (pl.songs.isEmpty()) {
-            Box(Modifier.fillMaxSize(), Alignment.Center) { Text("歌单为空") }
-        } else {
-            LazyColumn(Modifier.fillMaxSize()) {
-                item {
-                    TextButton(
-                        onClick = { vm.playAll(pl.songs) },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                        colors = NekoDefaults.textButtonColors()
-                    ) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text("播放全部 (${pl.songs.size} 首)")
+            Text("新建歌单", style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+    if (playlists.isEmpty()) item {
+        EmptyState(Icons.AutoMirrored.Filled.QueueMusic, "还没有自己的歌单", description = "新建歌单后，可以在歌曲菜单中把歌加进来。")
+    }
+    itemsIndexed(playlists) { index, playlist ->
+        Row(
+            Modifier.fillMaxWidth().padding(start = NekoSpace.lg, end = NekoSpace.xs),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                Modifier
+                    .weight(1f)
+                    .clickableRow(rowLabel = "${playlist.name}，${playlist.songs.size} 首", actionLabel = "打开歌单") {
+                        callbacks.onOpenPlaylist(index)
                     }
-                    HorizontalDivider()
+                    .padding(vertical = NekoSpace.sm),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(NekoSpace.md)
+            ) {
+                Artwork(playlist.songs.firstOrNull()?.pc, size = 52.dp, placeholder = Icons.AutoMirrored.Filled.QueueMusic)
+                Column(Modifier.weight(1f)) {
+                    Text(playlist.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        "${playlist.songs.size} 首", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                items(pl.songs.size) { i ->
-                    val song = pl.songs[i]
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            Modifier.weight(1f).clickableRow(
-                                rowLabel = "${song.nm}，${song.ar}", actionLabel = "播放"
-                            ) { vm.playNow(song) },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            AsyncImage(
-                                model = song.pc?.let { "$it?param=100y100" },
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(6.dp))
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(song.nm, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(
-                                    song.ar, style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis
+            }
+            IconButton(onClick = { callbacks.onDeletePlaylist(index) }) {
+                Icon(Icons.Filled.Delete, contentDescription = "删除歌单", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistDetail(
+    playlist: Playlist,
+    actions: SongActions,
+    onRemove: (Int) -> Unit,
+    onBack: () -> Unit
+) {
+    Column(Modifier.fillMaxSize()) {
+        DetailTopBar(playlist.name, onBack)
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = NekoSpace.xl)) {
+            if (playlist.songs.isEmpty()) {
+                item { EmptyState(Icons.AutoMirrored.Filled.QueueMusic, "歌单是空的", description = "在歌曲菜单中选择「加入歌单」。") }
+            } else {
+                item { PlayAllRow(playlist.songs.size) { actions.playAll(playlist.songs) } }
+                itemsIndexed(playlist.songs) { index, song ->
+                    SongRow(
+                        song = song,
+                        isFav = actions.isFav(song),
+                        onPlay = { actions.play(song) },
+                        onFav = { actions.toggleFav(song) },
+                        trailing = {
+                            IconButton(onClick = { onRemove(index) }) {
+                                Icon(
+                                    Icons.Filled.RemoveCircleOutline, contentDescription = "从歌单移除",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-                        IconButton(onClick = { vm.removeFromPlaylist(index, i) }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "移除")
-                        }
-                    }
+                    )
                 }
             }
         }
     }
+}
+
+@Composable
+fun CreatePlaylistDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("新建歌单") },
+        text = {
+            OutlinedTextField(
+                value = name, onValueChange = { name = it },
+                singleLine = true, label = { Text("歌单名称") },
+                colors = NekoDefaults.textFieldColors()
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { if (name.isNotBlank()) onCreate(name.trim()); onDismiss() },
+                enabled = name.isNotBlank()
+            ) { Text("创建") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, colors = NekoDefaults.textButtonColors()) { Text("取消") }
+        }
+    )
 }

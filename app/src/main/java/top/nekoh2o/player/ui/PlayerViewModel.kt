@@ -46,6 +46,9 @@ import top.nekoh2o.player.data.repo.Downloader
 import top.nekoh2o.player.data.repo.MusicRepository
 import top.nekoh2o.player.data.plugins.PluginStore
 import top.nekoh2o.player.data.repo.UserRepository
+import top.nekoh2o.player.data.sync.LocalSyncData
+import top.nekoh2o.player.data.sync.SyncEngine
+import top.nekoh2o.player.data.sync.SyncSection
 import top.nekoh2o.player.data.store.SettingsStore
 import top.nekoh2o.player.lyric.LyricParser
 import top.nekoh2o.player.playback.FloatingLyricService
@@ -135,6 +138,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private val local = (app as PlayerApp).localStore
     private val settingsStore = SettingsStore(app)
 
+    /** 云同步：所有上传/拉取都经由此处，没有隐式整包上传。 */
+    val cloudSync = SyncEngine(
+        remote = userRepo,
+        local = LocalSyncData(local),
+        store = local.syncState,
+        scope = viewModelScope,
+        deviceName = "Android · " + android.os.Build.MODEL,
+        isLoggedIn = { _ui.value.loggedIn },
+        onLocalApplied = ::onCloudApplied
+    )
+
     // Delegated ViewModels
     val cacheVm = top.nekoh2o.player.ui.viewmodel.CacheViewModel(app)
     val downloadVm = top.nekoh2o.player.ui.viewmodel.DownloadViewModel(app)
@@ -156,13 +170,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private var progressJob: Job? = null
     private var suggestJob: Job? = null
-    private var pushJob: Job? = null
     private var sleepJob: Job? = null
     private var sourceSearchJob: Job? = null
     private var recommendationJob: Job? = null
 
     init {
         pushMineToState()
+        cloudSync.watch(local.changes)
         // 读取个性化设置与音质
         _ui.value = _ui.value.copy(
             settings = settingsStore.load(),
@@ -378,7 +392,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             _ui.value = _ui.value.copy(kgAccount = KgAccountState(platform = platform))
             refreshKgAccount()
         }
-        schedulePush()
+        markCredentialsChanged()
         return CookieStore.kgCookieValue(platform)
     }
 
@@ -388,7 +402,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         if (platform == CookieStore.kgPlatformValue()) {
             _ui.value = _ui.value.copy(kgAccount = KgAccountState(platform = platform))
         }
-        schedulePush()
+        markCredentialsChanged()
     }
 
     suspend fun logoutKgCookie(platform: Int): String {
@@ -397,7 +411,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         if (platform == CookieStore.kgPlatformValue()) {
             _ui.value = _ui.value.copy(kgAccount = KgAccountState(platform = platform))
         }
-        schedulePush()
+        markCredentialsChanged()
         return CookieStore.kgCookieValue(platform)
     }
 
@@ -419,7 +433,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             nickname = account.username.ifBlank { "酷狗用户" }, isValid = true, platform = platform))
         toast("酷狗登录成功")
         refreshKgAccount()
-        schedulePush()
+        markCredentialsChanged()
     }
 
     fun clearKgAccount() {
@@ -478,7 +492,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 kgAccount = KgAccountState(platform = platform)
             )
             refreshKgAccount()
-            schedulePush()
+            markCredentialsChanged()
             toast("已切换到${if (platform == 0) "原版" else "概念版"}")
         }
     }
@@ -706,7 +720,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         toast(if (nowFav) "已收藏" else "已取消收藏")
     }
     fun isFav(song: Song) = libraryVm.isFavorite(song)
-    fun isFav(id: Long) = _ui.value.favorites.any { it.id == id }
 
     fun createPlaylist(name: String) {
         libraryVm.createPlaylist(name)
@@ -747,7 +760,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             favorites = local.favorites.toList(),
             playlists = local.playlists.toList()
         )
-        schedulePush()
     }
 
     // ==================== 个性化设置 ====================
@@ -863,7 +875,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun saveNcCookie(cookie: String) {
         neteaseVm.saveNcCookie(cookie) {
             _ui.value = _ui.value.copy(ncCookie = cookie.trim())
-            schedulePush()
+            markCredentialsChanged()
             toast("Cookie 已保存")
         }
     }
@@ -871,7 +883,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun clearNcCookie() {
         neteaseVm.clearNcCookie {
             _ui.value = _ui.value.copy(ncCookie = "")
-            schedulePush()
+            markCredentialsChanged()
             toast("Cookie 已清除")
         }
     }
@@ -1015,7 +1027,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             if (u != null) {
                 android.util.Log.d("PlayerViewModel", "refreshLoginInternal() - success: $u")
                 _ui.value = _ui.value.copy(user = u, loggedIn = true)
-                pullFromCloud()
+                // 先绑定账号，再自动同步；同步层先 GET，失败则不会上传任何内容
+                cloudSync.bindAccount(u.id)
+                cloudSync.onLoggedIn()
                 // 登录成功后检测网易云 Cookie 有效性
                 checkNcCookieValidity()
                 return
@@ -1044,53 +1058,26 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun pullFromCloud() {
-        viewModelScope.launch {
-            val remote = userRepo.pull() ?: return@launch
-            local.mergeFromRemote(remote.history, remote.favorites, remote.playlists)
-            if (remote.ncCookie.isNotEmpty()) {
-                if (CookieStore.userCookieValue().isEmpty()) CookieStore.setUserCookie(remote.ncCookie)
-            }
-            remote.kgCookies.take(2).forEachIndexed { platform, cookie ->
-                if (cookie.isNotEmpty() && CookieStore.kgCookieValue(platform).isEmpty()) {
-                    if (cookie.contains("userid=")) {
-                        CookieStore.kgSessions.importCookie(platform, cookie)
-                    } else {
-                        CookieStore.kgSessions.merge(
-                            platform,
-                            mapOf("token" to cookie.removePrefix("token="))
-                        )
-                    }
-                }
-            }
-            if (CookieStore.kgCookieValue(remote.kgPlatform.coerceIn(0, 1)).isEmpty() && remote.kgToken.isNotEmpty()) {
-                CookieStore.setKgPlatform(remote.kgPlatform.coerceIn(0, 1))
-                CookieStore.setKgToken(remote.kgToken)
-            } else if (CookieStore.kgCookieValue().isEmpty() && remote.kgCookies.any(String::isNotEmpty)) {
-                CookieStore.setKgPlatform(remote.kgPlatform.coerceIn(0, 1))
-            }
+    /** 云端覆盖/合并到本地后，刷新界面状态；凭据变化时刷新账号信息。 */
+    private fun onCloudApplied(sections: Set<SyncSection>) {
+        if (SyncSection.FAVORITES in sections || SyncSection.HISTORY in sections || SyncSection.PLAYLISTS in sections) {
             pushMineToState()
-            schedulePush()
-            refreshKgAccount()
+        }
+        if (SyncSection.CREDENTIALS in sections) {
+            viewModelScope.launch {
+                loadNcCookie()
+                _ui.value = _ui.value.copy(kgAccount = KgAccountState(platform = CookieStore.kgPlatformValue()))
+                refreshKgAccount()
+                checkNcCookieValidity()
+            }
         }
     }
 
-    private fun schedulePush() {
-        if (!_ui.value.loggedIn) return
-        pushJob?.cancel()
-        pushJob = viewModelScope.launch {
-            delay(1500)
-            userRepo.push(
-                history = local.history.toList(),
-                favorites = local.favorites.toList(),
-                playlists = local.playlists.toList(),
-                ncCookie = CookieStore.userCookieValue(),
-                kgToken = CookieStore.kgTokenValue(),
-                kgPlatform = CookieStore.kgPlatformValue(),
-                kgCookies = List(2, CookieStore::kgCookieValue)
-            )
-        }
-    }
+    /** 网易云 / 酷狗登录发生本地变更（登录、清除、切换平台）。 */
+    private fun markCredentialsChanged() = local.touch(SyncSection.CREDENTIALS)
+
+    /** Activity 回到前台时调用，同步层自行节流。 */
+    fun onAppForeground() = cloudSync.onForeground()
 
     fun logout() {
         viewModelScope.launch {
@@ -1098,6 +1085,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             ApiFactory.cookieJar.clear()
             CookieStore.clearAppToken()
             _ui.value = _ui.value.copy(user = null, loggedIn = false)
+            cloudSync.onLoggedOut()
             toast("已退出登录")
         }
     }
@@ -1151,7 +1139,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val code = neteaseVm.checkQrStatus(key)
         if (code == 803) {
             _ui.value = _ui.value.copy(toast = "网易云登录成功")
-            schedulePush()
+            markCredentialsChanged()
         }
         return code
     }
@@ -1186,9 +1174,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * 同步网易云歌单到本地
+     * 导入网易云歌单到本地
      */
-    fun syncNcPlaylistToLocal(playlist: top.nekoh2o.player.data.model.NcPlaylistItem) {
+    fun importNcPlaylistToLocal(playlist: top.nekoh2o.player.data.model.NcPlaylistItem) {
         viewModelScope.launch {
             val songs = neteaseVm.getPlaylistDetail(playlist.id)
             if (songs.isEmpty()) {
@@ -1200,29 +1188,26 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             songs.forEach { localPl.songs.add(it) }
             local.savePlaylists()
             pushMineToState()
-            schedulePush()
-            toast("已同步歌单：${playlist.name}（${songs.size}首）")
+            toast("已导入歌单：${playlist.name}（${songs.size}首）")
         }
     }
 
     /**
-     * 同步红心歌曲到本地收藏
+     * 导入红心歌曲到本地收藏
      */
-    fun syncNcLikeSongsToLocal(songs: List<Song>) {
-        libraryVm.syncNeteaseHeartToLocal(songs)
+    fun importNcLikeSongsToLocal(songs: List<Song>) {
+        libraryVm.importNeteaseHeartToLocal(songs)
         pushMineToState()
-        schedulePush()
-        toast("已同步 ${songs.size} 首红心歌曲到收藏")
+        toast("已导入 ${songs.size} 首红心歌曲到收藏")
     }
 
     /**
-     * 同步播放记录到本地历史
+     * 导入播放记录到本地历史
      */
-    fun syncNcRecordToLocal(songs: List<Song>) {
-        libraryVm.syncNeteaseRecordToLocal(songs)
+    fun importNcRecordToLocal(songs: List<Song>) {
+        libraryVm.importNeteaseRecordToLocal(songs)
         pushMineToState()
-        schedulePush()
-        toast("已同步 ${songs.size} 首播放记录到历史")
+        toast("已导入 ${songs.size} 首播放记录到历史")
     }
 
     // ==================== 提示 ====================

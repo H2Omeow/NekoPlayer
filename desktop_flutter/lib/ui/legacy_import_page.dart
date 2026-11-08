@@ -5,6 +5,9 @@ import '../data/account_store.dart';
 import '../data/legacy_import.dart';
 import '../player_controller.dart';
 import '../playback/effects_playback_engine.dart';
+import 'neko_theme.dart';
+import 'widgets/page_layout.dart';
+import 'widgets/settings_list.dart';
 
 class LegacyImportPage extends StatefulWidget {
   const LegacyImportPage({
@@ -114,125 +117,135 @@ class _LegacyImportPageState extends State<LegacyImportPage> {
     }
   }
 
+  Widget option({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    bool available = true,
+  }) => CheckboxListTile(
+    shape: const RoundedRectangleBorder(),
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: NekoSpace.lg,
+      vertical: 2,
+    ),
+    secondary: Icon(icon),
+    value: value,
+    onChanged: busy || !available
+        ? null
+        : (value) => setState(() {
+            onChanged(value ?? false);
+            preview = null;
+          }),
+    title: Text(title),
+    subtitle: Text(subtitle),
+  );
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('导入旧版备份')),
-    body: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: ListView(
-          padding: const EdgeInsets.all(24),
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final pending = preview;
+    return DetailPage(
+      title: '从旧版导入',
+      children: [
+        SettingsSection(
+          description:
+              '只读取你主动选择的文件，不扫描旧版目录，也不会修改或上传原文件。'
+              '支持 Compose 桌面端 .properties、Android SharedPreferences .xml、'
+              'player_prefs.preferences_pb（.pb）和音乐库 JSON；'
+              '导入 Android 酷狗账号槽位时可同时选择 kugou_sessions.xml。',
+          title: '音乐库之外，还要导入',
           children: [
-            const Text('只读取你主动选择的文件，不扫描旧版目录，也不覆盖或上传原文件。'),
-            const SizedBox(height: 16),
-            const Text(
-              '支持 Compose 桌面端 .properties、Android SharedPreferences .xml、player_prefs.preferences_pb（.pb）和音乐库 JSON。Android 酷狗账号槽位可同时选择 kugou_sessions.xml；账号凭据需主动勾选才会导入。',
-            ),
-            const SizedBox(height: 12),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
+            option(
+              icon: Icons.key_rounded,
+              title: '账号凭据',
+              subtitle: '只填补本机空缺的账号，写入系统密钥环，不覆盖已有登录。备份中的凭据可能已失效。',
               value: includeCredentials,
-              onChanged: busy
-                  ? null
-                  : (value) => setState(() {
-                      includeCredentials = value ?? false;
-                      preview = null;
-                    }),
-              title: const Text('同时读取并导入账号凭据（可选）'),
-              subtitle: const Text('凭据仅填补空缺账号，写入系统密钥环；保留已有账号。备份中的凭据可能已失效。'),
+              onChanged: (value) => includeCredentials = value,
             ),
-            const SizedBox(height: 16),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
+            option(
+              icon: Icons.tune_rounded,
+              title: '播放设置',
+              subtitle: '播放速度、音质、双行歌词和翻译偏好。不导入手机目录权限、悬浮窗权限或自动播放。',
               value: includeSettings,
-              onChanged: busy
-                  ? null
-                  : (value) => setState(() {
-                      includeSettings = value ?? false;
-                      preview = null;
-                    }),
-              title: const Text('导入兼容的播放设置（可选）'),
-              subtitle: const Text(
-                '覆盖播放速度、音质、双行歌词和翻译偏好；支持 Android settings.xml 与 DataStore。不导入手机目录权限、悬浮窗权限或自动开始播放。',
-              ),
+              onChanged: (value) => includeSettings = value,
             ),
-            const SizedBox(height: 16),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
+            option(
+              icon: Icons.queue_music_rounded,
+              title: '播放队列和进度',
+              subtitle: '确认后会停止当前播放并替换队列，不会自动开始播放。',
               value: includeQueue,
-              onChanged: busy
-                  ? null
-                  : (value) => setState(() {
-                      includeQueue = value ?? false;
-                      preview = null;
-                    }),
-              title: const Text('导入旧版播放队列和进度（可选）'),
-              subtitle: const Text(
-                '读取 Android settings.xml / DataStore 中的播放状态；确认后停止当前播放、替换队列。不会自动播放或解析音源，点击播放后继续。',
-              ),
+              onChanged: (value) => includeQueue = value,
             ),
-            const SizedBox(height: 16),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
+            option(
+              icon: Icons.equalizer_rounded,
+              title: '专业音效参数',
+              subtitle: '替换全部均衡器、低音、声场、混响、响度与母带参数，专业模式开关保持不变。',
               value: includeEffects,
-              onChanged: busy || widget.player.engine is! EffectsPlaybackEngine
-                  ? null
-                  : (value) => setState(() {
-                      includeEffects = value ?? false;
-                      preview = null;
-                    }),
-              title: const Text('导入旧版专业音效参数（可选）'),
-              subtitle: const Text(
-                '替换全部均衡器、低音、声场、混响、响度与母带参数；缺失值使用旧版默认值。保留当前专业模式开关，不导入 Android 系统音效引擎或自动启用音效。',
-              ),
+              available: widget.player.engine is EffectsPlaybackEngine,
+              onChanged: (value) => includeEffects = value,
             ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: busy ? null : select,
-              icon: const Icon(Icons.file_open_outlined),
-              label: const Text('选择备份并预览'),
-            ),
-            if (busy) ...[
-              const SizedBox(height: 16),
-              const LinearProgressIndicator(),
-            ],
-            if (preview != null) ...[
-              const SizedBox(height: 24),
-              Text(
-                '待合并：${preview!.decoded.tracks.length} 首歌曲，${preview!.decoded.favorites.length} 首收藏，${preview!.decoded.playlists.length} 个歌单。',
-              ),
-              if (preview!.skippedSongs > 0)
-                Text('${preview!.skippedSongs} 条无法识别的音源记录将跳过。'),
-              if (preview!.hasCredentials)
-                const Text('含账号凭据，确认后只在本机保存；不会在界面显示凭据。'),
-              if (preview!.playback.count > 0)
-                Text('将覆盖 ${preview!.playback.count} 项兼容播放设置；其他设置保持不变。'),
-              if (preview!.effects != null)
-                const Text('将替换全部专业音效参数；当前专业模式开关保持不变，不会重新解析音源。'),
-              if (preview!.queue != null) ...[
-                Text(
-                  '待恢复队列：${preview!.queue!.tracks.length} 项（含重复歌曲），第 ${preview!.queue!.session.index + 1} 项，进度 ${preview!.queue!.session.position.inSeconds} 秒。当前队列将被替换。',
-                ),
-                if (preview!.queue!.skipped > 0)
-                  Text('队列中 ${preview!.queue!.skipped} 项无法识别的音源将跳过。'),
-                if (preview!.queue!.selectionChanged)
-                  const Text('原选中项无法识别，将选中后续可用项（末尾则回到首项），进度归零。'),
-              ],
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: busy ? null : apply,
-                icon: const Icon(Icons.merge),
-                label: const Text('确认合并到本机'),
-              ),
-            ],
-            if (message != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 20),
-                child: SelectableText(message!),
-              ),
           ],
         ),
-      ),
-    ),
-  );
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.icon(
+            onPressed: busy ? null : select,
+            icon: const Icon(Icons.file_open_outlined, size: 18),
+            label: const Text('选择备份并预览'),
+          ),
+        ),
+        if (busy) ...[
+          const SizedBox(height: NekoSpace.lg),
+          const LinearProgressIndicator(),
+        ],
+        if (pending != null) ...[
+          const SizedBox(height: NekoSpace.xl),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(NekoSpace.xl),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('预览', style: text.titleMedium),
+                  const SizedBox(height: NekoSpace.sm),
+                  for (final line in [
+                    '${pending.decoded.tracks.length} 首歌曲、${pending.decoded.favorites.length} 首收藏、${pending.decoded.playlists.length} 个歌单将合并到本机。',
+                    if (pending.skippedSongs > 0)
+                      '${pending.skippedSongs} 条无法识别的音源记录会被跳过。',
+                    if (pending.hasCredentials) '包含账号凭据，只保存在本机，界面不会显示凭据内容。',
+                    if (pending.playback.count > 0)
+                      '将覆盖 ${pending.playback.count} 项播放设置，其他设置不变。',
+                    if (pending.effects != null) '将替换全部专业音效参数。',
+                    if (pending.queue case final queue?) ...[
+                      '将恢复 ${queue.tracks.length} 项队列，从第 ${queue.session.index + 1} 项的 ${queue.session.position.inSeconds} 秒继续；当前队列会被替换。',
+                      if (queue.skipped > 0)
+                        '队列中 ${queue.skipped} 项无法识别的音源会被跳过。',
+                      if (queue.selectionChanged)
+                        '原先选中的歌曲无法识别，将改为选中下一首可用歌曲，进度归零。',
+                    ],
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(top: NekoSpace.xs),
+                      child: Text('· $line', style: text.bodyMedium),
+                    ),
+                  const SizedBox(height: NekoSpace.lg),
+                  FilledButton.icon(
+                    onPressed: busy ? null : apply,
+                    icon: const Icon(Icons.merge_rounded, size: 18),
+                    label: const Text('确认合并到本机'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        if (message case final value?) ...[
+          const SizedBox(height: NekoSpace.xl),
+          InlineNotice(value),
+        ],
+      ],
+    );
+  }
 }

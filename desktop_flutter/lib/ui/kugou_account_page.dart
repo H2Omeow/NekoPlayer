@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../data/native_music_catalog.dart';
 import '../domain/online_music.dart';
+import 'neko_theme.dart';
+import 'widgets/page_layout.dart';
+import 'widgets/settings_list.dart';
 
 class KugouAccountPage extends StatefulWidget {
   const KugouAccountPage({super.key, required this.catalog});
@@ -176,106 +179,123 @@ class _KugouAccountPageState extends State<KugouAccountPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('酷狗账号与权益')),
-    body: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: ListView(
-          padding: const EdgeInsets.all(24),
+  Widget build(BuildContext context) {
+    final loggedIn = widget.catalog.accounts.kugouLoggedIn();
+    return DetailPage(
+      title: platform == 0 ? '酷狗账号 · 原版' : '酷狗账号 · 概念版',
+      children: [
+        SettingsSection(
+          title: '短信登录',
+          description: '只有点击发送时才会联系官方短信接口，不会自动发送或重试；发送需要通过平台设备验证。',
           children: [
-            Text(
-              platform == 0 ? '当前账号槽位：酷狗原版' : '当前账号槽位：酷狗概念版',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            const Text('短信发送需要平台设备验证。只有点击发送时才联系官方短信接口；不会自动发送或重试。'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: phone,
-              enabled: !busy,
-              keyboardType: TextInputType.phone,
-              maxLength: 11,
-              onChanged: (_) => setState(() => choices = []),
-              decoration: const InputDecoration(labelText: '大陆手机号'),
-            ),
-            OutlinedButton(
-              onPressed: busy || remaining > 0 ? null : send,
-              child: Text(remaining > 0 ? '$remaining 秒后可重发' : '发送短信验证码'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: code,
-              enabled: !busy,
-              obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 8,
-              decoration: const InputDecoration(labelText: '短信验证码'),
-            ),
-            FilledButton(
-              onPressed: busy ? null : login,
-              child: const Text('使用验证码登录'),
+            Padding(
+              padding: const EdgeInsets.all(NekoSpace.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: phone,
+                          enabled: !busy,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 11,
+                          onChanged: (_) => setState(() => choices = []),
+                          decoration: const InputDecoration(
+                            hintText: '大陆手机号',
+                            prefixIcon: Icon(Icons.phone_iphone_rounded),
+                            counterText: '',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: NekoSpace.sm),
+                      SizedBox(
+                        height: 48,
+                        child: OutlinedButton(
+                          onPressed: busy || remaining > 0 ? null : send,
+                          child: Text(
+                            remaining > 0 ? '$remaining 秒后重发' : '发送验证码',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: NekoSpace.md),
+                  TextField(
+                    controller: code,
+                    enabled: !busy,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    maxLength: 8,
+                    onSubmitted: busy ? null : (_) => login(),
+                    decoration: const InputDecoration(
+                      hintText: '短信验证码',
+                      prefixIcon: Icon(Icons.password_rounded),
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: NekoSpace.lg),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton(
+                      onPressed: busy ? null : login,
+                      child: const Text('登录'),
+                    ),
+                  ),
+                ],
+              ),
             ),
             for (final choice in choices)
-              ListTile(
-                title: Text(
-                  choice.name.isEmpty ? '账号 ${choice.id}' : choice.name,
-                ),
-                subtitle: Text('ID ${choice.id}'),
-                trailing: const Icon(Icons.login),
+              SettingsTile(
+                icon: Icons.account_circle_outlined,
+                title: choice.name.isEmpty ? '账号 ${choice.id}' : choice.name,
+                subtitle: 'ID ${choice.id}',
                 onTap: busy ? null : () => login(choice.id),
-              ),
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton(
-                  onPressed: busy || !widget.catalog.accounts.kugouLoggedIn()
-                      ? null
-                      : info,
-                  child: const Text('读取账号与会员状态'),
-                ),
-                OutlinedButton(
-                  onPressed: busy || !widget.catalog.accounts.kugouLoggedIn()
-                      ? null
-                      : () => action((request) async {
-                          await widget.catalog.refreshKugouToken(
-                            accept: () => mounted && request == generation,
-                          );
-                          if (mounted) {
-                            setState(() => message = '登录凭据已通过平台确认并刷新。');
-                          }
-                        }),
-                  child: const Text('刷新登录凭据'),
-                ),
-                if (platform == 1)
-                  OutlinedButton(
-                    onPressed: busy || !widget.catalog.accounts.kugouLoggedIn()
-                        ? null
-                        : claim,
-                    child: const Text('手动领取每日听歌权益'),
-                  ),
-              ],
-            ),
-            if (nickname != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 20),
-                child: Text('$nickname\n$vip'),
-              ),
-            if (busy)
-              const Padding(
-                padding: EdgeInsets.only(top: 16),
-                child: LinearProgressIndicator(),
-              ),
-            if (message != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Text(message!),
               ),
           ],
         ),
-      ),
-    ),
-  );
+        SettingsSection(
+          title: '账号与权益',
+          description: loggedIn ? null : '登录后可用。',
+          children: [
+            SettingsTile(
+              icon: Icons.workspace_premium_outlined,
+              title: '读取账号与会员状态',
+              subtitle: nickname == null ? null : '$nickname · $vip',
+              enabled: !busy && loggedIn,
+              onTap: info,
+            ),
+            SettingsTile(
+              icon: Icons.refresh_rounded,
+              title: '刷新登录凭据',
+              enabled: !busy && loggedIn,
+              onTap: () => action((request) async {
+                await widget.catalog.refreshKugouToken(
+                  accept: () => mounted && request == generation,
+                );
+                if (mounted) {
+                  setState(() => message = '登录凭据已通过平台确认并刷新。');
+                }
+              }),
+            ),
+            if (platform == 1)
+              SettingsTile(
+                icon: Icons.redeem_rounded,
+                title: '领取每日听歌权益',
+                subtitle: '手动领取，不会自动执行',
+                enabled: !busy && loggedIn,
+                onTap: claim,
+              ),
+          ],
+        ),
+        if (busy) ...[
+          const LinearProgressIndicator(),
+          const SizedBox(height: NekoSpace.lg),
+        ],
+        if (message case final value?) InlineNotice(value),
+      ],
+    );
+  }
 }

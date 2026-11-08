@@ -53,6 +53,11 @@ class PcmSink {
         Int32 Function(Pointer<Void>),
         int Function(Pointer<Void>)
       >('neko_sink_buffered');
+  late final _faults = library
+      .lookupFunction<
+        Uint64 Function(Pointer<Void>),
+        int Function(Pointer<Void>)
+      >('neko_sink_faults');
   late final _pause = library
       .lookupFunction<
         Void Function(Pointer<Void>, Int32),
@@ -72,6 +77,9 @@ class PcmSink {
       _disposed ? 0 : _write(handle, samples, count);
   int get playedFrames => _disposed ? 0 : _played(handle);
   int get bufferedSamples => _disposed ? 0 : _buffered(handle);
+
+  /// Exceptions swallowed by the native audio callback so far.
+  int get faults => _disposed ? 0 : _faults(handle);
   void pause(bool paused) {
     if (!_disposed) _pause(handle, paused ? 1 : 0);
   }
@@ -96,6 +104,8 @@ class PcmSink {
     }
   }
 
+  /// Returns immediately; the native side joins the audio thread off the UI
+  /// isolate.
   void dispose() {
     if (_disposed) return;
     _disposed = true;

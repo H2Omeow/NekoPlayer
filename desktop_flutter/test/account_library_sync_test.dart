@@ -57,10 +57,12 @@ void main() {
       expect(sync.count, 3);
       expect(sync.pages, 2);
       expect(sync.busy, isFalse);
+      // Cloud rows are newest first (like Android); the local set keeps
+      // insertion order, oldest first.
       expect(CloudLibrary.decode(writes.single).favorites, [
-        'netease:1',
-        'netease:2',
         'netease:3',
+        'netease:2',
+        'netease:1',
       ]);
     },
   );

@@ -19,6 +19,21 @@ WINDOWS_RUNTIME_LICENSES = (
 )
 
 
+LINUX_SYSTEM_LIBRARIES = frozenset((
+    "libc.so.6", "libm.so.6", "libdl.so.2", "libpthread.so.0", "librt.so.1",
+    "ld-linux-x86-64.so.2", "ld-linux-aarch64.so.1", "libstdc++.so.6", "libgcc_s.so.1",
+    "libz.so.1", "libglib-2.0.so.0", "libgobject-2.0.so.0", "libgio-2.0.so.0",
+    "libgtk-3.so.0", "libgdk-3.so.0", "libgdk_pixbuf-2.0.so.0", "libatk-1.0.so.0",
+    "libpango-1.0.so.0", "libpangocairo-1.0.so.0", "libcairo.so.2", "libcairo-gobject.so.2",
+    "libharfbuzz.so.0", "libepoxy.so.0", "libfontconfig.so.1", "libsecret-1.so.0",
+))
+# libmpv, WebKitGTK and the app indicator are resolved with dlopen at runtime so that
+# one bundle works across distribution sonames; a hard link would pin one of them.
+LINUX_FORBIDDEN_PREFIXES = ("libmpv", "libjvm", "libdartjni", "libwebkit", "libjavascriptcore", "libayatana", "libappindicator")
+# Android-only JNI helper that the build may still emit; it needs a JVM and is dropped when packaging.
+DESKTOP_EXCLUDED_LIBRARIES = ("libdartjni.so",)
+
+
 def architecture(path):
     with Path(path).open("rb") as binary:
         header = binary.read(64)
@@ -40,6 +55,62 @@ def architecture(path):
                 raise ValueError("Only PE32+ (64-bit) is supported")
             return "pe", struct.unpack_from("<H", signature, 4)[0]
         raise ValueError("Expected a native ELF or PE executable, not an archive")
+
+
+def elf_needed(path):
+    """Return the DT_NEEDED sonames of a 64-bit little-endian ELF (empty without a dynamic section)."""
+    data = Path(path).read_bytes()
+    if len(data) < 64 or data[:4] != b"\x7fELF" or data[4:6] != b"\x02\x01":
+        raise ValueError(f"{path}: not a 64-bit little-endian ELF")
+    phoff, = struct.unpack_from("<Q", data, 32)
+    phentsize, phnum = struct.unpack_from("<HH", data, 54)
+    headers = []
+    for index in range(phnum):
+        offset = phoff + index * phentsize
+        if phentsize < 56 or offset + 56 > len(data):
+            raise ValueError(f"{path}: truncated ELF program headers")
+        kind, _, file_offset, vaddr, _, filesz, _, _ = struct.unpack_from("<IIQQQQQQ", data, offset)
+        headers.append((kind, file_offset, vaddr, filesz))
+    dynamic = [header for header in headers if header[0] == 2]
+    if not dynamic:
+        return []
+    _, dynamic_offset, _, dynamic_size = dynamic[0]
+    needed, string_table = [], None
+    for offset in range(dynamic_offset, min(dynamic_offset + dynamic_size, len(data)) - 15, 16):
+        tag, value = struct.unpack_from("<qQ", data, offset)
+        if tag == 0:
+            break
+        if tag == 1:
+            needed.append(value)
+        elif tag == 5:
+            string_table = value
+    if not needed:
+        return []
+    for kind, file_offset, vaddr, filesz in headers:
+        if kind == 1 and string_table is not None and vaddr <= string_table < vaddr + filesz:
+            base = file_offset + string_table - vaddr
+            break
+    else:
+        raise ValueError(f"{path}: dynamic string table not found")
+    names = []
+    for value in needed:
+        end = data.find(b"\0", base + value)
+        if end < 0:
+            raise ValueError(f"{path}: unterminated dynamic string")
+        names.append(data[base + value:end].decode("ascii", "replace"))
+    return names
+
+
+def verify_linux_dependencies(directory, binaries):
+    """Reject hard dependencies that would stop one bundle from running across distributions."""
+    directory = Path(directory)
+    bundled = {path.name for path in directory.rglob("*") if path.is_file()}
+    for binary in binaries:
+        for name in elf_needed(binary):
+            if name.startswith(LINUX_FORBIDDEN_PREFIXES):
+                raise ValueError(f"{binary.name} hard-links {name}; load it with dlopen instead")
+            if name not in bundled and name not in LINUX_SYSTEM_LIBRARIES:
+                raise ValueError(f"{binary.name} depends on {name}, which is neither bundled nor an allowed system library")
 
 
 def verify(target, paths):
@@ -131,7 +202,7 @@ def verify_font_bundle(directory):
         raise ValueError("Bundled CJK font is not registered in FontManifest.json")
 
 
-def verify_bundle(target, directory, require_decoders=False):
+def verify_bundle(target, directory, require_decoders=False, packaged=False):
     directory = Path(directory)
     windows = target.startswith("windows-")
     aot_library = directory / ("data/app.so" if windows else "lib/libapp.so")
@@ -147,10 +218,13 @@ def verify_bundle(target, directory, require_decoders=False):
     for name in required:
         if not (directory / name).is_file():
             raise ValueError(f"Missing bundle component: {directory / name}")
+    excluded = [] if windows else [path for path in directory.rglob("*") if path.name in DESKTOP_EXCLUDED_LIBRARIES]
+    if packaged and excluded:
+        raise ValueError(f"Unsupported desktop library in package: {excluded[0]}")
     binaries = [directory / required[0]]
     binaries.extend(
         path for path in directory.rglob("*")
-        if path.is_file() and (
+        if path.is_file() and path not in excluded and (
             path.suffix.lower() in (".dll", ".exe") if windows
             else path.name.endswith(".so") or ".so." in path.name
         ) and path not in (binaries[0], aot_library)
@@ -161,6 +235,8 @@ def verify_bundle(target, directory, require_decoders=False):
             binaries.append(decoder)
     verify(target, binaries)
     verify(target.replace("windows-", "linux-"), [aot_library])
+    if not windows:
+        verify_linux_dependencies(directory, binaries)
     binaries.append(aot_library)
     verify_font_bundle(directory)
     if require_decoders:

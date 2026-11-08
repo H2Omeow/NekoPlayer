@@ -61,56 +61,64 @@ class _DownloadQualityDialogState extends State<DownloadQualityDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('选择下载音质'),
-    scrollable: true,
-    content: SizedBox(
-      width: 440,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('按当前账号逐项检查完整音源，不下载音频文件。选择后开始下载时会再次验证权限；不会以试听或低音质冒充。'),
-          const SizedBox(height: 16),
-          if (widget.requiresConfirmation) ...[
-            const Text('惜缘音源会逐项请求音源接口，可能计入本站账号配额；只在确认检查后发送，不会自动重试。'),
-            const SizedBox(height: 16),
-          ],
-          if (loading) ...[
-            const LinearProgressIndicator(),
-            const SizedBox(height: 12),
-            const Text('正在检查可下载音质，可随时取消。'),
-          ] else if (error != null)
+  Widget build(BuildContext context) {
+    final small = Theme.of(context).textTheme.bodySmall;
+    return AlertDialog(
+      title: const Text('选择下载音质'),
+      scrollable: true,
+      content: SizedBox(
+        width: 440,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            )
-          else if (checked && qualities.isEmpty)
-            const Text('当前账号没有已验证的可下载完整音质，请检查歌曲版权和账号权益。')
-          else
-            for (final quality in qualities)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(quality.label),
-                subtitle: Text(
-                  quality.size > 0
-                      ? '${quality.id} · ${(quality.size / (1024 * 1024)).toStringAsFixed(1)} MiB'
-                      : quality.id,
+              '按当前账号逐项检查完整音源，不会下载音频。开始下载时会再次验证权限，不会用试听或低音质冒充。',
+              style: small,
+            ),
+            const SizedBox(height: 16),
+            if (widget.requiresConfirmation) ...[
+              Text('惜缘音源会逐项请求音源接口，可能计入本站账号配额；只在你确认后发送，不会自动重试。', style: small),
+              const SizedBox(height: 16),
+            ],
+            if (loading) ...[
+              const LinearProgressIndicator(),
+              const SizedBox(height: 12),
+              const Text('正在检查可下载音质，可随时取消。'),
+            ] else if (error != null)
+              Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              )
+            else if (checked && qualities.isEmpty)
+              const Text('当前账号没有已验证的可下载完整音质，请检查歌曲版权和账号权益。')
+            else
+              for (final quality in qualities)
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  leading: const Icon(Icons.graphic_eq_rounded),
+                  title: Text(quality.label),
+                  subtitle: Text(
+                    quality.size > 0
+                        ? '${quality.id} · ${(quality.size / (1024 * 1024)).toStringAsFixed(1)} MiB'
+                        : quality.id,
+                  ),
+                  trailing: const Icon(Icons.download_rounded),
+                  onTap: () => Navigator.pop(context, quality.id),
                 ),
-                trailing: const Icon(Icons.download_outlined),
-                onTap: () => Navigator.pop(context, quality.id),
-              ),
-        ],
+          ],
+        ),
       ),
-    ),
-    actions: [
-      if (!checked) FilledButton(onPressed: load, child: const Text('检查可下载音质')),
-      if (checked && !loading && (error != null || qualities.isEmpty))
-        TextButton(onPressed: load, child: const Text('重新检查')),
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('取消'),
-      ),
-    ],
-  );
+      actions: [
+        if (!checked)
+          FilledButton(onPressed: load, child: const Text('检查可下载音质')),
+        if (checked && !loading && (error != null || qualities.isEmpty))
+          TextButton(onPressed: load, child: const Text('重新检查')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+      ],
+    );
+  }
 }

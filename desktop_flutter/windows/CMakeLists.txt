@@ -53,6 +53,8 @@ endfunction()
 set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
 add_subdirectory(${FLUTTER_MANAGED_DIR})
 
+include("../native/windows_webview2.cmake")
+
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 add_subdirectory("../native" "native")
@@ -87,6 +89,9 @@ install(TARGETS nekoplayer_dsp RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}" COM
 install(TARGETS nekoplayer_plugins RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}" COMPONENT Runtime)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../native_plugins/vendor/quickjs-ng/LICENSE"
   DESTINATION "${CMAKE_INSTALL_PREFIX}/licenses/quickjs-ng" COMPONENT Runtime)
+if(NEKO_WEBVIEW2_AVAILABLE AND EXISTS "${NEKO_WEBVIEW2_LICENSE}")
+  install(FILES "${NEKO_WEBVIEW2_LICENSE}" DESTINATION "${CMAKE_INSTALL_PREFIX}/licenses/webview2" COMPONENT Runtime)
+endif()
 
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)

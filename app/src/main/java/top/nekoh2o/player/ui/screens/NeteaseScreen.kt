@@ -1,25 +1,22 @@
 package top.nekoh2o.player.ui.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import top.nekoh2o.player.data.model.NcAccountResp
 import top.nekoh2o.player.data.model.NcPlaylistItem
@@ -27,8 +24,15 @@ import top.nekoh2o.player.data.model.NcRecordItem
 import top.nekoh2o.player.data.model.Song
 import top.nekoh2o.player.data.net.CookieStore
 import top.nekoh2o.player.ui.PlayerViewModel
-import top.nekoh2o.player.ui.a11y.asButton
+import top.nekoh2o.player.ui.components.Artwork
+import top.nekoh2o.player.ui.components.ChipRow
+import top.nekoh2o.player.ui.components.DetailTopBar
+import top.nekoh2o.player.ui.components.EmptyState
+import top.nekoh2o.player.ui.components.SongRow
+import top.nekoh2o.player.ui.components.StatusBadge
 import top.nekoh2o.player.ui.theme.NekoDefaults
+import top.nekoh2o.player.ui.theme.NekoRadius
+import top.nekoh2o.player.ui.theme.NekoSpace
 
 /**
  * 网易云音乐界面
@@ -70,46 +74,21 @@ fun NeteaseScreen(vm: PlayerViewModel, onBack: () -> Unit) {
         return
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("网易云音乐") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            // 账号信息卡片
+    Column(Modifier.fillMaxSize()) {
+        DetailTopBar("网易云音乐", onBack)
+        Column(Modifier.fillMaxSize()) {
             NcAccountCard(ncAccount, loading) {
                 showQrLogin = true
             }
 
             if (ncAccount != null) {
-                // Tab 切换
-                TabRow(selectedTabIndex = currentTab) {
-                    Tab(
-                        selected = currentTab == 0,
-                        onClick = { currentTab = 0 },
-                        text = { Text("歌单") },
-                        icon = { Icon(Icons.Filled.QueueMusic, null) }
-                    )
-                    Tab(
-                        selected = currentTab == 1,
-                        onClick = { currentTab = 1 },
-                        text = { Text("红心") },
-                        icon = { Icon(Icons.Filled.Favorite, null) }
-                    )
-                    Tab(
-                        selected = currentTab == 2,
-                        onClick = { currentTab = 2 },
-                        text = { Text("播放记录") },
-                        icon = { Icon(Icons.Filled.History, null) }
-                    )
-                }
+                ChipRow(
+                    items = listOf(0, 1, 2),
+                    selected = currentTab,
+                    label = { listOf("歌单", "红心", "播放记录")[it] },
+                    onSelect = { currentTab = it },
+                    modifier = Modifier.padding(vertical = NekoSpace.sm)
+                )
 
                 // 内容区域
                 when (currentTab) {
@@ -134,48 +113,50 @@ private fun NcAccountCard(
     loading: Boolean,
     onRelogin: () -> Unit
 ) {
-    ElevatedCard(Modifier.fillMaxWidth().padding(12.dp)) {
-        if (loading) {
-            Box(Modifier.fillMaxWidth().height(120.dp), Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (account == null) {
-            Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("未登录或 Cookie 已失效", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = onRelogin, colors = NekoDefaults.textButtonColors()) {
-                        Text("重新登录")
-                    }
+    Surface(
+        Modifier.fillMaxWidth().padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm),
+        shape = RoundedCornerShape(NekoRadius.artwork),
+        color = MaterialTheme.colorScheme.surfaceContainer
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(NekoSpace.lg),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(NekoSpace.md)
+        ) {
+            when {
+                loading -> {
+                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                    Text("正在读取账号…", style = MaterialTheme.typography.bodyMedium)
                 }
-            }
-        } else {
-            Row(
-                Modifier.fillMaxWidth().padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AsyncImage(
-                    model = account.profile?.avatarUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(56.dp).clip(RoundedCornerShape(28.dp))
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        account.profile?.nickname ?: "网易云用户",
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        vipTypeName(account.account?.vipType ?: 0),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (account.account?.vipType ?: 0 > 0)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                account == null -> {
+                    Artwork(null, size = 56.dp, shape = CircleShape, placeholder = Icons.Filled.Person)
+                    Column(Modifier.weight(1f)) {
+                        Text("未登录", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Cookie 缺失或已失效",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Button(onClick = onRelogin) { Text("扫码登录") }
+                }
+                else -> {
+                    val vip = account.account?.vipType ?: 0
+                    Artwork(account.profile?.avatarUrl, size = 56.dp, shape = CircleShape, thumbnail = null, placeholder = Icons.Filled.Person)
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            account.profile?.nickname ?: "网易云用户",
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(NekoSpace.xs))
+                        StatusBadge(
+                            vipTypeName(vip),
+                            if (vip > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                        )
+                    }
+                    TextButton(onClick = onRelogin, colors = NekoDefaults.textButtonColors()) { Text("重新登录") }
                 }
             }
         }
@@ -205,7 +186,8 @@ private fun NcPlaylistTab(
 
     if (loading || playlists.isEmpty()) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
-            if (loading) CircularProgressIndicator() else Text("暂无歌单")
+            if (loading) CircularProgressIndicator()
+            else EmptyState(Icons.AutoMirrored.Filled.QueueMusic, "没有歌单")
         }
         return
     }
@@ -215,17 +197,11 @@ private fun NcPlaylistTab(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clickable { }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(start = NekoSpace.lg, end = NekoSpace.xs, top = NekoSpace.sm, bottom = NekoSpace.sm),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AsyncImage(
-                    model = playlist.coverImgUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(48.dp).clip(RoundedCornerShape(4.dp))
-                )
-                Spacer(Modifier.width(12.dp))
+                Artwork(playlist.coverImgUrl, size = 52.dp)
+                Spacer(Modifier.width(NekoSpace.md))
                 Column(Modifier.weight(1f)) {
                     Text(
                         playlist.name,
@@ -242,14 +218,13 @@ private fun NcPlaylistTab(
                 IconButton(
                     onClick = {
                         scope.launch {
-                            vm.syncNcPlaylistToLocal(playlist)
+                            vm.importNcPlaylistToLocal(playlist)
                         }
                     }
                 ) {
-                    Icon(Icons.Filled.CloudDownload, "同步")
+                    Icon(Icons.Filled.CloudDownload, "导入到本地", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            HorizontalDivider()
         }
     }
 }
@@ -278,11 +253,12 @@ private fun NcLikeSongsTab(
     Column(Modifier.fillMaxSize()) {
         if (songs.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
-                if (loading) CircularProgressIndicator() else Text("暂无红心歌曲")
+                if (loading) CircularProgressIndicator()
+                else EmptyState(Icons.Filled.FavoriteBorder, "没有红心歌曲")
             }
         } else {
             Row(
-                Modifier.fillMaxWidth().padding(12.dp),
+                Modifier.fillMaxWidth().padding(start = NekoSpace.lg, end = NekoSpace.sm),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -290,21 +266,19 @@ private fun NcLikeSongsTab(
                 TextButton(
                     onClick = {
                         scope.launch {
-                            vm.syncNcLikeSongsToLocal(songs)
+                            vm.importNcLikeSongsToLocal(songs)
                         }
                     },
                     colors = NekoDefaults.textButtonColors()
                 ) {
                     Icon(Icons.Filled.CloudDownload, null)
                     Spacer(Modifier.width(4.dp))
-                    Text("全部同步到收藏")
+                    Text("全部导入到收藏")
                 }
             }
-            HorizontalDivider()
             LazyColumn(Modifier.fillMaxSize()) {
                 items(songs, key = { it.source + ":" + it.hash.ifBlank { it.id.toString() } }) { song ->
-                    SongRow(song) { vm.playNow(song) }
-                    HorizontalDivider()
+                    SongRow(song, onPlay = { vm.playNow(song) }, subtitle = song.ar)
                 }
             }
         }
@@ -337,11 +311,12 @@ private fun NcPlayRecordTab(
     Column(Modifier.fillMaxSize()) {
         if (records.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
-                if (loading) CircularProgressIndicator() else Text("暂无播放记录")
+                if (loading) CircularProgressIndicator()
+                else EmptyState(Icons.Filled.History, "最近一周没有播放记录")
             }
         } else {
             Row(
-                Modifier.fillMaxWidth().padding(12.dp),
+                Modifier.fillMaxWidth().padding(start = NekoSpace.lg, end = NekoSpace.sm),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -349,65 +324,22 @@ private fun NcPlayRecordTab(
                 TextButton(
                     onClick = {
                         scope.launch {
-                            vm.syncNcRecordToLocal(songs)
+                            vm.importNcRecordToLocal(songs)
                         }
                     },
                     colors = NekoDefaults.textButtonColors()
                 ) {
                     Icon(Icons.Filled.CloudDownload, null)
                     Spacer(Modifier.width(4.dp))
-                    Text("全部同步到历史")
+                    Text("全部导入到历史")
                 }
             }
-            HorizontalDivider()
             LazyColumn(Modifier.fillMaxSize()) {
                 items(records, key = { it.song.id }) { record ->
-                    Column {
-                        SongRow(record.song.toSong()) { vm.playNow(record.song.toSong()) }
-                        Text(
-                            "播放 ${record.playCount} 次",
-                            modifier = Modifier.padding(start = 72.dp, bottom = 4.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    HorizontalDivider()
+                    val song = record.song.toSong()
+                    SongRow(song, onPlay = { vm.playNow(song) }, subtitle = "${song.ar} · 播放 ${record.playCount} 次")
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun SongRow(song: Song, onPlay: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onPlay)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AsyncImage(
-            model = song.pc,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(4.dp))
-        )
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                song.nm,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                song.ar,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }

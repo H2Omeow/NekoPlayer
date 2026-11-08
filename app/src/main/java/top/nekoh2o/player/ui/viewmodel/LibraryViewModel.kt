@@ -26,7 +26,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
      * 检查是否已收藏
      */
     fun isFavorite(song: Song): Boolean {
-        return local.favorites.any { key(it) == key(song) }
+        return local.isFav(song)
     }
 
     /**
@@ -80,22 +80,20 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * 批量同步网易云红心歌曲到收藏
+     * 批量导入网易云红心歌曲到收藏
      */
-    fun syncNeteaseHeartToLocal(songs: List<Song>) {
+    fun importNeteaseHeartToLocal(songs: List<Song>) {
         songs.forEach { song ->
-            if (!local.isFav(song.id)) {
+            if (!local.isFav(song)) {
                 local.toggleFav(song)
             }
         }
     }
 
     /**
-     * 批量同步网易云播放记录到历史
+     * 批量导入网易云播放记录到历史
      */
-    fun syncNeteaseRecordToLocal(songs: List<Song>) {
+    fun importNeteaseRecordToLocal(songs: List<Song>) {
         songs.forEach { local.addHistory(it) }
     }
-
-    private fun key(song: Song): String = song.source + ":" + song.hash.ifBlank { song.id.toString() }
 }

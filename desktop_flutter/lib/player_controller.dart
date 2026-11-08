@@ -121,6 +121,34 @@ class PlayerController extends ChangeNotifier {
     session: _session,
   );
 
+  final List<void Function(String section)> _sectionListeners = [];
+  bool get storageReadable => _storageReadable;
+
+  /// 云同步分区（favorites / history / playlists）被本机修改时回调。
+  void addSectionListener(void Function(String section) listener) =>
+      _sectionListeners.add(listener);
+  void removeSectionListener(void Function(String section) listener) =>
+      _sectionListeners.remove(listener);
+  void _touch(String section) {
+    for (final listener in List.of(_sectionListeners)) {
+      listener(section);
+    }
+  }
+
+  /// 云同步拉取：直接采用 [next]，不记为本机修改。
+  Future<void> applyCloudLibrary(LibraryData next) async {
+    if (!_storageReadable) {
+      throw const MusicSearchException('本地音乐库读取失败，未覆盖原数据。');
+    }
+    tracks = next.tracks;
+    favorites = next.favorites.toSet();
+    history = next.history.toList();
+    playlists = next.playlists.toList();
+    final write = _persist();
+    _notify();
+    await write;
+  }
+
   Future<void> mergeCloud(Map<String, dynamic> remote) async {
     if (!_storageReadable) {
       throw const MusicSearchException('本地音乐库读取失败，未合并或覆盖原数据。');
@@ -130,6 +158,9 @@ class PlayerController extends ChangeNotifier {
     favorites = merged.favorites;
     history = merged.history;
     playlists = merged.playlists;
+    for (final section in const ['favorites', 'history', 'playlists']) {
+      _touch(section);
+    }
     final write = _persist();
     _notify();
     await write;
@@ -559,6 +590,7 @@ class PlayerController extends ChangeNotifier {
       tracks = [...tracks, track];
     }
     if (!favorites.remove(track.path)) favorites.add(track.path);
+    _touch('favorites');
     _persist();
     _notify();
   }
@@ -567,6 +599,7 @@ class PlayerController extends ChangeNotifier {
     if (name.trim().isEmpty) return null;
     final id = DateTime.now().microsecondsSinceEpoch.toString();
     playlists = [...playlists, LocalPlaylist(id: id, name: name.trim())];
+    _touch('playlists');
     _persist();
     _notify();
     return id;
@@ -574,6 +607,7 @@ class PlayerController extends ChangeNotifier {
 
   void deletePlaylist(String id) {
     playlists = playlists.where((playlist) => playlist.id != id).toList();
+    _touch('playlists');
     _persist();
     _notify();
   }
@@ -590,6 +624,7 @@ class PlayerController extends ChangeNotifier {
               : playlist,
         )
         .toList();
+    _touch('playlists');
     _persist();
     _notify();
   }
@@ -604,6 +639,7 @@ class PlayerController extends ChangeNotifier {
               : playlist,
         )
         .toList();
+    _touch('playlists');
     _persist();
     _notify();
   }
@@ -717,7 +753,8 @@ class PlayerController extends ChangeNotifier {
       history = [
         track.path,
         ...history.where((path) => path != track.path),
-      ].take(200).toList();
+      ].take(CloudLibrary.historyLimit).toList();
+      _touch('history');
       _persist();
     }
     if (engine.error != null && engine.error != error) {

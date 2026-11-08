@@ -5,110 +5,209 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import top.nekoh2o.player.ui.PlayerViewModel
-import top.nekoh2o.player.ui.a11y.asButton
+import top.nekoh2o.player.ui.UiState
+import top.nekoh2o.player.ui.components.Artwork
+import top.nekoh2o.player.ui.components.ScreenHeader
+import top.nekoh2o.player.ui.components.SectionHeader
+import top.nekoh2o.player.ui.components.SongActions
+import top.nekoh2o.player.ui.components.SongRow
+import top.nekoh2o.player.ui.theme.NekoRadius
+import top.nekoh2o.player.ui.theme.NekoSpace
+import java.util.Calendar
 
 @Composable
-fun HomeScreen(vm: PlayerViewModel, onOpenFullPlayer: () -> Unit) {
+fun HomeScreen(
+    vm: PlayerViewModel,
+    onOpenFullPlayer: () -> Unit,
+    onBrowse: () -> Unit,
+    onOpenLibrary: (LibraryTab) -> Unit
+) {
     val state by vm.ui.collectAsState()
-    val recent = state.history.take(12)
+    var addTarget by remember { mutableStateOf<top.nekoh2o.player.data.model.Song?>(null) }
+    val actions = remember(vm) { vm.songActions { addTarget = it } }
+    HomeContent(
+        state = state,
+        greeting = greeting(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)),
+        actions = actions,
+        onOpenFullPlayer = onOpenFullPlayer,
+        onTogglePlay = vm::togglePlay,
+        onBrowse = onBrowse,
+        onOpenLibrary = onOpenLibrary
+    )
+    addTarget?.let { song -> AddToPlaylistDialog(vm, song) { addTarget = null } }
+}
 
+fun greeting(hour: Int): String = when (hour) {
+    in 5..10 -> "早上好"
+    in 11..13 -> "中午好"
+    in 14..17 -> "下午好"
+    else -> "晚上好"
+}
+
+@Composable
+fun HomeContent(
+    state: UiState,
+    greeting: String,
+    actions: SongActions,
+    onOpenFullPlayer: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onBrowse: () -> Unit,
+    onOpenLibrary: (LibraryTab) -> Unit
+) {
+    val recent = state.history.take(12)
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(bottom = NekoSpace.xl)
     ) {
+        item { ScreenHeader(greeting, subtitle = "让喜欢的音乐，陪你一会儿") }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("NekoPlayer", style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary)
-                Text("让喜欢的音乐，陪你一会儿", style = MaterialTheme.typography.headlineSmall)
-                Text("从一首熟悉的歌开始。", style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            NowPlayingCard(
+                state = state,
+                onOpenFullPlayer = onOpenFullPlayer,
+                onTogglePlay = onTogglePlay,
+                onBrowse = onBrowse,
+                modifier = Modifier.padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm)
+            )
         }
         item {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            )) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("继续收听", style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary)
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Surface(Modifier.size(72.dp), shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest) {
-                            if (state.current?.pc != null) AsyncImage(
-                                model = state.current?.pc,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop
-                            ) else Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Headphones, null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(state.current?.nm ?: "还没有正在播放的歌曲",
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(state.current?.ar ?: "前往音乐页，搜索你的第一首歌",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                    if (state.current != null) Button(onClick = onOpenFullPlayer) {
-                        Icon(Icons.Default.PlayArrow, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("打开播放器")
-                    }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm),
+                horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)
+            ) {
+                LibraryShortcut(Icons.Filled.Favorite, "我的收藏", state.favorites.size, Modifier.weight(1f)) {
+                    onOpenLibrary(LibraryTab.FAVORITES)
+                }
+                LibraryShortcut(Icons.Filled.History, "最近播放", state.history.size, Modifier.weight(1f)) {
+                    onOpenLibrary(LibraryTab.HISTORY)
+                }
+                LibraryShortcut(Icons.AutoMirrored.Filled.QueueMusic, "我的歌单", state.playlists.size, Modifier.weight(1f)) {
+                    onOpenLibrary(LibraryTab.PLAYLISTS)
                 }
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                LibraryCount("我的收藏", state.favorites.size, Modifier.weight(1f))
-                LibraryCount("最近播放", state.history.size, Modifier.weight(1f))
-                LibraryCount("我的歌单", state.playlists.size, Modifier.weight(1f))
-            }
+            SectionHeader(
+                "最近听过",
+                Modifier.padding(start = NekoSpace.lg, end = NekoSpace.sm, top = NekoSpace.lg, bottom = NekoSpace.xs),
+                actionLabel = if (recent.isNotEmpty()) "全部" else null,
+                onAction = { onOpenLibrary(LibraryTab.HISTORY) }
+            )
         }
-        item { Text("最近听过", style = MaterialTheme.typography.titleLarge) }
         if (recent.isEmpty()) item {
-            Text("播放记录会出现在这里。你收藏的歌曲和创建的歌单都能在“我的”中找到。",
+            Text(
+                "播放记录会出现在这里。收藏的歌曲和创建的歌单都在「我的」中。",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = NekoSpace.lg)
+            )
         }
         itemsIndexed(recent, key = { index, song -> "${song.source}:${song.id}:$index" }) { index, song ->
-            ListItem(
-                modifier = Modifier.clip(RoundedCornerShape(12.dp))
-                    .asButton(actionLabel = "播放 ${song.nm}") { vm.playAll(recent.drop(index) + recent.take(index)) },
-                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                headlineContent = { Text(song.nm, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                supportingContent = { Text(song.ar, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                leadingContent = {
-                    AsyncImage(song.pc, null, Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)),
-                        contentScale = ContentScale.Crop)
-                },
-                trailingContent = { Icon(Icons.Default.PlayArrow, null) }
+            SongRow(
+                song = song,
+                isFav = actions.isFav(song),
+                playing = state.current?.let { it.id == song.id && it.source == song.source } == true,
+                onPlay = { actions.playAll(recent.drop(index) + recent.take(index)) },
+                onFav = { actions.toggleFav(song) },
+                onAdd = { actions.queue(song) },
+                onAddToPlaylist = { actions.addToPlaylist(song) }
             )
         }
     }
 }
 
 @Composable
-private fun LibraryCount(label: String, count: Int, modifier: Modifier) {
-    Surface(modifier, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun NowPlayingCard(
+    state: UiState,
+    onOpenFullPlayer: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onBrowse: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = MaterialTheme.colorScheme
+    val current = state.current
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(NekoRadius.artwork),
+        color = colors.surfaceContainer,
+        onClick = { if (current != null) onOpenFullPlayer() else onBrowse() }
+    ) {
+        Row(
+            Modifier.padding(NekoSpace.lg),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(NekoSpace.lg)
+        ) {
+            Artwork(
+                current?.pc,
+                size = 88.dp,
+                shape = RoundedCornerShape(NekoRadius.card),
+                thumbnail = 300,
+                placeholder = Icons.Filled.Headphones
+            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    if (current == null) "开始收听" else if (state.isPlaying) "正在播放" else "继续收听",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.primary
+                )
+                Text(
+                    current?.nm ?: "还没有正在播放的歌曲",
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    current?.ar ?: "搜索一首歌，或从推荐开始",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (current != null) {
+                FilledIconButton(onClick = onTogglePlay, modifier = Modifier.size(48.dp)) {
+                    Icon(
+                        if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (state.isPlaying) "暂停" else "播放"
+                    )
+                }
+            } else {
+                FilledTonalIconButton(onClick = onBrowse, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Filled.Search, contentDescription = "去音乐页搜索")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryShortcut(
+    icon: ImageVector,
+    label: String,
+    count: Int,
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(NekoRadius.card),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        onClick = onClick
+    ) {
+        Column(Modifier.padding(NekoSpace.md), verticalArrangement = Arrangement.spacedBy(NekoSpace.xs)) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
             Text(count.toString(), style = MaterialTheme.typography.titleLarge)
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

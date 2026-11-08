@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <string>
 
 using flutter::EncodableMap;
@@ -79,6 +80,10 @@ struct DesktopIntegration::State {
   NOTIFYICONDATAW tray{};
   UINT taskbar_created = RegisterWindowMessageW(L"TaskbarCreated");
   bool tray_available = false;
+  // True between Dart "initialize" and "dispose"; gates tray re-creation.
+  bool tray_enabled = false;
+  // Outlives State so a nested modal loop can detect that State was destroyed.
+  std::shared_ptr<bool> alive = std::make_shared<bool>(true);
   bool close_to_tray = false;
   bool quitting = false;
 
@@ -88,6 +93,7 @@ struct DesktopIntegration::State {
   }
 
   void StartTray() {
+    tray_enabled = true;
     if (tray_available) return;
     tray = {};
     tray.cbSize = sizeof(tray);
@@ -127,9 +133,14 @@ struct DesktopIntegration::State {
     POINT location{};
     GetCursorPos(&location);
     SetForegroundWindow(main_window);
-    const int command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON, location.x, location.y, 0, main_window, nullptr);
+    // TrackPopupMenu runs a nested message loop that can destroy this State
+    // (window closed, Dart dispose); only locals may be used if that happened.
+    const std::shared_ptr<bool> still_alive = alive;
+    const HWND window = main_window;
+    const int command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON, location.x, location.y, 0, window, nullptr);
     DestroyMenu(menu);
-    PostMessage(main_window, WM_NULL, 0, 0);
+    PostMessage(window, WM_NULL, 0, 0);
+    if (!*still_alive) return;
     switch (command) {
       case 1: ShowMain(); break;
       case 2: Action("toggle"); break;
@@ -151,6 +162,7 @@ struct DesktopIntegration::State {
 
   void Stop() {
     close_to_tray = false;
+    tray_enabled = false;
     if (tray_available) Shell_NotifyIconW(NIM_DELETE, &tray);
     tray_available = false;
     StopMedia();
@@ -357,6 +369,7 @@ DesktopIntegration::DesktopIntegration(flutter::BinaryMessenger* messenger, HWND
 }
 
 DesktopIntegration::~DesktopIntegration() {
+  *state_->alive = false;
   state_->Stop();
   if (state_->lyrics_window != nullptr) DestroyWindow(state_->lyrics_window);
   state_->channel->SetMethodCallHandler(nullptr);
@@ -364,6 +377,8 @@ DesktopIntegration::~DesktopIntegration() {
 
 bool DesktopIntegration::HandleMessage(UINT message, WPARAM wparam, LPARAM lparam) {
   if (message == state_->taskbar_created && state_->taskbar_created != 0) {
+    // Explorer restarted: only re-add the icon while the tray is in use.
+    if (!state_->tray_enabled) return true;
     state_->tray_available = false;
     state_->StartTray();
     state_->TrayChanged();

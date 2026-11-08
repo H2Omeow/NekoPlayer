@@ -8,19 +8,18 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,18 +33,21 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import top.nekoh2o.player.ui.PlayMode
+import top.nekoh2o.player.data.model.Song
 import top.nekoh2o.player.ui.PlayerViewModel
 import top.nekoh2o.player.ui.a11y.clickableRow
-import top.nekoh2o.player.ui.a11y.toggleSemantics
+import top.nekoh2o.player.ui.components.Artwork
 import top.nekoh2o.player.ui.screens.HomeScreen
+import top.nekoh2o.player.ui.screens.LibraryTab
 import top.nekoh2o.player.ui.screens.MineScreen
 import top.nekoh2o.player.ui.screens.MusicScreen
+import top.nekoh2o.player.ui.theme.NekoRadius
+import top.nekoh2o.player.ui.theme.NekoSpace
 
-enum class Tab(val label: String, val icon: ImageVector) {
-    HOME("主页", Icons.Filled.Home),
-    MUSIC("音乐", Icons.Filled.MusicNote),
-    MINE("我的", Icons.Filled.Person)
+enum class Tab(val label: String, val icon: ImageVector, val selectedIcon: ImageVector) {
+    HOME("主页", Icons.Outlined.Home, Icons.Filled.Home),
+    MUSIC("音乐", Icons.Outlined.LibraryMusic, Icons.Filled.LibraryMusic),
+    MINE("我的", Icons.Outlined.Person, Icons.Filled.Person)
 }
 
 @Composable
@@ -56,6 +58,7 @@ fun MainScaffold(
 ) {
     val state by vm.ui.collectAsState()
     var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
+    var libraryTab by rememberSaveable { mutableStateOf(LibraryTab.HISTORY) }
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(state.toast) {
@@ -65,12 +68,18 @@ fun MainScaffold(
         }
     }
 
+    fun select(target: Tab) {
+        tab = target
+        if (target == Tab.MUSIC && state.recSongs.isEmpty()) vm.loadRecommend()
+    }
+
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val useRail = maxWidth >= 600.dp
-        // 全局壁纸背景层
-        if (state.settings.globalBgEnabled && state.wallpaperUrl != null) {
+        // 开了全局背景时铺壁纸并让 Scaffold 透明；控件透明度由 NekoTheme 统一处理
+        val wallpaper = state.wallpaperUrl.takeIf { state.settings.globalBgEnabled }
+        if (wallpaper != null) {
             AsyncImage(
-                model = state.wallpaperUrl,
+                model = wallpaper,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().blur(state.settings.globalBlurRadius.dp)
@@ -81,160 +90,193 @@ fun MainScaffold(
             )
         }
 
-        // 开了全局背景时 Scaffold 透明，让壁纸透出。
-        // 控件本身的透明度已由 NekoTheme 统一处理，这里只管背景层。
-        val transparent = state.settings.globalBgEnabled && state.wallpaperUrl != null
-        Scaffold(
-            containerColor = if (transparent) Color.Transparent else MaterialTheme.colorScheme.background,
-            snackbarHost = { SnackbarHost(snackbar) },
-            bottomBar = {
-                Column {
-                    MiniPlayer(vm, onOpenFullPlayer)
-                    if (!useRail) NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
-                        Tab.entries.forEach { t ->
-                            NavigationBarItem(
-                                selected = tab == t,
-                                onClick = {
-                                    tab = t
-                                    if (t == Tab.MUSIC && state.recSongs.isEmpty()) vm.loadRecommend()
-                                },
-                                icon = { Icon(t.icon, contentDescription = null) },
-                                label = { Text(t.label) }
-                            )
-                        }
-                    }
+        MainLayout(
+            tab = tab,
+            useRail = useRail,
+            transparent = wallpaper != null,
+            snackbar = snackbar,
+            onSelect = ::select,
+            miniPlayer = {
+                state.current?.let { song ->
+                    MiniPlayer(
+                        song = song,
+                        isPlaying = state.isPlaying,
+                        progress = if (state.durationMs > 0)
+                            (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f,
+                        onOpen = onOpenFullPlayer,
+                        onToggle = vm::togglePlay,
+                        onNext = vm::next
+                    )
                 }
             }
-        ) { pad ->
-            Row(Modifier.padding(pad)) {
-                if (useRail) NavigationRail(Modifier.fillMaxHeight(),
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                    header = { Text("NEKO", Modifier.padding(vertical = 24.dp),
-                        style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
-                ) {
-                    Tab.entries.forEach { destination ->
-                        NavigationRailItem(selected = tab == destination,
-                            onClick = {
-                                tab = destination
-                                if (destination == Tab.MUSIC && state.recSongs.isEmpty()) vm.loadRecommend()
-                            },
-                            icon = { Icon(destination.icon, null) },
-                            label = { Text(destination.label) },
-                            modifier = Modifier.padding(vertical = 8.dp))
-                    }
-                }
-                Box(Modifier.weight(1f)) {
-                when (tab) {
-                    Tab.HOME -> HomeScreen(vm, onOpenFullPlayer)
-                    Tab.MUSIC -> MusicScreen(vm)
-                    Tab.MINE -> MineScreen(vm, onStartSsoLogin)
-                }
-                }
+        ) {
+            when (tab) {
+                Tab.HOME -> HomeScreen(
+                    vm = vm,
+                    onOpenFullPlayer = onOpenFullPlayer,
+                    onBrowse = { select(Tab.MUSIC) },
+                    onOpenLibrary = { libraryTab = it; select(Tab.MINE) }
+                )
+                Tab.MUSIC -> MusicScreen(vm)
+                Tab.MINE -> MineScreen(
+                    vm = vm,
+                    libraryTab = libraryTab,
+                    onLibraryTab = { libraryTab = it },
+                    onStartSsoLogin = onStartSsoLogin
+                )
             }
         }
     }
 }
 
+/** 主界面框架：窄屏底部导航，宽屏左侧导航栏；迷你播放器贴在导航上方。 */
 @Composable
-private fun MiniPlayer(vm: PlayerViewModel, onOpenFullPlayer: () -> Unit) {
-    val state by vm.ui.collectAsState()
-    val cur = state.current ?: return
-
-    // surfaceContainerHigh 已由 NekoTheme 按 controlAlpha 调过透明度
-    Surface(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-        Column {
-            val progress = if (state.durationMs > 0)
-                (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(2.dp)
-            )
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 封面+标题合并为「打开播放器」按钮，控制按钮各自独立可聚焦
-                Row(
-                    Modifier.weight(1f)
-                        .clickableRow(rowLabel = "${cur.nm}，${cur.ar}", actionLabel = "打开播放器") {
-                            onOpenFullPlayer()
-                        },
-                    verticalAlignment = Alignment.CenterVertically
+fun MainLayout(
+    tab: Tab,
+    useRail: Boolean,
+    transparent: Boolean,
+    snackbar: SnackbarHostState,
+    onSelect: (Tab) -> Unit,
+    miniPlayer: @Composable () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    val itemColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = colors.primary,
+        selectedTextColor = colors.onSurface,
+        indicatorColor = colors.primary.copy(alpha = 0.16f),
+        unselectedIconColor = colors.onSurfaceVariant,
+        unselectedTextColor = colors.onSurfaceVariant
+    )
+    val railColors = NavigationRailItemDefaults.colors(
+        selectedIconColor = colors.primary,
+        selectedTextColor = colors.onSurface,
+        indicatorColor = colors.primary.copy(alpha = 0.16f),
+        unselectedIconColor = colors.onSurfaceVariant,
+        unselectedTextColor = colors.onSurfaceVariant
+    )
+    Scaffold(
+        containerColor = if (transparent) Color.Transparent else colors.background,
+        snackbarHost = { SnackbarHost(snackbar) },
+        bottomBar = {
+            Column {
+                miniPlayer()
+                if (!useRail) NavigationBar(
+                    containerColor = colors.surfaceContainerLow,
+                    tonalElevation = 0.dp
                 ) {
-                    AsyncImage(
-                        model = cur.pc?.let { "$it?param=100y100" },
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(cur.nm, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodyMedium)
-                        Text(cur.ar, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                val modeLabel = when (state.playMode) {
-                    PlayMode.LOOP -> "列表循环"
-                    PlayMode.SINGLE -> "单曲循环"
-                    PlayMode.RANDOM -> "随机播放"
-                }
-                IconButton(
-                    onClick = { vm.cyclePlayMode() },
-                    modifier = Modifier.toggleSemantics("播放模式", modeLabel)
-                ) {
-                    AnimatedContent(
-                        targetState = state.playMode,
-                        transitionSpec = {
-                            (fadeIn(animationSpec = tween(200)) + scaleIn(
-                                initialScale = 0.8f,
-                                animationSpec = tween(200)
-                            )).togetherWith(
-                                fadeOut(animationSpec = tween(200)) + scaleOut(
-                                    targetScale = 0.8f,
-                                    animationSpec = tween(200)
-                                )
-                            )
-                        },
-                        label = "play_mode_mini"
-                    ) { mode ->
-                        Icon(
-                            when (mode) {
-                                PlayMode.LOOP -> Icons.Filled.Repeat
-                                PlayMode.SINGLE -> Icons.Filled.RepeatOne
-                                PlayMode.RANDOM -> Icons.Filled.Shuffle
-                            },
-                            contentDescription = null
+                    Tab.entries.forEach { t ->
+                        NavigationBarItem(
+                            selected = tab == t,
+                            onClick = { onSelect(t) },
+                            icon = { Icon(if (tab == t) t.selectedIcon else t.icon, contentDescription = null) },
+                            label = { Text(t.label) },
+                            colors = itemColors
                         )
                     }
                 }
-                FilledIconButton(onClick = { vm.togglePlay() }) {
-                    androidx.compose.animation.AnimatedContent(
-                        targetState = state.isPlaying,
+            }
+        }
+    ) { pad ->
+        Row(Modifier.padding(pad)) {
+            if (useRail) NavigationRail(
+                Modifier.fillMaxHeight(),
+                containerColor = colors.surfaceContainerLow,
+                header = {
+                    Text(
+                        "Neko",
+                        Modifier.padding(vertical = NekoSpace.xl),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.primary
+                    )
+                }
+            ) {
+                Tab.entries.forEach { t ->
+                    NavigationRailItem(
+                        selected = tab == t,
+                        onClick = { onSelect(t) },
+                        icon = { Icon(if (tab == t) t.selectedIcon else t.icon, null) },
+                        label = { Text(t.label) },
+                        colors = railColors,
+                        modifier = Modifier.padding(vertical = NekoSpace.sm)
+                    )
+                }
+            }
+            Box(Modifier.weight(1f)) { content() }
+        }
+    }
+}
+
+/** 底部迷你播放器：点封面或标题打开全屏播放器。 */
+@Composable
+fun MiniPlayer(
+    song: Song,
+    isPlaying: Boolean,
+    progress: Float,
+    onOpen: () -> Unit,
+    onToggle: () -> Unit,
+    onNext: () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier.padding(horizontal = NekoSpace.sm, vertical = NekoSpace.xs),
+        shape = RoundedCornerShape(NekoRadius.card),
+        color = colors.surfaceContainerHigh
+    ) {
+        Column {
+            Row(
+                Modifier.fillMaxWidth().padding(start = NekoSpace.sm, end = NekoSpace.xs, top = NekoSpace.sm, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    Modifier.weight(1f).clickableRow(rowLabel = "${song.nm}，${song.ar}", actionLabel = "打开播放器", onClick = onOpen),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Artwork(song.pc, size = 44.dp, thumbnail = 100)
+                    Spacer(Modifier.width(NekoSpace.md))
+                    Column(Modifier.weight(1f)) {
+                        Text(song.nm, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.titleSmall)
+                        Text(song.ar, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                    }
+                }
+                IconButton(onClick = onToggle) {
+                    AnimatedContent(
+                        targetState = isPlaying,
                         transitionSpec = {
-                            (fadeIn(animationSpec = tween(150)) + scaleIn(
-                                initialScale = 0.8f,
-                                animationSpec = tween(150)
-                            )).togetherWith(
-                                fadeOut(animationSpec = tween(150)) + scaleOut(
-                                    targetScale = 0.8f,
-                                    animationSpec = tween(150)
-                                )
-                            )
+                            (fadeIn(tween(150)) + scaleIn(tween(150), initialScale = 0.8f))
+                                .togetherWith(fadeOut(tween(150)) + scaleOut(tween(150), targetScale = 0.8f))
                         },
                         label = "play_pause_mini"
                     ) { playing ->
                         Icon(
                             if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (playing) "暂停" else "播放"
+                            contentDescription = if (playing) "暂停" else "播放",
+                            modifier = Modifier.size(30.dp)
                         )
                     }
                 }
-                IconButton(onClick = { vm.next() }) {
+                IconButton(onClick = onNext) {
                     Icon(Icons.Filled.SkipNext, contentDescription = "下一首")
                 }
+            }
+            // 进度条贴在卡片底边，圆角裁切
+            Box(
+                Modifier
+                    .padding(horizontal = NekoSpace.md)
+                    .padding(bottom = 6.dp)
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(colors.onSurface.copy(alpha = 0.12f))
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(progress)
+                        .fillMaxHeight()
+                        .background(colors.primary)
+                )
             }
         }
     }

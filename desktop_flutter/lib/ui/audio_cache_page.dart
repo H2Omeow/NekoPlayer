@@ -4,6 +4,10 @@ import 'package:path/path.dart' as paths;
 import '../data/audio_cache.dart';
 import '../domain/library.dart';
 import '../player_controller.dart';
+import 'neko_theme.dart';
+import 'widgets/artwork.dart';
+import 'widgets/page_layout.dart';
+import 'widgets/settings_list.dart';
 
 class AudioCachePage extends StatefulWidget {
   const AudioCachePage({super.key, required this.cache, required this.player});
@@ -17,6 +21,9 @@ class _AudioCachePageState extends State<AudioCachePage> {
   bool busy = false;
   String? error;
   final selected = <String>{};
+
+  AudioCache get cache => widget.cache;
+
   Future<void> action(Future<void> Function() work) async {
     if (busy) return;
     setState(() {
@@ -39,7 +46,7 @@ class _AudioCachePageState extends State<AudioCachePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(selection ? '删除选中的 ${files.length} 首缓存？' : '清空歌曲缓存？'),
-        content: const Text('只删除本应用缓存索引中的音频，不会删除你的本地音乐或下载。正在播放的缓存文件可能被系统占用。'),
+        content: const Text('只删除本应用缓存的音频，不会删除你的本地音乐或下载。正在播放的缓存文件可能被系统占用。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -53,123 +60,136 @@ class _AudioCachePageState extends State<AudioCachePage> {
       ),
     );
     if (mounted && confirm == true) {
-      await action(
-        () => selection ? widget.cache.remove(files) : widget.cache.clear(),
-      );
+      await action(() => selection ? cache.remove(files) : cache.clear());
       if (mounted) setState(selected.clear);
     }
   }
 
+  void toggleAll() => setState(() {
+    if (selected.length == cache.entries.length) {
+      selected.clear();
+    } else {
+      selected.addAll(cache.entries.map((entry) => entry.file));
+    }
+  });
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('离线歌曲缓存')),
-    body: AnimatedBuilder(
-      animation: widget.cache,
-      builder: (context, _) => CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: cache,
+    builder: (context, _) {
+      final text = Theme.of(context).textTheme;
+      final usable = !busy && cache.readable;
+      final summary =
+          '${cache.entries.length} 首 · ${(cache.totalBytes / 1048576).toStringAsFixed(1)} MB / 512 MB'
+          '${cache.busy ? ' · 正在缓存一首歌曲' : ''}';
+      return DetailPage(
+        title: '离线缓存',
+        children: [
+          SettingsSection(
+            description:
+                '缓存会保留实际音质，并优先用于离线播放。'
+                '不保存临时播放链接，也不会上传；单首上限 256 MB。',
+            children: [
+              SettingsSwitchTile(
+                icon: Icons.offline_pin_outlined,
+                title: '缓存听过的在线歌曲',
+                subtitle: '默认关闭；开启后会额外消耗网络流量',
+                value: cache.enabled,
+                onChanged: usable
+                    ? (value) => action(() => cache.setEnabled(value))
+                    : null,
+              ),
+              SettingsTile(
+                icon: Icons.storage_rounded,
+                title: '已用空间',
+                value: summary,
+              ),
+            ],
+          ),
+          if (error ?? cache.error case final String message) ...[
+            InlineNotice(message, error: true),
+            const SizedBox(height: NekoSpace.lg),
+          ],
+          if (busy || cache.busy) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: NekoSpace.lg),
+          ],
+          if (cache.entries.isNotEmpty) ...[
+            Row(
+              children: [
+                Expanded(child: Text('缓存的歌曲', style: text.titleMedium)),
+                TextButton(
+                  onPressed: busy ? null : toggleAll,
+                  child: Text(
+                    selected.length == cache.entries.length ? '取消全选' : '全选',
+                  ),
+                ),
+                if (selected.isNotEmpty)
+                  TextButton(
+                    onPressed: usable ? () => clear(selection: true) : null,
+                    child: Text('删除所选（${selected.length}）'),
+                  )
+                else
+                  TextButton(
+                    onPressed: usable ? clear : null,
+                    child: const Text('全部清空'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: NekoSpace.sm),
+            Card(
+              clipBehavior: Clip.antiAlias,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('缓存已播放音源'),
-                    subtitle: const Text(
-                      '默认关闭。开启后单任务保存完整音频供离线使用；额外消耗网络流量。缓存上限 512MB，单首上限 256MB。',
+                  for (final item in cache.entries)
+                    ListTile(
+                      shape: const RoundedRectangleBorder(),
+                      leading: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Checkbox(
+                            value: selected.contains(item.file),
+                            onChanged: busy
+                                ? null
+                                : (value) => setState(
+                                    () => value == true
+                                        ? selected.add(item.file)
+                                        : selected.remove(item.file),
+                                  ),
+                          ),
+                          const SizedBox(width: NekoSpace.xs),
+                          Artwork(
+                            size: 40,
+                            url: item.song.artwork,
+                            label: item.song.title,
+                          ),
+                        ],
+                      ),
+                      title: Text(
+                        item.song.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        '${item.song.artist} · ${item.quality} · ${(item.size / 1048576).toStringAsFixed(1)} MB',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: const Icon(Icons.play_arrow_rounded),
+                      onTap: () => widget.player.play([
+                        Track(
+                          path: paths.join(cache.directory.path, item.file),
+                          title: item.song.title,
+                          artist: item.song.artist,
+                        ),
+                      ], 0),
                     ),
-                    value: widget.cache.enabled,
-                    onChanged: busy || !widget.cache.readable
-                        ? null
-                        : (value) =>
-                              action(() => widget.cache.setEnabled(value)),
-                  ),
-                  Text(
-                    '${widget.cache.entries.length} 首 · ${(widget.cache.totalBytes / 1048576).toStringAsFixed(1)} MB${widget.cache.busy ? ' · 正在缓存一首歌曲' : ''}',
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '缓存优先离线播放，实际缓存音质会保留。不会保存临时播放 URL，不会自动上传；清理只作用于本应用缓存。',
-                  ),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      TextButton.icon(
-                        onPressed: busy || !widget.cache.readable
-                            ? null
-                            : clear,
-                        icon: const Icon(Icons.delete_outline),
-                        label: const Text('清空缓存'),
-                      ),
-                      TextButton(
-                        onPressed: busy
-                            ? null
-                            : () => setState(() {
-                                if (selected.length ==
-                                    widget.cache.entries.length) {
-                                  selected.clear();
-                                } else {
-                                  selected.addAll(
-                                    widget.cache.entries.map(
-                                      (entry) => entry.file,
-                                    ),
-                                  );
-                                }
-                              }),
-                        child: const Text('全选 / 取消全选'),
-                      ),
-                      TextButton(
-                        onPressed:
-                            busy || selected.isEmpty || !widget.cache.readable
-                            ? null
-                            : () => clear(selection: true),
-                        child: Text('删除所选 (${selected.length})'),
-                      ),
-                    ],
-                  ),
-                  if (error ?? widget.cache.error case final String message)
-                    Text(message),
-                  if (busy || widget.cache.busy)
-                    const LinearProgressIndicator(),
                 ],
               ),
             ),
-          ),
-          SliverList.builder(
-            itemCount: widget.cache.entries.length,
-            itemBuilder: (context, index) {
-              final item = widget.cache.entries[index];
-              return ListTile(
-                title: Text(item.song.title),
-                subtitle: Text(
-                  '${item.song.artist} · ${item.quality} · ${(item.size / 1048576).toStringAsFixed(1)} MB',
-                ),
-                leading: Checkbox(
-                  value: selected.contains(item.file),
-                  onChanged: busy
-                      ? null
-                      : (value) => setState(() {
-                          if (value == true) {
-                            selected.add(item.file);
-                          } else {
-                            selected.remove(item.file);
-                          }
-                        }),
-                ),
-                trailing: const Icon(Icons.play_arrow),
-                onTap: () => widget.player.play([
-                  Track(
-                    path: paths.join(widget.cache.directory.path, item.file),
-                    title: item.song.title,
-                    artist: item.song.artist,
-                  ),
-                ], 0),
-              );
-            },
-          ),
+          ],
         ],
-      ),
-    ),
+      );
+    },
   );
 }

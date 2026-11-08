@@ -8,6 +8,7 @@
 
 #include "win32_window.h"
 #include "desktop_integration.h"
+#include "lyrics_view.h"
 
 // A window that does nothing but host a Flutter view.
 class FlutterWindow : public Win32Window {
@@ -24,12 +25,16 @@ class FlutterWindow : public Win32Window {
                          LPARAM const lparam) noexcept override;
 
  private:
+  LRESULT HandleMessageUnguarded(HWND window, UINT const message,
+                                 WPARAM const wparam, LPARAM const lparam);
+
   // The project to run.
   flutter::DartProject project_;
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
   std::unique_ptr<DesktopIntegration> desktop_integration_;
+  std::unique_ptr<LyricsView> lyrics_view_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

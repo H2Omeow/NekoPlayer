@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import 'data/account_store.dart';
-import 'data/cloud_library.dart';
 import 'data/site_client.dart';
 import 'domain/online_music.dart';
 import 'player_controller.dart';
@@ -19,6 +18,7 @@ class SiteController extends ChangeNotifier {
   final PlayerController player;
   final SiteClient client;
   Map<String, dynamic>? user;
+  String _userToken = '';
   bool busy = false;
   String? message;
   bool _disposed = false;
@@ -61,7 +61,8 @@ class SiteController extends ChangeNotifier {
     if (_disposed) return;
     await accounts.update(siteToken: token, expectedSiteToken: previous);
     user = verified;
-    message = '本站登录成功；云同步需手动触发。';
+    _userToken = token;
+    message = '本站登录成功。';
   }
 
   Future<void> login(
@@ -133,7 +134,9 @@ class SiteController extends ChangeNotifier {
   }
 
   Future<void> refresh() => _action(() async {
-    user = await client.me(accounts.siteToken);
+    final token = accounts.siteToken;
+    user = await client.me(token);
+    _userToken = token;
     message = '本站账号已验证。';
   });
 
@@ -151,76 +154,20 @@ class SiteController extends ChangeNotifier {
     }
   });
 
-  Future<void> sync({bool includeCredentials = false}) => _action(() async {
+  /// 启动后令牌已保存但尚未验证账号时，静默取得当前账号信息。
+  Future<Map<String, dynamic>> ensureUser() async {
     final token = accounts.siteToken;
-    final remote = await client.pull(token);
-    if (_disposed || token != accounts.siteToken) return;
-    CloudLibrary.decode(remote);
-    final remoteCookies = remote['kgCookies'] is List
-        ? remote['kgCookies'] as List
-        : const [];
-    final remotePlatform = remote['kgPlatform'] == 1 ? 1 : 0;
-    if (includeCredentials) {
-      Map<String, String> parse(Object? value) {
-        if (value == null || value == '') return {};
-        if (value is! String) throw const FormatException('云端登录凭据格式异常。');
-        return AccountStore.parseCookies(value);
-      }
-
-      final nc = parse(remote['ncCookie']);
-      if (remote['kgCookies'] != null &&
-          (remote['kgCookies'] is! List || remoteCookies.length > 2)) {
-        throw const FormatException('云端酷狗账号槽位无效。');
-      }
-      final sessions = [
-        for (var platform = 0; platform < 2; platform++)
-          parse(
-            platform < remoteCookies.length ? remoteCookies[platform] : null,
-          ),
-      ];
-      final legacyToken = remote['kgToken'];
-      if (legacyToken != null && legacyToken is! String) {
-        throw const FormatException('云端酷狗凭据格式异常。');
-      }
-      if ((sessions[remotePlatform]['token'] ?? '').isEmpty &&
-          legacyToken is String &&
-          legacyToken.isNotEmpty) {
-        sessions[remotePlatform].addAll(parse('token=$legacyToken'));
-      }
-      await accounts.importMissingSessions(
-        netease: nc,
-        kugou: sessions,
-        preferredPlatform: remotePlatform,
-        expectedSiteToken: token,
-      );
+    final known = user;
+    if (known != null && _userToken == token) return known;
+    final verified = await client.me(token);
+    if (_disposed || token != accounts.siteToken) {
+      throw const MusicSearchException('本站账号已切换，已取消操作。');
     }
-    if (_disposed || token != accounts.siteToken) return;
-    await player.mergeCloud(remote);
-    if (_disposed || token != accounts.siteToken) return;
-    final merged = CloudLibrary.encode(player.snapshot, remote);
-    if (includeCredentials) {
-      String cookie(Map<String, String> values) => values.entries
-          .map((entry) => '${entry.key}=${entry.value}')
-          .join('; ');
-      merged['ncCookie'] = accounts.neteaseLoggedIn
-          ? cookie(accounts.netease)
-          : remote['ncCookie'] ?? '';
-      merged['kgCookies'] = [
-        for (var platform = 0; platform < 2; platform++)
-          (accounts.kugou(platform)['token'] ?? '').isNotEmpty
-              ? cookie(accounts.kugou(platform))
-              : platform < remoteCookies.length
-              ? remoteCookies[platform]
-              : '',
-      ];
-      merged['kgPlatform'] = accounts.platform;
-      merged['kgToken'] = accounts.kugou()['token'] ?? remote['kgToken'] ?? '';
-    }
-    await client.push(token, merged);
-    if (_disposed || token != accounts.siteToken) return;
-    message =
-        '云端数据合并成功；本地文件路径不会上传。${includeCredentials ? '已按你的选择同步平台凭据。' : '未上传本机平台凭据。'}';
-  });
+    user = verified;
+    _userToken = token;
+    _notify();
+    return verified;
+  }
 
   void _notify() {
     if (!_disposed) notifyListeners();

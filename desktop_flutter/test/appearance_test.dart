@@ -105,6 +105,12 @@ void main() {
             'code': 200,
             'data': [
               {'url': '/local/wallpaper/a.png'},
+              {'url': '/data/wallpaper/%E4%B8%BB%E5%9B%BE013.png'},
+              {
+                'url': '/data/wallpaper/huge.jpg',
+                'width': 11004,
+                'height': 6196,
+              },
               {'url': 'https://evil.example/image.png'},
               {'url': 'http://player.nekoh2o.top/local/wallpaper/insecure.png'},
               {'url': '/local/wallpaper/../../secret'},
@@ -115,6 +121,7 @@ void main() {
       );
       expect((await site.wallpapers()).map((uri) => uri.path), [
         '/local/wallpaper/a.png',
+        '/data/wallpaper/%E4%B8%BB%E5%9B%BE013.png',
       ]);
     },
   );

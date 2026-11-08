@@ -50,16 +50,19 @@ fun QrLoginDialog(vm: PlayerViewModel, onDismiss: () -> Unit) {
             ) {
                 val bmp = remember(qrBase64) { qrBase64?.let { decodeBase64Image(it) } }
                 if (bmp != null) {
-                    androidx.compose.foundation.Image(
-                        bitmap = bmp.asImageBitmap(),
-                        contentDescription = "二维码",
-                        modifier = Modifier.size(200.dp)
-                    )
+                    // 二维码需要白底才能被扫描
+                    Surface(color = androidx.compose.ui.graphics.Color.White, shape = MaterialTheme.shapes.medium) {
+                        androidx.compose.foundation.Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = "二维码",
+                            modifier = Modifier.padding(12.dp).size(200.dp)
+                        )
+                    }
                 } else {
                     Box(Modifier.size(200.dp), Alignment.Center) { CircularProgressIndicator() }
                 }
                 Spacer(Modifier.height(12.dp))
-                Text(message, style = MaterialTheme.typography.bodyMedium)
+                Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }

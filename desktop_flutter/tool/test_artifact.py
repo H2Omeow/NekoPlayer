@@ -5,7 +5,7 @@ import struct
 import tempfile
 import unittest
 
-from check_artifact import architecture, font_source, verify, verify_bundle, verify_font_bundle
+from check_artifact import architecture, elf_needed, font_source, verify, verify_bundle, verify_font_bundle
 
 FONT_SOURCE = font_source()
 
@@ -28,6 +28,25 @@ def elf(machine, bits=2):
     header[:6] = b"\x7fELF" + bytes([bits, 1])
     struct.pack_into("<H", header, 18, machine)
     return header
+
+
+def elf_with_needed(machine, names):
+    """Minimal ELF64 with PT_LOAD + PT_DYNAMIC listing the given DT_NEEDED entries."""
+    strings = b"\0" + b"".join(name.encode() + b"\0" for name in names)
+    offsets, position = [], 1
+    for name in names:
+        offsets.append(position)
+        position += len(name) + 1
+    dynamic = b"".join(struct.pack("<qQ", 1, offset) for offset in offsets)
+    strtab_at = 64 + 56 * 2
+    dynamic_at = strtab_at + len(strings)
+    dynamic += struct.pack("<qQ", 5, strtab_at) + struct.pack("<qQ", 0, 0)
+    data = bytearray(elf(machine))
+    struct.pack_into("<Q", data, 32, 64)
+    struct.pack_into("<HHH", data, 54, 56, 2, 0)
+    data += struct.pack("<IIQQQQQQ", 1, 5, 0, 0, 0, dynamic_at + len(dynamic), dynamic_at + len(dynamic), 0x1000)
+    data += struct.pack("<IIQQQQQQ", 2, 6, dynamic_at, dynamic_at, dynamic_at, len(dynamic), len(dynamic), 8)
+    return bytes(data + strings + dynamic)
 
 
 def pe(machine, magic=0x20B):
@@ -169,6 +188,45 @@ class ArtifactTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "does not match"):
                     verify_bundle(target, root)
                 extra.unlink()
+
+    def test_linux_dependencies_are_read_from_the_dynamic_section(self):
+        self.binary.write_bytes(elf_with_needed(62, ["libc.so.6", "libgtk-3.so.0"]))
+        self.assertEqual(elf_needed(self.binary), ["libc.so.6", "libgtk-3.so.0"])
+        self.binary.write_bytes(elf(62))
+        self.assertEqual(elf_needed(self.binary), [])
+
+    def test_linux_bundle_accepts_bundled_and_allowlisted_dependencies(self):
+        root = self.prepare_bundle("linux-x64")
+        plugin = root / "lib/libmedia_kit_video_plugin.so"
+        plugin.write_bytes(elf_with_needed(62, ["libflutter_linux_gtk.so", "libgtk-3.so.0", "libepoxy.so.0", "libc.so.6"]))
+        self.assertEqual(len(verify_bundle("linux-x64", root)), 6)
+
+    def test_linux_bundle_rejects_hard_linked_runtime_libraries(self):
+        for name in ("libmpv.so.1", "libmpv.so.2", "libjvm.so", "libwebkit2gtk-4.1.so.0", "libayatana-appindicator3.so.1"):
+            with self.subTest(name=name):
+                root = self.prepare_bundle("linux-x64")
+                (root / "lib/libmedia_kit_video_plugin.so").write_bytes(elf_with_needed(62, ["libc.so.6", name]))
+                with self.assertRaisesRegex(ValueError, "dlopen"):
+                    verify_bundle("linux-x64", root)
+
+    def test_linux_bundle_rejects_unknown_system_libraries(self):
+        root = self.prepare_bundle("linux-x64")
+        (root / "lib/libnekoplayer_dsp.so").write_bytes(elf_with_needed(62, ["libsurprise.so.7"]))
+        with self.assertRaisesRegex(ValueError, "libsurprise.so.7"):
+            verify_bundle("linux-x64", root)
+
+    def test_executable_may_depend_on_bundled_plugins(self):
+        root = self.prepare_bundle("linux-x64")
+        (root / "lib/libfoo_plugin.so").write_bytes(elf(62))
+        (root / "nekoplayer").write_bytes(elf_with_needed(62, ["libfoo_plugin.so", "libm.so.6"]))
+        verify_bundle("linux-x64", root)
+
+    def test_jni_helper_is_tolerated_in_build_output_but_rejected_in_packages(self):
+        root = self.prepare_bundle("linux-x64")
+        (root / "lib/libdartjni.so").write_bytes(elf_with_needed(62, ["libjvm.so"]))
+        verify_bundle("linux-x64", root)
+        with self.assertRaisesRegex(ValueError, "libdartjni.so"):
+            verify_bundle("linux-x64", root, packaged=True)
 
 
 if __name__ == "__main__":

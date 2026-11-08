@@ -5,6 +5,11 @@
 #include <atomic>
 #include <cstring>
 #include <mutex>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
 #include <vector>
 
 #ifdef _WIN32
@@ -24,16 +29,41 @@ struct Sink {
   std::atomic<uint64_t> write{0};
   std::atomic<uint64_t> played{0};
   std::atomic<bool> paused{true};
+  std::atomic<uint64_t> faults{0};
   std::atomic<float> volume{.75f};
   std::mutex settings_mutex;
   neko_dsp::EffectSettings pending;
   bool changed = false;
 };
 
-void callback(ma_device* device, void* output, const void*, ma_uint32 frame_count) {
-  auto* sink = static_cast<Sink*>(device->pUserData);
-  auto* destination = static_cast<int16_t*>(output);
-  std::memset(output, 0, frame_count * 2 * sizeof(int16_t));
+void release(Sink* sink) {
+  ma_device_uninit(&sink->device);
+  delete sink;
+}
+
+// Runs release() on a detached thread (plain OS APIs: no std::thread so older
+// MinGW thread models still link). Returns false when no thread could start.
+bool release_async(Sink* sink) {
+#ifdef _WIN32
+  HANDLE thread = CreateThread(nullptr, 0, [](LPVOID data) -> DWORD {
+    release(static_cast<Sink*>(data));
+    return 0;
+  }, sink, 0, nullptr);
+  if (thread == nullptr) return false;
+  CloseHandle(thread);
+  return true;
+#else
+  pthread_t thread;
+  if (pthread_create(&thread, nullptr, [](void* data) -> void* {
+    release(static_cast<Sink*>(data));
+    return nullptr;
+  }, sink) != 0) return false;
+  pthread_detach(thread);
+  return true;
+#endif
+}
+
+void render(Sink* sink, int16_t* destination, ma_uint32 frame_count) {
   if (sink->paused.load(std::memory_order_acquire)) return;
   {
     std::unique_lock<std::mutex> settings(sink->settings_mutex, std::try_to_lock);
@@ -52,6 +82,21 @@ void callback(ma_device* device, void* output, const void*, ma_uint32 frame_coun
     for (uint32_t index = 0; index < samples; index++) destination[index] = static_cast<int16_t>(destination[index] * volume);
     sink->read.store(read + samples, std::memory_order_release);
     sink->played.fetch_add(samples / 2, std::memory_order_relaxed);
+  }
+}
+
+// An exception escaping the audio thread would call std::terminate; emit
+// silence for the buffer and count the fault so Dart can log it.
+void callback(ma_device* device, void* output, const void*, ma_uint32 frame_count) {
+  auto* sink = static_cast<Sink*>(device->pUserData);
+  auto* destination = static_cast<int16_t*>(output);
+  std::memset(output, 0, frame_count * 2 * sizeof(int16_t));
+  try {
+    render(sink, destination, frame_count);
+  } catch (...) {
+    std::memset(output, 0, frame_count * 2 * sizeof(int16_t));
+    sink->read.store(sink->write.load(std::memory_order_acquire), std::memory_order_release);
+    sink->faults.fetch_add(1, std::memory_order_relaxed);
   }
 }
 }
@@ -77,8 +122,15 @@ NEKO_EXPORT void* neko_sink_create(int silent) {
 NEKO_EXPORT void neko_sink_destroy(void* handle) {
   auto* sink = static_cast<Sink*>(handle);
   if (sink == nullptr) return;
-  if (sink->initialized) ma_device_uninit(&sink->device);
-  delete sink;
+  if (!sink->initialized) { delete sink; return; }
+  // ma_device_uninit joins the audio thread and can block for a while on
+  // PulseAudio/WASAPI; keep it off the caller (Dart UI isolate).
+  sink->paused.store(true, std::memory_order_release);
+  if (!release_async(sink)) release(sink);
+}
+
+NEKO_EXPORT uint64_t neko_sink_faults(void* handle) {
+  return handle == nullptr ? 0 : static_cast<Sink*>(handle)->faults.load(std::memory_order_relaxed);
 }
 
 NEKO_EXPORT int neko_sink_write(void* handle, const int16_t* samples, int count) {

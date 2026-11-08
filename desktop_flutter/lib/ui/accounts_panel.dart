@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'kugou_account_page.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../data/account_store.dart';
 import '../data/native_music_catalog.dart';
 import '../domain/online_music.dart';
+import 'kugou_account_page.dart';
+import 'neko_theme.dart';
+import 'widgets/settings_list.dart';
 
 class AccountsPanel extends StatefulWidget {
   const AccountsPanel({super.key, required this.catalog});
@@ -220,132 +222,196 @@ class _AccountsPanelState extends State<AccountsPanel> {
         ? response['profile'] as Map
         : const {};
     final account = response['account'] as Map;
+    accounts.setNickname(netease: profile['nickname']?.toString());
     setState(
       () => message =
           '${profile['nickname'] ?? '网易云用户'} · ID ${account['id'] ?? profile['userId'] ?? '未知'} · 会员类型 ${profile['vipType'] ?? 0}。实际可播音质由平台验证。',
     );
   });
 
-  @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: accounts,
-    builder: (context, _) => Card(
+  (bool, String) _status(MusicProvider provider) {
+    if (provider == MusicProvider.netease) {
+      final name = accounts.neteaseNickname;
+      return accounts.neteaseLoggedIn
+          ? (true, name == null ? '已登录' : '已登录 · $name')
+          : (false, '未登录');
+    }
+    final name = accounts.kugouNicknames[accounts.platform];
+    if (accounts.kugouLoggedIn()) {
+      return (true, name == null ? '已登录' : '已登录 · $name');
+    }
+    if (accounts.kugouTokenOnly()) {
+      return (false, '凭据不完整：缺少 userid，可以播放，但账号功能不可用，请重新登录');
+    }
+    return (false, '未登录');
+  }
+
+  void _switchPlatform(int platform) {
+    generation++;
+    setState(() => qr = null);
+    unawaited(action(() => accounts.update(platform: platform)));
+  }
+
+  Widget _provider(BuildContext context, MusicProvider provider) {
+    final colors = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final (signedIn, status) = _status(provider);
+    final enabled = !busy && accounts.readable;
+    final kugou = provider == MusicProvider.kugou;
+    final activeQr = qr?.provider == provider ? qr : null;
+    return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(NekoSpace.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('音乐平台账号', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            const Text('账号仅在本机系统密钥环中保存；原版与概念版会话独立。'),
-            if (!accounts.readable)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('系统凭据库不可用或数据损坏。已保护原数据，暂不保存账号；Linux 请解锁系统密钥环。'),
-              ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
+            Row(
               children: [
-                for (var platform = 0; platform < 2; platform++)
-                  ChoiceChip(
-                    label: Text(platform == 0 ? '酷狗原版' : '酷狗概念版'),
-                    selected: accounts.platform == platform,
-                    onSelected: busy
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: signedIn
+                      ? colors.primaryContainer
+                      : colors.surfaceContainerHighest,
+                  foregroundColor: signedIn
+                      ? colors.onPrimaryContainer
+                      : colors.onSurfaceVariant,
+                  child: Text(
+                    kugou ? '酷' : '网',
+                    style: text.titleSmall?.copyWith(color: null),
+                  ),
+                ),
+                const SizedBox(width: NekoSpace.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(provider.label, style: text.titleMedium),
+                      Text(
+                        status,
+                        style: text.bodySmall?.copyWith(
+                          color: signedIn ? colors.tertiary : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (kugou)
+                  SegmentedButton<int>(
+                    showSelectedIcon: false,
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    segments: const [
+                      ButtonSegment(value: 0, label: Text('原版')),
+                      ButtonSegment(value: 1, label: Text('概念版')),
+                    ],
+                    selected: {accounts.platform},
+                    onSelectionChanged: busy
                         ? null
-                        : (_) {
-                            generation++;
-                            setState(() => qr = null);
-                            unawaited(
-                              action(() => accounts.update(platform: platform)),
-                            );
-                          },
+                        : (value) => _switchPlatform(value.single),
                   ),
               ],
             ),
-            for (final provider in const [
-              MusicProvider.netease,
-              MusicProvider.kugou,
-            ])
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${provider.label} · ${(provider == MusicProvider.netease ? accounts.neteaseLoggedIn : accounts.kugouLoggedIn()) ? '已保存登录凭据' : '未登录'}',
-                    ),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        OutlinedButton(
-                          onPressed: busy || !accounts.readable
-                              ? null
-                              : () => unawaited(login(provider)),
-                          child: const Text('扫码登录'),
-                        ),
-                        TextButton(
-                          onPressed: busy || !accounts.readable
-                              ? null
-                              : () => unawaited(importCookie(provider)),
-                          child: const Text('导入 Cookie'),
-                        ),
-                        if (provider == MusicProvider.kugou)
-                          TextButton(
-                            onPressed: busy || !accounts.readable
-                                ? null
-                                : () => Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => KugouAccountPage(
-                                        catalog: widget.catalog,
-                                      ),
-                                    ),
-                                  ),
-                            child: const Text('短信登录与权益'),
-                          ),
-                        if (provider == MusicProvider.netease)
-                          TextButton(
-                            onPressed: busy || !accounts.neteaseLoggedIn
-                                ? null
-                                : neteaseInfo,
-                            child: const Text('验证账号与会员状态'),
-                          ),
-                        TextButton(
-                          onPressed: busy || !accounts.readable
-                              ? null
-                              : () => unawaited(logout(provider)),
-                          child: const Text('退出账号'),
-                        ),
-                      ],
-                    ),
-                  ],
+            const SizedBox(height: NekoSpace.lg),
+            Wrap(
+              spacing: NekoSpace.sm,
+              runSpacing: NekoSpace.sm,
+              children: [
+                (signedIn ? OutlinedButton.icon : FilledButton.icon)(
+                  onPressed: enabled ? () => unawaited(login(provider)) : null,
+                  icon: const Icon(Icons.qr_code_rounded, size: 18),
+                  label: Text(signedIn ? '重新扫码登录' : '扫码登录'),
                 ),
-              ),
-            if (busy) const LinearProgressIndicator(),
-            if (qr != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: SizedBox(
-                  width: 220,
-                  height: 220,
-                  child: ColoredBox(
-                    color: Colors.white,
-                    child: QrImageView(
-                      data: qr!.uri.toString(),
-                      padding: const EdgeInsets.all(12),
+                TextButton(
+                  onPressed: enabled
+                      ? () => unawaited(importCookie(provider))
+                      : null,
+                  child: const Text('导入 Cookie'),
+                ),
+                if (kugou)
+                  TextButton(
+                    onPressed: enabled
+                        ? () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) =>
+                                  KugouAccountPage(catalog: widget.catalog),
+                            ),
+                          )
+                        : null,
+                    child: const Text('短信登录与权益'),
+                  )
+                else if (signedIn)
+                  TextButton(
+                    onPressed: busy ? null : neteaseInfo,
+                    child: const Text('验证账号与会员'),
+                  ),
+                if (signedIn || (kugou && accounts.kugouTokenOnly()))
+                  TextButton(
+                    style: TextButton.styleFrom(foregroundColor: colors.error),
+                    onPressed: enabled
+                        ? () => unawaited(logout(provider))
+                        : null,
+                    child: const Text('退出'),
+                  ),
+              ],
+            ),
+            if (activeQr != null) ...[
+              const SizedBox(height: NekoSpace.lg),
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(NekoRadius.card),
+                    child: ColoredBox(
+                      color: Colors.white,
+                      child: QrImageView(
+                        data: activeQr.uri.toString(),
+                        size: 184,
+                        padding: const EdgeInsets.all(NekoSpace.md),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: NekoSpace.xl),
+                  Expanded(child: Text(message ?? '', style: text.bodyMedium)),
+                ],
               ),
-            if (message != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(message!),
-              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: accounts,
+    builder: (context, _) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!accounts.readable) ...[
+          const InlineNotice(
+            '系统凭据库不可用或数据损坏。原数据已保护，暂不保存账号；Linux 请先解锁系统密钥环。',
+            error: true,
+          ),
+          const SizedBox(height: NekoSpace.lg),
+        ],
+        _provider(context, MusicProvider.netease),
+        const SizedBox(height: NekoSpace.lg),
+        _provider(context, MusicProvider.kugou),
+        const SizedBox(height: NekoSpace.lg),
+        if (busy) ...[
+          const LinearProgressIndicator(),
+          const SizedBox(height: NekoSpace.md),
+        ],
+        if (message != null && qr == null) ...[
+          InlineNotice(message!),
+          const SizedBox(height: NekoSpace.md),
+        ],
+        Text(
+          '账号只保存在本机的系统密钥环中；酷狗原版与概念版的登录相互独立。'
+          '如需在其他设备使用，可以在“账号与云端同步”中同步平台登录。',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     ),
   );
 }

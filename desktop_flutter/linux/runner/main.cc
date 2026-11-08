@@ -1,8 +1,10 @@
+#include "crash_handler.h"
 #include "my_application.h"
 
 #include <fontconfig/fontconfig.h>
 
 int main(int argc, char** argv) {
+  crash_handler_install(APPLICATION_ID);
   g_autofree gchar* executable = g_file_read_link("/proc/self/exe", nullptr);
   if (executable != nullptr) {
     g_autofree gchar* directory = g_path_get_dirname(executable);

@@ -56,7 +56,7 @@ void main() {
           ),
         ),
       );
-      for (final action in ['收藏', '取消收藏', '加入本机歌单']) {
+      for (final action in ['收藏', '取消收藏', '添加到歌单…']) {
         await tester.tap(find.byTooltip('歌曲操作'));
         await tester.pumpAndSettle();
         await tester.tap(find.text(action));

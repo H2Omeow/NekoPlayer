@@ -9,8 +9,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -22,7 +20,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.serialization.json.*
 import top.nekoh2o.player.data.plugins.MusicPlugin
-import top.nekoh2o.player.data.plugins.PluginStore
+import top.nekoh2o.player.ui.components.DetailTopBar
+import top.nekoh2o.player.ui.components.NekoChip
+import top.nekoh2o.player.ui.components.PageContentPadding
+import top.nekoh2o.player.ui.components.SettingsSection
+import top.nekoh2o.player.ui.components.SettingsSwitchTile
+import top.nekoh2o.player.ui.components.SettingsTile
+import top.nekoh2o.player.ui.theme.NekoDefaults
+import top.nekoh2o.player.ui.theme.NekoSpace
 import top.nekoh2o.player.ui.viewmodel.PluginManagerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,58 +51,85 @@ fun PluginManagerScreen(onBack: () -> Unit, manager: PluginManagerViewModel = vi
     LaunchedEffect(status.message) {
         status.message?.let { snackbar.showSnackbar(it); manager.dismissMessage() }
     }
-    Scaffold(topBar = {
-        TopAppBar(title = { Text("音源与订阅") }, navigationIcon = {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
-        })
-    }, snackbarHost = { SnackbarHost(snackbar) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
-                Text("添加订阅或脚本", style = MaterialTheme.typography.titleMedium)
-                OutlinedTextField(location, { location = it }, label = { Text("订阅 JSON / 单脚本地址") },
-                    singleLine = true, modifier = Modifier.fillMaxWidth(), enabled = !status.busy)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("auto" to "自动", "musicfree" to "MusicFree", "baka" to "Baka", "lx" to "LX").forEach { (value, label) ->
-                        FilterChip(selected = format == value, onClick = { format = value }, label = { Text(label) }, enabled = !status.busy)
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            DetailTopBar("音源与订阅", onBack)
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PageContentPadding,
+                verticalArrangement = Arrangement.spacedBy(NekoSpace.xl)
+            ) {
+                item {
+                    SettingsSection(
+                        title = "添加订阅或脚本",
+                        description = "支持 Animemusic、MusicFree / Baka CommonJS 和 LX。LX 通过已启用的对应 Animemusic 来源搜索。"
+                    ) {
+                        Column(
+                            Modifier.padding(NekoSpace.lg),
+                            verticalArrangement = Arrangement.spacedBy(NekoSpace.md)
+                        ) {
+                            OutlinedTextField(
+                                location, { location = it }, label = { Text("订阅 JSON / 单脚本地址") },
+                                singleLine = true, modifier = Modifier.fillMaxWidth(), enabled = !status.busy,
+                                colors = NekoDefaults.textFieldColors()
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
+                                listOf("auto" to "自动", "musicfree" to "MusicFree", "baka" to "Baka", "lx" to "LX").forEach { (value, label) ->
+                                    NekoChip(label, format == value, { if (!status.busy) format = value })
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
+                                Button(
+                                    onClick = { manager.import(location.trim(), format) },
+                                    enabled = !status.loading && !status.busy && location.isNotBlank()
+                                ) { Text("导入地址") }
+                                OutlinedButton(
+                                    onClick = { picker.launch(arrayOf("*/*")) },
+                                    enabled = !status.loading && !status.busy,
+                                    colors = NekoDefaults.outlinedButtonColors()
+                                ) { Text("选择本地文件") }
+                            }
+                            if (status.busy || status.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                        }
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { manager.import(location.trim(), format) }, enabled = !status.loading && !status.busy && location.isNotBlank()) { Text("导入地址") }
-                    OutlinedButton(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !status.loading && !status.busy) { Text("选择本地文件") }
-                }
-                Text("支持 Animemusic、MusicFree / Baka CommonJS 和 LX。LX 通过已启用的对应 Animemusic 来源搜索。", style = MaterialTheme.typography.bodySmall)
-                if (status.busy || status.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
-            }
-            items(state.subscriptions, key = { it.id }) { subscription ->
-                ElevatedCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(subscription.name, style = MaterialTheme.typography.titleMedium)
-                                Text(if (subscription.builtIn) "内置 · 免登录" else "外部订阅 / 脚本", style = MaterialTheme.typography.labelSmall)
-                            }
-                            Switch(subscription.enabled, { manager.enableSubscription(subscription.id, it) }, enabled = !status.busy)
-                        }
-                        Text(subscription.location, style = MaterialTheme.typography.bodySmall)
-                        Row {
-                            TextButton(onClick = { manager.update(subscription.id) }, enabled = !status.busy) { Text("更新") }
-                            if (!subscription.builtIn) TextButton(onClick = { deleting = subscription.id }, enabled = !status.busy) { Text("删除") }
-                        }
+                items(state.subscriptions, key = { it.id }) { subscription ->
+                    SettingsSection(
+                        title = subscription.name,
+                        description = subscription.location.ifBlank { null }
+                    ) {
+                        SettingsSwitchTile(
+                            title = "启用订阅",
+                            subtitle = if (subscription.builtIn) "内置 · 免登录" else "外部订阅 / 脚本",
+                            checked = subscription.enabled,
+                            onCheckedChange = { manager.enableSubscription(subscription.id, it) },
+                            enabled = !status.busy
+                        )
                         state.plugins.filter { it.subscriptionId == subscription.id }.forEach { plugin ->
-                            HorizontalDivider()
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(plugin.name, style = MaterialTheme.typography.bodyLarge)
-                                    Text("${plugin.format} · ${plugin.version.ifBlank { "未标注版本" }}", style = MaterialTheme.typography.labelSmall)
-                                }
-                                Switch(plugin.enabled, { manager.enablePlugin(plugin.id, it) }, enabled = !status.busy && subscription.enabled)
+                            SettingsSwitchTile(
+                                title = plugin.name,
+                                subtitle = "${plugin.format} · ${plugin.version.ifBlank { "未标注版本" }}",
+                                checked = plugin.enabled,
+                                onCheckedChange = { manager.enablePlugin(plugin.id, it) },
+                                enabled = !status.busy && subscription.enabled
+                            )
+                            if (plugin.format != "animemusic/1") {
+                                SettingsTile(title = "配置 ${plugin.name} 的变量", enabled = !status.busy, onClick = { configuring = plugin })
                             }
-                            if (plugin.format != "animemusic/1") TextButton(onClick = { configuring = plugin }, enabled = !status.busy) { Text("配置变量") }
+                        }
+                        Row(Modifier.padding(horizontal = NekoSpace.sm)) {
+                            TextButton(onClick = { manager.update(subscription.id) }, enabled = !status.busy) { Text("更新") }
+                            if (!subscription.builtIn) TextButton(
+                                onClick = { deleting = subscription.id },
+                                enabled = !status.busy,
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                            ) { Text("删除") }
                         }
                     }
                 }
             }
         }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
     deleting?.let { id ->
         AlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除外部订阅？") },

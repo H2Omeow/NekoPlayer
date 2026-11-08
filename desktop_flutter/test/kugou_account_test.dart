@@ -189,7 +189,7 @@ void main() {
       MaterialApp(home: KugouAccountPage(catalog: localCatalog)),
     );
     await tester.pumpAndSettle();
-    expect(find.text('发送短信验证码'), findsOneWidget);
+    expect(find.text('发送验证码'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

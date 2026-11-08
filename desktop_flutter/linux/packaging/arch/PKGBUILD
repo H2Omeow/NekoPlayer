@@ -1,0 +1,48 @@
+# Maintainer: H2Omeow
+# Installs the prebuilt release bundle. Run `updpkgsums` after bumping pkgver
+# (checksums are published in the release's SHA256SUMS file).
+pkgname=nekoplayer-bin
+pkgver=1.1.0
+pkgrel=1
+pkgdesc='NekoPlayer Flutter music player (prebuilt desktop bundle)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/H2Omeow/SuperPlayer_Kotlin'
+license=('custom')
+depends=('gtk3' 'mpv' 'libsecret' 'libepoxy' 'gnutls')
+optdepends=('libayatana-appindicator: tray icon'
+            'webkit2gtk-4.1: embedded dynamic lyrics')
+provides=('nekoplayer')
+conflicts=('nekoplayer')
+options=('!strip' '!debug')
+source_x86_64=("NekoPlayer-v${pkgver}-linux-x64.tar.gz::${url}/releases/download/v${pkgver}/NekoPlayer-v${pkgver}-linux-x64.tar.gz")
+source_aarch64=("NekoPlayer-v${pkgver}-linux-arm64.tar.gz::${url}/releases/download/v${pkgver}/NekoPlayer-v${pkgver}-linux-arm64.tar.gz")
+source=("nekoplayer-${pkgver}.png::${url}/raw/v${pkgver}/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png")
+sha256sums=('SKIP')
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+noextract=("NekoPlayer-v${pkgver}-linux-x64.tar.gz" "NekoPlayer-v${pkgver}-linux-arm64.tar.gz")
+
+package() {
+  install -dm755 "$pkgdir/usr/lib/nekoplayer"
+  tar -xzf "$srcdir/NekoPlayer-v${pkgver}-linux-"*.tar.gz -C "$pkgdir/usr/lib/nekoplayer" --strip-components=1 --no-same-owner
+
+  install -dm755 "$pkgdir/usr/bin"
+  ln -s /usr/lib/nekoplayer/nekoplayer "$pkgdir/usr/bin/nekoplayer"
+
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/nekoplayer.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=NekoPlayer
+Comment=Music player
+Exec=nekoplayer %U
+Icon=nekoplayer
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+DESKTOP
+
+  install -Dm644 "$srcdir/nekoplayer-${pkgver}.png" "$pkgdir/usr/share/icons/hicolor/192x192/apps/nekoplayer.png"
+
+  if [ -f "$pkgdir/usr/lib/nekoplayer/LICENSE" ]; then
+    install -Dm644 "$pkgdir/usr/lib/nekoplayer/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  fi
+}

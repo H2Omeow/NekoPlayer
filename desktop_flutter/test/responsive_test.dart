@@ -5,10 +5,19 @@ import 'package:nekoplayer_desktop/domain/library.dart';
 import 'package:nekoplayer_desktop/domain/online_music.dart';
 import 'package:nekoplayer_desktop/ui/neko_app.dart';
 import 'package:nekoplayer_desktop/ui/neko_theme.dart';
+import 'package:nekoplayer_desktop/ui/shell/sidebar.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import 'fakes.dart';
 
 void main() {
+  // The shell's cloud-sync state lives in SharedPreferences.
+  setUp(
+    () => SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty(),
+  );
+
   testWidgets('deferred full player shows saved progress without autoplay', (
     tester,
   ) async {
@@ -129,13 +138,18 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(
-        find.byType(width >= 840 ? NavigationRail : NavigationBar),
-        findsOneWidget,
-      );
+      final compact = width < 720;
+      expect(find.byType(compact ? NavigationBar : Sidebar), findsOneWidget);
       expect(tester.takeException(), isNull);
-      for (final label in ['音乐库', '歌单', '发现', '设置', '主页']) {
-        await tester.tap(find.text(label).last);
+      final labels = compact
+          ? ['音乐库', '发现', '设置', '首页']
+          : ['发现', '我喜欢', '最近播放', '全部歌曲', '设置', '首页'];
+      for (final label in labels) {
+        // The collapsed sidebar shows icons with tooltips instead of text.
+        final target = width < 1100 && !compact
+            ? find.byTooltip(label)
+            : find.text(label);
+        await tester.tap(target.last);
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull, reason: '$label at $width');
       }

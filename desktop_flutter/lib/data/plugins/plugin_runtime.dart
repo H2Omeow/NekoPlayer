@@ -6,6 +6,7 @@ import 'dart:isolate';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as paths;
 
+import '../../diagnostics/crash_log.dart';
 import '../../domain/music_plugin.dart';
 import '../library_store.dart';
 import 'plugin_http.dart';
@@ -119,9 +120,19 @@ class NativePluginRuntime implements PluginScriptRuntime {
               ? 'nekoplayer_plugins.dll'
               : 'lib/libnekoplayer_plugins.so',
         );
-    return Isolate.run(
-      () => executePlugin(library, runtime, script, options, method, args),
-    );
+    try {
+      return await Isolate.run(
+        () => executePlugin(library, runtime, script, options, method, args),
+      );
+    } catch (failure, stack) {
+      CrashLog.error(
+        'plugin',
+        'Plugin ${options['name'] ?? '(inspect)'} ${method ?? 'load'} failed',
+        error: failure,
+        stack: stack,
+      );
+      rethrow;
+    }
   }
 }
 
