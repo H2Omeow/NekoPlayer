@@ -25,7 +25,8 @@ LINUX_SYSTEM_LIBRARIES = frozenset((
     "libz.so.1", "libglib-2.0.so.0", "libgobject-2.0.so.0", "libgio-2.0.so.0",
     "libgtk-3.so.0", "libgdk-3.so.0", "libgdk_pixbuf-2.0.so.0", "libatk-1.0.so.0",
     "libpango-1.0.so.0", "libpangocairo-1.0.so.0", "libcairo.so.2", "libcairo-gobject.so.2",
-    "libharfbuzz.so.0", "libepoxy.so.0", "libfontconfig.so.1", "libsecret-1.so.0",
+    "libharfbuzz.so.0", "libepoxy.so.0", "libfontconfig.so.1", "libfreetype.so.6", "libsecret-1.so.0",
+    "libgnutls.so.30",
 ))
 # libmpv, WebKitGTK and the app indicator are resolved with dlopen at runtime so that
 # one bundle works across distribution sonames; a hard link would pin one of them.

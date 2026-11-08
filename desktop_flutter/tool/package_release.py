@@ -27,7 +27,7 @@ def release_version():
 
 
 def package_version(version):
-    # DEB / RPM 不允许版本里出现 "-"，用 "~" 让 1.2.0~pre 排在 1.2.0 之前
+    # DEB / RPM reject "-" in versions; "~" also sorts 1.2.0~pre before 1.2.0.
     return version.replace("-", "~")
 
 

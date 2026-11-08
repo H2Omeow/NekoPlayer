@@ -27,7 +27,7 @@ class ReleasePackageTests(unittest.TestCase):
                 self.assertNotIn("java", script.lower())
 
     def test_linux_packages_declare_either_libmpv_soname(self):
-        source = Path(__file__).with_name("package_release.py").read_text()
+        source = Path(__file__).with_name("package_release.py").read_text(encoding="utf-8")
         self.assertIn("libmpv2 | libmpv1", source)
         self.assertIn("(mpv-libs or libmpv2)", source)
 
