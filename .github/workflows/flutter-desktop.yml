@@ -79,27 +79,48 @@ jobs:
           sudo systemctl stop unattended-upgrades.service apt-daily.service apt-daily-upgrade.service 2>/dev/null || true
           . /etc/os-release
           case "$(uname -m)" in
-            aarch64|arm64) mirror=http://ports.ubuntu.com/ubuntu-ports ;;
-            *) mirror=http://archive.ubuntu.com/ubuntu ;;
+            aarch64|arm64)
+              mirrors=(
+                http://mirror.leaseweb.com/ubuntu-ports
+                http://mirrors.ocf.berkeley.edu/ubuntu-ports
+                http://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
+                http://mirrors.ustc.edu.cn/ubuntu-ports
+              )
+              ;;
+            *)
+              mirrors=(
+                http://mirrors.edge.kernel.org/ubuntu
+                http://mirror.enzu.com/ubuntu
+                http://mirror.math.princeton.edu/pub/ubuntu
+              )
+              ;;
           esac
           codename="${VERSION_CODENAME:-jammy}"
-          # The image's mirror and third-party sources can be unreachable from
-          # hosted runners; use the official archive with hard network timeouts.
-          {
-            echo "deb $mirror $codename main restricted universe multiverse"
-            echo "deb $mirror $codename-updates main restricted universe multiverse"
-            echo "deb $mirror $codename-security main restricted universe multiverse"
-          } | sudo tee /etc/apt/sources.list.d/nekoplayer-release.list >/dev/null
+          source_file=sources.list.d/nekoplayer-release.list
           apt_options=(
-            -o "Dir::Etc::sourcelist=sources.list.d/nekoplayer-release.list"
+            -o "Dir::Etc::sourcelist=$source_file"
             -o "Dir::Etc::sourceparts=-"
             -o "Acquire::ForceIPv4=true"
-            -o "Acquire::Retries=2"
-            -o "Acquire::http::Timeout=15"
-            -o "Acquire::https::Timeout=15"
+            -o "Acquire::Retries=1"
+            -o "Acquire::http::Timeout=10"
+            -o "Acquire::https::Timeout=10"
             -o "DPkg::Lock::Timeout=120"
           )
-          sudo apt-get update "${apt_options[@]}"
+          sudo rm -rf /var/lib/apt/lists/*
+          selected=
+          for mirror in "${mirrors[@]}"; do
+            {
+              echo "deb $mirror $codename main restricted universe multiverse"
+              echo "deb $mirror $codename-updates main restricted universe multiverse"
+              echo "deb $mirror $codename-security main restricted universe multiverse"
+            } | sudo tee "/etc/apt/$source_file" >/dev/null
+            if timeout 120 sudo apt-get update "${apt_options[@]}"; then
+              selected=$mirror
+              break
+            fi
+            echo "::warning::Ubuntu mirror $mirror is unavailable; trying the next one"
+          done
+          [ -n "$selected" ] || { echo 'No usable Ubuntu mirror'; exit 1; }
           sudo apt-get install -y "${apt_options[@]}" clang cmake ninja-build pkg-config libgtk-3-dev libmpv-dev libsecret-1-dev libepoxy-dev libgnutls28-dev openssl rpm xvfb dbus-x11
           echo "$GITHUB_WORKSPACE/.flutter-sdk/bin" >> "$GITHUB_PATH"
       - name: Set up Windows environment
@@ -308,25 +329,47 @@ jobs:
           sudo systemctl stop unattended-upgrades.service apt-daily.service apt-daily-upgrade.service 2>/dev/null || true
           . /etc/os-release
           case "$(uname -m)" in
-            aarch64|arm64) mirror=http://ports.ubuntu.com/ubuntu-ports ;;
-            *) mirror=http://archive.ubuntu.com/ubuntu ;;
+            aarch64|arm64)
+              mirrors=(
+                http://mirror.leaseweb.com/ubuntu-ports
+                http://mirrors.ocf.berkeley.edu/ubuntu-ports
+                http://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
+                http://mirrors.ustc.edu.cn/ubuntu-ports
+              )
+              ;;
+            *)
+              mirrors=(
+                http://mirrors.edge.kernel.org/ubuntu
+                http://mirror.math.princeton.edu/pub/ubuntu
+              )
+              ;;
           esac
           codename="${VERSION_CODENAME:-noble}"
-          {
-            echo "deb $mirror $codename main restricted universe multiverse"
-            echo "deb $mirror $codename-updates main restricted universe multiverse"
-            echo "deb $mirror $codename-security main restricted universe multiverse"
-          } | sudo tee /etc/apt/sources.list.d/nekoplayer-release.list >/dev/null
+          source_file=sources.list.d/nekoplayer-release.list
           apt_options=(
-            -o "Dir::Etc::sourcelist=sources.list.d/nekoplayer-release.list"
+            -o "Dir::Etc::sourcelist=$source_file"
             -o "Dir::Etc::sourceparts=-"
             -o "Acquire::ForceIPv4=true"
-            -o "Acquire::Retries=2"
-            -o "Acquire::http::Timeout=15"
-            -o "Acquire::https::Timeout=15"
+            -o "Acquire::Retries=1"
+            -o "Acquire::http::Timeout=10"
+            -o "Acquire::https::Timeout=10"
             -o "DPkg::Lock::Timeout=120"
           )
-          sudo apt-get update "${apt_options[@]}"
+          sudo rm -rf /var/lib/apt/lists/*
+          selected=
+          for mirror in "${mirrors[@]}"; do
+            {
+              echo "deb $mirror $codename main restricted universe multiverse"
+              echo "deb $mirror $codename-updates main restricted universe multiverse"
+              echo "deb $mirror $codename-security main restricted universe multiverse"
+            } | sudo tee "/etc/apt/$source_file" >/dev/null
+            if timeout 120 sudo apt-get update "${apt_options[@]}"; then
+              selected=$mirror
+              break
+            fi
+            echo "::warning::Ubuntu mirror $mirror is unavailable; trying the next one"
+          done
+          [ -n "$selected" ] || { echo 'No usable Ubuntu mirror'; exit 1; }
           sudo apt-get install -y "${apt_options[@]}" libgtk-3-0t64 libmpv2 libsecret-1-0 libepoxy0 libegl1 libgles2 libgnutls30t64 xvfb dbus-x11
           if dpkg -s libmpv1 >/dev/null 2>&1; then echo 'libmpv1 must not be installed'; exit 1; fi
       - name: Start the release bundle with libmpv.so.2
