@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -69,12 +70,16 @@ class EmbeddedLyricsView extends StatefulWidget {
     required this.start,
     this.onOpenInBrowser,
     this.native,
+    this.quality = const {},
   });
 
   /// Starts the local lyrics server and returns the page address.
   final Future<Uri> Function() start;
   final VoidCallback? onOpenInBrowser;
   final NativeLyricsView? native;
+
+  /// Query parameters selecting render scale, frame cap and effect level.
+  final Map<String, String> quality;
 
   @override
   State<EmbeddedLyricsView> createState() => _EmbeddedLyricsViewState();
@@ -85,6 +90,7 @@ class _EmbeddedLyricsViewState extends State<EmbeddedLyricsView> {
 
   LyricsViewSession? _session;
   StreamSubscription<LyricsViewEvent>? _events;
+  Timer? _reloadTimer;
   String? _failure;
   bool _ready = false;
   bool _disposed = false;
@@ -115,6 +121,25 @@ class _EmbeddedLyricsViewState extends State<EmbeddedLyricsView> {
     }
     _tickerEnabled = TickerMode.valuesOf(context).enabled;
     _updateVisibility();
+  }
+
+  @override
+  void didUpdateWidget(covariant EmbeddedLyricsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!mapEquals(oldWidget.quality, widget.quality)) {
+      // Sliders update continuously; wait until the user settles before
+      // tearing down and recreating the native web view.
+      _reloadTimer?.cancel();
+      _reloadTimer = Timer(const Duration(milliseconds: 400), () {
+        if (_disposed) return;
+        _release();
+        setState(() {
+          _ready = false;
+          _failure = null;
+        });
+        unawaited(_open());
+      });
+    }
   }
 
   void _routeAnimation(AnimationStatus _) => _updateVisibility();
@@ -149,7 +174,7 @@ class _EmbeddedLyricsViewState extends State<EmbeddedLyricsView> {
       final reason = await native.unavailableReason();
       if (reason != null) throw LyricsViewException(reason);
       final uri = await widget.start();
-      session = await native.open(embeddedLyricsUri(uri));
+      session = await native.open(embeddedLyricsUri(uri, widget.quality));
     } on LyricsViewException catch (error) {
       _fail(attempt, localizeLyricsReason(error.reason));
       return;
@@ -229,6 +254,7 @@ class _EmbeddedLyricsViewState extends State<EmbeddedLyricsView> {
   @override
   void dispose() {
     _disposed = true;
+    _reloadTimer?.cancel();
     _route?.animation?.removeStatusListener(_routeAnimation);
     _release();
     super.dispose();

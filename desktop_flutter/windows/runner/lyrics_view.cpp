@@ -108,6 +108,7 @@ struct LyricsView::State : std::enable_shared_from_this<LyricsView::State> {
   MethodResultPtr pending;
   unsigned long long generation = 0;
   RECT bounds{0, 0, 1, 1};
+  double rasterization_scale = 1;
   bool visible = false;
   COREWEBVIEW2_COLOR background{0xff, 0x14, 0x13, 0x1b};
   std::wstring url;
@@ -217,6 +218,15 @@ struct LyricsView::State : std::enable_shared_from_this<LyricsView::State> {
       if (result) result->Success(Outcome(false, "无法获取 WebView2 内核"));
       return;
     }
+    // Bounds are supplied in physical pixels by the Flutter runner. Keep the
+    // WebView2 coordinate policy deterministic so 300% Windows scaling cannot
+    // apply the DPI factor a second time and leave the page off-screen.
+    ComPtr<ICoreWebView2Controller3> modern;
+    if (SUCCEEDED(controller.As(&modern)) && modern) {
+      modern->put_BoundsMode(COREWEBVIEW2_BOUNDS_MODE_USE_RAW_PIXELS);
+      modern->put_ShouldDetectMonitorScaleChanges(FALSE);
+      modern->put_RasterizationScale(rasterization_scale);
+    }
     controller->put_Bounds(bounds);
     controller->put_IsVisible(visible ? TRUE : FALSE);
     ComPtr<ICoreWebView2Controller2> colored;
@@ -304,11 +314,19 @@ struct LyricsView::State : std::enable_shared_from_this<LyricsView::State> {
   // Logical pixels relative to the Flutter view, which fills the client area.
   void SetBounds(double x, double y, double width, double height, double ratio) {
     if (!(ratio > 0)) ratio = 1;
+    rasterization_scale = ratio;
     bounds.left = static_cast<LONG>(std::lround(x * ratio));
     bounds.top = static_cast<LONG>(std::lround(y * ratio));
     bounds.right = static_cast<LONG>(std::lround((x + width) * ratio));
     bounds.bottom = static_cast<LONG>(std::lround((y + height) * ratio));
-    if (controller) controller->put_Bounds(bounds);
+    if (!controller) return;
+    ComPtr<ICoreWebView2Controller3> modern;
+    if (SUCCEEDED(controller.As(&modern)) && modern) {
+      // Raw physical bounds + an explicit rasterization scale keep the CSS
+      // viewport equal to the Flutter logical size at every DPI.
+      modern->put_RasterizationScale(rasterization_scale);
+    }
+    controller->put_Bounds(bounds);
   }
 
   void SetVisible(bool value) {

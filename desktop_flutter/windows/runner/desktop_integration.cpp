@@ -8,6 +8,7 @@
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Media.h>
 #include <winrt/base.h>
+#include <dxgi.h>
 #include <shellapi.h>
 #include <windowsx.h>
 
@@ -15,6 +16,7 @@
 #include <cmath>
 #include <memory>
 #include <string>
+#include <vector>
 
 using flutter::EncodableMap;
 using flutter::EncodableValue;
@@ -27,6 +29,42 @@ constexpr UINT kMediaAction = WM_APP + 47;
 constexpr UINT kTrayAction = WM_APP + 48;
 constexpr UINT kMediaSetting = WM_APP + 49;
 constexpr wchar_t kLyricsClass[] = L"NekoPlayerFlutterLyrics";
+
+std::string Utf8(const wchar_t* value) {
+  if (value == nullptr || value[0] == L'\0') return {};
+  const int length = WideCharToMultiByte(CP_UTF8, 0, value, -1, nullptr, 0, nullptr, nullptr);
+  if (length <= 1) return {};
+  std::vector<char> buffer(static_cast<size_t>(length), '\0');
+  WideCharToMultiByte(CP_UTF8, 0, value, -1, buffer.data(), length, nullptr, nullptr);
+  return std::string(buffer.data(), static_cast<size_t>(length - 1));
+}
+
+EncodableMap DeviceInfo() {
+  EncodableMap info;
+  try {
+    winrt::com_ptr<IDXGIFactory1> factory;
+    if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), factory.put_void())) || !factory) return info;
+    for (UINT index = 0;; ++index) {
+      winrt::com_ptr<IDXGIAdapter1> adapter;
+      if (factory->EnumAdapters1(index, adapter.put()) == DXGI_ERROR_NOT_FOUND) break;
+      if (!adapter) continue;
+      DXGI_ADAPTER_DESC1 description{};
+      if (FAILED(adapter->GetDesc1(&description))) continue;
+      if ((description.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0) continue;
+      info[EncodableValue("gpu")] = EncodableValue(Utf8(description.Description));
+      info[EncodableValue("vendorId")] = EncodableValue(static_cast<int64_t>(description.VendorId));
+      info[EncodableValue("deviceId")] = EncodableValue(static_cast<int64_t>(description.DeviceId));
+      info[EncodableValue("dedicatedVideoMemoryMb")] = EncodableValue(
+          static_cast<int64_t>(description.DedicatedVideoMemory / (1024 * 1024)));
+      info[EncodableValue("sharedSystemMemoryMb")] = EncodableValue(
+          static_cast<int64_t>(description.SharedSystemMemory / (1024 * 1024)));
+      break;
+    }
+  } catch (...) {
+    // Adapter enumeration is diagnostic only; never fail a method call.
+  }
+  return info;
+}
 
 const EncodableValue* Find(const EncodableMap& values, const char* key) {
   const auto found = values.find(EncodableValue(key));
@@ -615,6 +653,8 @@ DesktopIntegration::DesktopIntegration(flutter::BinaryMessenger* messenger, HWND
         const auto* values = call.arguments() == nullptr ? nullptr : std::get_if<EncodableMap>(call.arguments());
         if (values == nullptr) { result->Error("invalid_state", "Expected state map"); return; }
         state_->Update(*values); result->Success();
+      } else if (call.method_name() == "deviceInfo") {
+        result->Success(EncodableValue(DeviceInfo()));
       } else if (call.method_name() == "notify") {
         const auto* values = call.arguments() == nullptr ? nullptr : std::get_if<EncodableMap>(call.arguments());
         if (values != nullptr) state_->Notify(Text(*values, "title"), Text(*values, "body"), Text(*values, "uri"));

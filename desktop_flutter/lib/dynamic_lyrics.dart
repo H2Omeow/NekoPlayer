@@ -73,9 +73,16 @@ Map<String, Object?> dynamicLyricsSnapshot({
   };
 }
 
+/// Adds the selected dynamic-lyrics quality without discarding URL parameters
+/// added by the local server or the embedded-view mode.
+Uri lyricsUriWithQuality(Uri uri, Map<String, String> quality) =>
+    uri.replace(queryParameters: {...uri.queryParameters, ...quality});
+
 /// The page variant shown inside the app window (track info lives in the app).
-Uri embeddedLyricsUri(Uri uri) =>
-    uri.replace(queryParameters: {...uri.queryParameters, 'embedded': '1'});
+Uri embeddedLyricsUri(
+  Uri uri, [
+  Map<String, String> quality = const {},
+]) => lyricsUriWithQuality(uri, {...quality, 'embedded': '1'});
 
 class DynamicLyricsServer {
   DynamicLyricsServer({required this.snapshot, AssetBundle? bundle})

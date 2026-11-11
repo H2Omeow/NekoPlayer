@@ -2,6 +2,102 @@
   "use strict";
   const params = new URLSearchParams(location.search);
   const native = params.get("native") === "1";
+  function bounded(name, fallback, min, max) {
+    const raw = params.get(name);
+    if (raw == null || raw === "") return fallback;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return fallback;
+    return Math.min(max, Math.max(min, value));
+  }
+  const renderScale = bounded("scale", 1, 0.25, 1.5);
+  const rawFps = Number(params.get("fps"));
+  const fpsCap = params.get("fps") == null || !Number.isFinite(rawFps)
+    ? 60
+    : rawFps === 0
+      ? 0
+      : Math.min(240, Math.max(30, Math.round(rawFps)));
+  const effects = params.get("effects") !== "0";
+
+  // The lyric engine sizes its WebGL canvases from ResizeObserver's physical
+  // pixel box. Scaling that box down is the least invasive way to render at a
+  // lower internal resolution while keeping the CSS layout unchanged.
+  if (Math.abs(renderScale - 1) > 0.001 && typeof ResizeObserver === "function") {
+    const NativeResizeObserver = ResizeObserver;
+    window.ResizeObserver = class extends NativeResizeObserver {
+      constructor(callback) {
+        super((entries, observer) => callback(entries.map(entry => {
+          const source = entry.devicePixelContentBoxSize && entry.devicePixelContentBoxSize[0];
+          const dpr = Math.max(1, window.devicePixelRatio || 1);
+          const width = source ? source.inlineSize : entry.contentRect.width * dpr;
+          const height = source ? source.blockSize : entry.contentRect.height * dpr;
+          const scaled = {
+            inlineSize: Math.max(1, Math.round(width * renderScale)),
+            blockSize: Math.max(1, Math.round(height * renderScale))
+          };
+          return new Proxy(entry, {
+            get(target, property) {
+              if (property === "devicePixelContentBoxSize") return [scaled];
+              return target[property];
+            }
+          });
+        }), observer));
+      }
+    };
+  }
+
+  // A soft frame cap. Cancellation stays correct because each virtual id owns
+  // the current native request id instead of returning a changing handle.
+  if (fpsCap > 0) {
+    const nativeRequest = window.requestAnimationFrame.bind(window);
+    const nativeCancel = window.cancelAnimationFrame.bind(window);
+    const interval = 1000 / fpsCap;
+    let lastFrame = 0;
+    let nextId = 1;
+    const frames = new Map();
+    window.requestAnimationFrame = callback => {
+      const id = nextId++;
+      const state = { native: 0, cancelled: false };
+      const tick = timestamp => {
+        if (state.cancelled) return;
+        if (timestamp - lastFrame >= interval - 0.5) {
+          lastFrame = timestamp;
+          frames.delete(id);
+          callback(timestamp);
+        } else {
+          state.native = nativeRequest(tick);
+        }
+      };
+      state.native = nativeRequest(tick);
+      frames.set(id, state);
+      return id;
+    };
+    window.cancelAnimationFrame = id => {
+      const state = frames.get(id);
+      if (!state) return;
+      state.cancelled = true;
+      nativeCancel(state.native);
+      frames.delete(id);
+    };
+  }
+
+  if (!effects) {
+    document.documentElement.classList.add("neko-lite");
+    document.documentElement.setAttribute(
+      "data-reduce-motion",
+      "lattice transitionOverlay collectionMorph monetBackground uiMicroMotion settingsScroll"
+    );
+    const style = document.createElement("style");
+    style.textContent = `
+      html.neko-lite *, html.neko-lite *::before, html.neko-lite *::after {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        filter: none !important;
+        box-shadow: none !important;
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+
   // The app window already shows track info, so only the style picker stays.
   if (params.get("embedded") === "1") document.documentElement.classList.add("embedded");
   const status = document.getElementById("status");

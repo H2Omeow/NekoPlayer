@@ -1885,6 +1885,11 @@
       "ja": "スペクトラムをオフにする",
       "zh-TW": "關閉頻譜"
     },
+    "关闭高成本模糊、阴影和装饰动画，适合低性能显卡": {
+      "en": "Disables expensive blur, shadows, and decorative animation for low-end GPUs",
+      "ja": "負荷の高いぼかし・影・装飾アニメーションを無効にします（低性能 GPU 向け）",
+      "zh-TW": "關閉高成本模糊、陰影與裝飾動畫，適合低效能顯示卡"
+    },
     "内容不存在": {
       "en": "Content not found",
       "ja": "コンテンツが存在しません",
@@ -2054,6 +2059,11 @@
       "en": "Add a comment",
       "ja": "コメントを書く",
       "zh-TW": "寫評論"
+    },
+    "减少滤镜和背景动效": {
+      "en": "Reduce filters and background motion",
+      "ja": "フィルターと背景アニメーションを軽減",
+      "zh-TW": "減少濾鏡與背景動效"
     },
     "凭据不完整：缺少 userid，可以播放，但账号功能不可用，请重新登录": {
       "en": "Credentials are incomplete: userid is missing. Playback is available, but account features are unavailable; please sign in again.",
@@ -2439,6 +2449,11 @@
       "en": "The dynamic lyrics render process exited.",
       "ja": "動く歌詞のレンダリングプロセスが終了しました。",
       "zh-TW": "動態歌詞轉譯程序已結束"
+    },
+    "动态歌词画质": {
+      "en": "Dynamic lyrics quality",
+      "ja": "動的歌詞の画質",
+      "zh-TW": "動態歌詞畫質"
     },
     "动态歌词窗口已关闭": {
       "en": "The dynamic lyrics window has closed.",
@@ -2855,6 +2870,11 @@
       "ja": "起動に失敗しました：",
       "zh-TW": "啟動失敗："
     },
+    "启用淡入淡出": {
+      "en": "Enable fade in/out",
+      "ja": "フェードイン／アウトを有効にする",
+      "zh-TW": "啟用淡入淡出"
+    },
     "启用订阅": {
       "en": "Enable subscription",
       "ja": "サブスクリプションを有効にする",
@@ -3025,6 +3045,11 @@
       "ja": "メニューからデスクトップ歌詞を素早く表示・非表示",
       "zh-TW": "在選單中快速顯示或隱藏桌面歌詞"
     },
+    "均衡": {
+      "en": "Balanced",
+      "ja": "バランス",
+      "zh-TW": "均衡"
+    },
     "均衡器": {
       "en": "Equalizer",
       "ja": "イコライザー",
@@ -3139,6 +3164,11 @@
       "en": "Copy share link",
       "ja": "共有リンクをコピー",
       "zh-TW": "複製分享連結"
+    },
+    "复制最近崩溃日志": {
+      "en": "Copy latest crash log",
+      "ja": "最新のクラッシュログをコピー",
+      "zh-TW": "複製最近的當機記錄"
     },
     "复制链接": {
       "en": "Copy link",
@@ -3510,6 +3540,11 @@
       "ja": "未対応の Kugou API：",
       "zh-TW": "尚未支援的酷狗介面："
     },
+    "屏幕刷新率": {
+      "en": "Refresh rate",
+      "ja": "画面リフレッシュレート",
+      "zh-TW": "螢幕更新率"
+    },
     "崩溃": {
       "en": "Crash",
       "ja": "クラッシュ",
@@ -3694,6 +3729,11 @@
       "en": "Copied",
       "ja": "コピーしました",
       "zh-TW": "已複製"
+    },
+    "已复制崩溃日志": {
+      "en": "Crash log copied",
+      "ja": "クラッシュログをコピーしました",
+      "zh-TW": "已複製當機記錄"
     },
     "已复制当前版本保存的 Cookie": {
       "en": "Copied the Cookie saved for the current version",
@@ -3925,6 +3965,11 @@
       "ja": "レイアウト",
       "zh-TW": "版面配置"
     },
+    "帧率上限": {
+      "en": "Frame rate cap",
+      "ja": "フレームレート上限",
+      "zh-TW": "影格率上限"
+    },
     "平台分页超过安全上限，未保存部分结果。": {
       "en": "Platform pagination exceeds the safety limit; partial results were not saved.",
       "ja": "プラットフォームのページ数が安全上限を超えているため、一部の結果は保存されませんでした。",
@@ -3974,6 +4019,16 @@
       "en": "Phantom Near-Field",
       "ja": "幻霊ニアフィールド",
       "zh-TW": "幻靈近耳"
+    },
+    "应用异常退出时会记录诊断信息，可复制后发送给开发者。": {
+      "en": "When the app exits unexpectedly it records diagnostic information that you can copy and send to the developer.",
+      "ja": "アプリが異常終了した際の診断情報を記録します。コピーして開発者に送信できます。",
+      "zh-TW": "應用程式異常結束時會記錄診斷資訊，可複製後傳送給開發者。"
+    },
+    "开启": {
+      "en": "On",
+      "ja": "オン",
+      "zh-TW": "開啟"
     },
     "开启后使用前台服务保持私信实时连接并显示系统通知。国产系统若限制后台，请同时允许自启动。": {
       "en": "When enabled, a foreground service keeps direct messages connected in real time and shows a system notification. If your device restricts background activity, also allow autostart.",
@@ -4030,6 +4085,11 @@
       "ja": "使用中",
       "zh-TW": "目前使用"
     },
+    "当前使用完整界面效果": {
+      "en": "Full UI effects are currently enabled",
+      "ja": "現在は完全な UI 効果を使用しています",
+      "zh-TW": "目前使用完整介面效果"
+    },
     "当前壁纸": {
       "en": "Current wallpaper",
       "ja": "現在の壁紙",
@@ -4039,6 +4099,11 @@
       "en": "This build is missing the source script runtime.",
       "ja": "このインストールパッケージには音源スクリプトのランタイムが含まれていません",
       "zh-TW": "目前的安裝套件缺少音源腳本執行環境"
+    },
+    "当前已降低模糊和转场开销": {
+      "en": "Blur and transition cost are currently reduced",
+      "ja": "ぼかしと遷移の負荷を現在軽減しています",
+      "zh-TW": "目前已降低模糊與轉場開銷"
     },
     "当前平台暂不支持内嵌动态歌词": {
       "en": "Embedded dynamic lyrics aren't supported on this platform yet.",
@@ -4189,6 +4254,16 @@
       "en": "Fast parallel compression and transistor clipping",
       "ja": "高速パラレルコンプレッションとトランジスタクリッピング",
       "zh-TW": "快速並行壓縮與電晶體削波"
+    },
+    "性能": {
+      "en": "Performance",
+      "ja": "パフォーマンス",
+      "zh-TW": "效能"
+    },
+    "性能与动态歌词": {
+      "en": "Performance & dynamic lyrics",
+      "ja": "パフォーマンスと動的歌詞",
+      "zh-TW": "效能與動態歌詞"
     },
     "恢复每次询问": {
       "en": "Reset to ask every time",
@@ -4830,6 +4905,11 @@
       "ja": "再生コントロール",
       "zh-TW": "播放控制"
     },
+    "播放服务启动失败，请稍后重试": {
+      "en": "Failed to start playback. Please try again later.",
+      "ja": "再生サービスを開始できませんでした。しばらくしてから再試行してください。",
+      "zh-TW": "播放服務啟動失敗，請稍後重試"
+    },
     "播放模式": {
       "en": "Playback mode",
       "ja": "再生モード",
@@ -4995,6 +5075,11 @@
       "ja": "再生キューを折りたたむ",
       "zh-TW": "收合播放佇列"
     },
+    "故障诊断": {
+      "en": "Diagnostics",
+      "ja": "トラブル診断",
+      "zh-TW": "故障診斷"
+    },
     "效果": {
       "en": "Effects",
       "ja": "エフェクト",
@@ -5114,6 +5199,11 @@
       "en": "New message",
       "ja": "新着メッセージ",
       "zh-TW": "新訊息"
+    },
+    "无上限": {
+      "en": "Unlimited",
+      "ja": "無制限",
+      "zh-TW": "無上限"
     },
     "无损": {
       "en": "Lossless",
@@ -5500,6 +5590,11 @@
       "ja": "星海の夢幻",
       "zh-TW": "星海幻夢"
     },
+    "显卡": {
+      "en": "GPU",
+      "ja": "GPU",
+      "zh-TW": "顯示卡"
+    },
     "显示 Cookie 内容": {
       "en": "Show Cookie contents",
       "ja": "Cookie の内容を表示",
@@ -5544,6 +5639,11 @@
       "en": "Show lyric translations",
       "ja": "歌詞の翻訳を表示",
       "zh-TW": "顯示歌詞翻譯"
+    },
+    "显示缩放": {
+      "en": "Display scaling",
+      "ja": "表示スケール",
+      "zh-TW": "顯示縮放"
     },
     "显示翻译": {
       "en": "Show translations",
@@ -6189,6 +6289,11 @@
       "en": "Extreme blur (40px)",
       "ja": "非常に強いぼかし (40px)",
       "zh-TW": "極度模糊 (40px)"
+    },
+    "极简": {
+      "en": "Minimal",
+      "ja": "最小限",
+      "zh-TW": "極簡"
     },
     "极高": {
       "en": "Extra high",
@@ -6900,6 +7005,11 @@
       "ja": "同期するセクションがありません",
       "zh-TW": "沒有可同步的分區"
     },
+    "没有可用的崩溃日志": {
+      "en": "No crash log available",
+      "ja": "利用できるクラッシュログがありません",
+      "zh-TW": "沒有可用的當機記錄"
+    },
     "没有打开的会话": {
       "en": "No open conversations",
       "ja": "開いている会話がありません",
@@ -7195,6 +7305,21 @@
       "ja": "穏やかなテープ色付けと引き締まった音場",
       "zh-TW": "溫和磁帶染色與收攏聲場"
     },
+    "渲染比例": {
+      "en": "Render scale",
+      "ja": "レンダリング解像度",
+      "zh-TW": "渲染比例"
+    },
+    "渲染比例相对当前物理分辨率计算，100% 为原生。帧率是上限，实际帧率仍受显卡和屏幕刷新率限制。": {
+      "en": "Render scale is relative to the current physical resolution; 100% is native. The frame rate is a cap; the actual rate is still limited by the GPU and display refresh rate.",
+      "ja": "解像度は現在の物理解像度に対する比率で、100% がネイティブです。フレームレートは上限で、実際の値は GPU と画面のリフレッシュレートにも制限されます。",
+      "zh-TW": "渲染比例相對於目前實體解析度計算，100% 為原生。影格率是上限，實際影格率仍受顯示卡與螢幕更新率限制。"
+    },
+    "渲染比例相对物理分辨率计算，100% 为原生。": {
+      "en": "Render scale is relative to physical resolution; 100% is native.",
+      "ja": "解像度は物理解像度に対する比率で、100% がネイティブです。",
+      "zh-TW": "渲染比例相對於實體解析度計算，100% 為原生。"
+    },
     "点击托盘图标或菜单项显示主窗口": {
       "en": "Click the tray icon or a menu item to show the main window",
       "ja": "トレイアイコンまたはメニュー項目をクリックしてメインウィンドウを表示します",
@@ -7229,6 +7354,11 @@
       "en": "Version",
       "ja": "バージョン",
       "zh-TW": "版本"
+    },
+    "物理分辨率": {
+      "en": "Physical resolution",
+      "ja": "物理解像度",
+      "zh-TW": "實體解析度"
     },
     "物理平滑度": {
       "en": "Physics smoothing",
@@ -7299,6 +7429,11 @@
       "en": "UI font",
       "ja": "UI フォント",
       "zh-TW": "介面字型"
+    },
+    "界面性能模式": {
+      "en": "UI performance mode",
+      "ja": "UI パフォーマンスモード",
+      "zh-TW": "介面效能模式"
     },
     "界面文字缩放": {
       "en": "UI text scaling",
@@ -7475,6 +7610,11 @@
       "ja": "ログイン方法",
       "zh-TW": "登入方式"
     },
+    "登录状态保存失败，请重试": {
+      "en": "Failed to save your sign-in. Please try again.",
+      "ja": "ログイン状態を保存できませんでした。もう一度お試しください。",
+      "zh-TW": "登入狀態儲存失敗，請重試"
+    },
     "登录酷狗账号": {
       "en": "Sign in to Kugou",
       "ja": "Kugou アカウントにログイン",
@@ -7499,6 +7639,11 @@
       "en": "The destination file already exists and was not overwritten.",
       "ja": "保存先のファイルが既に存在するため、上書きは行われませんでした。",
       "zh-TW": "目標檔案已存在，未覆寫。"
+    },
+    "省电": {
+      "en": "Power saving",
+      "ja": "省電力",
+      "zh-TW": "省電"
     },
     "知道了": {
       "en": "Got it",
@@ -8250,10 +8395,30 @@
       "ja": "自動同期",
       "zh-TW": "自動同步"
     },
+    "自动建议": {
+      "en": "Automatic recommendation",
+      "ja": "自動推奨",
+      "zh-TW": "自動建議"
+    },
+    "自动档会根据物理分辨率、显示缩放、屏幕刷新率和显卡选择；手动档可随时覆盖。": {
+      "en": "Automatic mode chooses from physical resolution, display scaling, refresh rate, and GPU. Manual modes can override it at any time.",
+      "ja": "自動モードは物理解像度・表示スケール・リフレッシュレート・GPU から選択します。手動モードでいつでも上書きできます。",
+      "zh-TW": "自動模式會依實體解析度、顯示縮放、螢幕更新率與顯示卡選擇；手動模式可隨時覆蓋。"
+    },
+    "自动模式会在 4K 或高显示缩放下限制模糊半径并关闭页面转场，降低 GPU 峰值占用；1080p 普通显示器保持原有效果。": {
+      "en": "Automatically limits blur radius and disables page transitions at 4K or high display scaling to reduce GPU peaks. Standard 1080p monitors keep the full effects.",
+      "ja": "4K や高い表示スケールではぼかし半径を制限してページ遷移を無効にし、GPU のピーク負荷を抑えます。通常の 1080p モニターでは従来の効果を維持します。",
+      "zh-TW": "自動模式會在 4K 或高顯示縮放下限制模糊半徑並關閉頁面轉場，降低 GPU 峰值佔用；1080p 一般螢幕維持原有視覺效果。"
+    },
     "自动缓存播放过的音乐，可查看、播放或批量清理": {
       "en": "Automatically cache played music; view, play, or clear it in bulk",
       "ja": "再生した音楽を自動でキャッシュします。表示・再生・一括削除ができます。",
       "zh-TW": "自動快取播放過的音樂，可檢視、播放或批次清理"
+    },
+    "自动（推荐：{tier}）": {
+      "en": "Auto (recommended: {tier})",
+      "ja": "自動（推奨：{tier}）",
+      "zh-TW": "自動（建議：{tier}）"
     },
     "自定义": {
       "en": "Custom",
@@ -8479,6 +8644,16 @@
       "en": "Let your favorite music keep you company",
       "ja": "好きな音楽と少し過ごしましょう",
       "zh-TW": "讓喜歡的音樂，陪你一會兒"
+    },
+    "设备检测": {
+      "en": "Device detection",
+      "ja": "デバイス検出",
+      "zh-TW": "裝置偵測"
+    },
+    "设备检测、界面动画与动态歌词画质": {
+      "en": "Device detection, UI motion, and dynamic lyric quality",
+      "ja": "デバイス検出、UI アニメーション、動的歌詞の画質",
+      "zh-TW": "裝置偵測、介面動畫與動態歌詞畫質"
     },
     "设置": {
       "en": "Settings",
@@ -10520,6 +10695,11 @@
       "ja": "跳ねる高さ",
       "zh-TW": "跳動高度"
     },
+    "高清": {
+      "en": "High",
+      "ja": "高画質",
+      "zh-TW": "高畫質"
+    },
     "高清臻音": {
       "en": "HD Sound",
       "ja": "HDサウンド",
@@ -10599,41 +10779,6 @@
       "en": ", please play it in the NekoPlayer app",
       "ja": "。NekoPlayer アプリで再生してください",
       "zh-TW": "，請在 NekoPlayer 用戶端中播放"
-    },
-    "播放服务启动失败，请稍后重试": {
-      "en": "Failed to start playback. Please try again later.",
-      "ja": "再生サービスを開始できませんでした。しばらくしてから再試行してください。",
-      "zh-TW": "播放服務啟動失敗，請稍後重試"
-    },
-    "登录状态保存失败，请重试": {
-      "en": "Failed to save your sign-in. Please try again.",
-      "ja": "ログイン状態を保存できませんでした。もう一度お試しください。",
-      "zh-TW": "登入狀態儲存失敗，請重試"
-    },
-    "故障诊断": {
-      "en": "Diagnostics",
-      "ja": "トラブル診断",
-      "zh-TW": "故障診斷"
-    },
-    "应用异常退出时会记录诊断信息，可复制后发送给开发者。": {
-      "en": "When the app exits unexpectedly it records diagnostic information that you can copy and send to the developer.",
-      "ja": "アプリが異常終了した際の診断情報を記録します。コピーして開発者に送信できます。",
-      "zh-TW": "應用程式異常結束時會記錄診斷資訊，可複製後傳送給開發者。"
-    },
-    "复制最近崩溃日志": {
-      "en": "Copy latest crash log",
-      "ja": "最新のクラッシュログをコピー",
-      "zh-TW": "複製最近的當機記錄"
-    },
-    "没有可用的崩溃日志": {
-      "en": "No crash log available",
-      "ja": "利用できるクラッシュログがありません",
-      "zh-TW": "沒有可用的當機記錄"
-    },
-    "已复制崩溃日志": {
-      "en": "Crash log copied",
-      "ja": "クラッシュログをコピーしました",
-      "zh-TW": "已複製當機記錄"
     }
   },
   "sourceLocale": "zh-CN",

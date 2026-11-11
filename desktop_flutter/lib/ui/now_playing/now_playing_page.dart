@@ -160,6 +160,8 @@ class _FullPlayerState extends State<FullPlayer> {
             child: EmbeddedLyricsView(
               key: embeddedLyricsKey,
               start: widget.dynamicLyricsUri!,
+              quality:
+                  AppearanceScope.maybeOf(context)?.lyricsQuery ?? const {},
               onOpenInBrowser: widget.onDynamicLyrics == null
                   ? null
                   : () => unawaited(widget.onDynamicLyrics!()),

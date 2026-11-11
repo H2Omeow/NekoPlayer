@@ -25,6 +25,7 @@ import '../diagnostics_page.dart';
 import '../downloads_page.dart';
 import '../legacy_import_page.dart';
 import '../neko_theme.dart';
+import '../performance_settings_page.dart';
 import '../plugin_subscriptions_page.dart';
 import '../widgets/page_layout.dart';
 import '../widgets/settings_list.dart';
@@ -295,6 +296,18 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ),
                 ),
+            ],
+          ),
+          SettingsSection(
+            title: tr('性能'),
+            children: [
+              SettingsTile(
+                icon: Icons.tune_rounded,
+                title: tr('性能与动态歌词'),
+                subtitle: tr('设备检测、界面动画与动态歌词画质'),
+                onTap: () =>
+                    push(context, const PerformanceSettingsPage()),
+              ),
             ],
           ),
           if (catalog.subscriptions != null)

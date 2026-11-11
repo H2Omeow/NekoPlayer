@@ -54,8 +54,14 @@ class PlayerBackdrop extends StatelessWidget {
         children: [
           ImageFiltered(
             imageFilter: ImageFilter.blur(
-              sigmaX: appearance.playerBlur,
-              sigmaY: appearance.playerBlur,
+              sigmaX: appearance.effectiveBlur(
+                appearance.playerBlur,
+                MediaQuery.devicePixelRatioOf(context),
+              ),
+              sigmaY: appearance.effectiveBlur(
+                appearance.playerBlur,
+                MediaQuery.devicePixelRatioOf(context),
+              ),
             ),
             child: image,
           ),

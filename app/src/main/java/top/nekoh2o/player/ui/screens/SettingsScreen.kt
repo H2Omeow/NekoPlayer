@@ -330,6 +330,33 @@ private fun PlaybackSettings(vm: PlayerViewModel, quality: String, s: AppSetting
             )
         }
     }
+    SettingsSection(
+        title = tr("播放 / 暂停淡入淡出"),
+        description = tr("播放或暂停时平滑调整音量，避免突然的响声")
+    ) {
+        SettingsSwitchTile(
+            title = tr("启用淡入淡出"),
+            checked = s.fadePlayback,
+            onCheckedChange = vm::setFadePlayback
+        )
+        if (s.fadePlayback) {
+            SettingsSliderTile(
+                title = tr("淡入淡出时长"),
+                value = s.fadeMilliseconds.toFloat(),
+                valueLabel = tr(
+                    "{seconds} 秒",
+                    "seconds" to String.format(
+                        java.util.Locale.US,
+                        "%.1f",
+                        s.fadeMilliseconds / 1000f
+                    )
+                ),
+                onValueChange = { vm.setFadeMilliseconds(it.toInt()) },
+                valueRange = 50f..2000f,
+                steps = 38
+            )
+        }
+    }
     SettingsSection(title = tr("悬浮歌词"), description = tr("在全屏播放器中点「悬浮词」开启，这里的设置即时生效。")) {
         SettingsSwitchTile(
             title = tr("双行显示"),

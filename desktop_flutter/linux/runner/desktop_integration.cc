@@ -868,6 +868,11 @@ static void channel_call(FlMethodChannel*, FlMethodCall* call, gpointer data) {
     g_autoptr(FlValue) enabled = fl_value_new_bool(self->close_to_tray);
     fl_method_call_respond_success(call, enabled, nullptr);
     return;
+  } else if (method == "deviceInfo") {
+    // GPU enumeration is Windows-specific; the Dart fallback treats unknown
+    // adapters conservatively.
+    fl_value_set_string_take(result, "gpu", fl_value_new_string(""));
+    fl_value_set_string_take(result, "dedicatedVideoMemoryMb", fl_value_new_int(0));
   } else if (method == "state") update(self, fl_method_call_get_args(call));
   else if (method == "notify") show_notification(self, fl_method_call_get_args(call));
   else if (method == "dispose") {

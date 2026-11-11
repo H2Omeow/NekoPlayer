@@ -113,11 +113,13 @@ class _NekoAppState extends State<NekoApp> {
           controlAlpha: appearance.controls,
           wallpaper: wallpaper,
           customFont: appearance.fontFamily,
+          reduceMotion: appearance.performanceUiEnabled,
         ),
         darkTheme: nekoTheme(
           controlAlpha: appearance.controls,
           wallpaper: wallpaper,
           customFont: appearance.fontFamily,
+          reduceMotion: appearance.performanceUiEnabled,
         ),
         themeMode: appearance.theme,
         builder: (context, child) => AppearanceScope(
@@ -135,8 +137,14 @@ class _NekoAppState extends State<NekoApp> {
                   ClipRect(
                     child: ImageFiltered(
                       imageFilter: ImageFilter.blur(
-                        sigmaX: appearance.blur,
-                        sigmaY: appearance.blur,
+                        sigmaX: appearance.effectiveBlur(
+                          appearance.blur,
+                          MediaQuery.devicePixelRatioOf(context),
+                        ),
+                        sigmaY: appearance.effectiveBlur(
+                          appearance.blur,
+                          MediaQuery.devicePixelRatioOf(context),
+                        ),
                       ),
                       child: Image.file(
                         File(appearance.wallpaper!),
@@ -492,11 +500,17 @@ class _PlayerShellState extends State<PlayerShell> {
 
   void openPlayer() {
     if (controller.current == null) return;
+    final reduceMotion =
+        AppearanceScope.maybeOf(context)?.performanceUiEnabled ?? false;
     unawaited(
       Navigator.of(context).push(
         PageRouteBuilder<void>(
-          transitionDuration: const Duration(milliseconds: 350),
-          reverseTransitionDuration: const Duration(milliseconds: 250),
+          transitionDuration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 350),
+          reverseTransitionDuration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 250),
           pageBuilder: (_, _, _) => FullPlayer(
             controller: controller,
             onShare: openShareTrack,
@@ -510,23 +524,25 @@ class _PlayerShellState extends State<PlayerShell> {
                 ? null
                 : (song) => unawaited(downloadSong(song)),
           ),
-          transitionsBuilder: (_, animation, _, child) {
-            final curved = CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-              reverseCurve: Curves.easeInCubic,
-            );
-            return FadeTransition(
-              opacity: curved,
-              child: SlideTransition(
-                position: Tween(
-                  begin: const Offset(0, 0.06),
-                  end: Offset.zero,
-                ).animate(curved),
-                child: child,
-              ),
-            );
-          },
+          transitionsBuilder: reduceMotion
+              ? (_, _, _, child) => child
+              : (_, animation, _, child) {
+                  final curved = CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                    reverseCurve: Curves.easeInCubic,
+                  );
+                  return FadeTransition(
+                    opacity: curved,
+                    child: SlideTransition(
+                      position: Tween(
+                        begin: const Offset(0, 0.06),
+                        end: Offset.zero,
+                      ).animate(curved),
+                      child: child,
+                    ),
+                  );
+                },
         ),
       ),
     );
@@ -534,7 +550,12 @@ class _PlayerShellState extends State<PlayerShell> {
 
   Future<void> openDynamicLyrics() async {
     try {
-      final uri = await dynamicLyrics.start();
+      final appearance = AppearanceScope.maybeOf(context);
+      final base = await dynamicLyrics.start();
+      final uri = lyricsUriWithQuality(
+        base,
+        appearance?.lyricsQuery ?? const {},
+      );
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
         throw StateError(tr('无法打开浏览器'));
       }

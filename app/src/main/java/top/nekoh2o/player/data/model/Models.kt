@@ -382,6 +382,10 @@ data class AppSettings(
     val controlAlpha: Float = 0.3f,
     // 播放倍速（0.5x ~ 2.0x），跨曲保持
     val playbackSpeed: Float = 1.0f,
+    // 播放/暂停淡入淡出
+    val fadePlayback: Boolean = true,
+    // 淡入淡出时长（毫秒），50 ~ 2000
+    val fadeMilliseconds: Int = 300,
     // 悬浮窗歌词开关（需悬浮窗权限）
     val floatingLyricEnabled: Boolean = false,
     // 悬浮窗歌词：显示双行（当前行 + 下一行）

@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/site_client.dart';
 import 'domain/online_music.dart';
+import 'performance_profile.dart';
 
 enum PlayerBackground { solid, cover, wallpaper }
 
@@ -28,6 +29,19 @@ class AppearanceController extends ChangeNotifier {
   double playerMask = .85;
   double playerBlur = 12;
   String? downloadDirectory;
+
+  // 界面与动态歌词的渲染性能策略。默认自动，按分辨率、缩放和 GPU 选择。
+  PerformanceMode performanceMode = PerformanceMode.auto;
+  LyricsQualityMode lyricsQualityMode = LyricsQualityMode.auto;
+  double lyricsScale = 1;
+  int lyricsFps = 60;
+  bool lyricsEffects = true;
+  DevicePerformance device = const DevicePerformance(
+    physicalWidth: 0,
+    physicalHeight: 0,
+    devicePixelRatio: 1,
+    refreshRate: 60,
+  );
 
   /// Local TTF/OTF chosen by the user; null means the default font stack.
   String? fontPath;
@@ -45,41 +59,97 @@ class AppearanceController extends ChangeNotifier {
   HttpClient? _wallpaperClient;
   Future<void> _writes = Future.value();
 
+  bool get performanceUiEnabled => switch (performanceMode) {
+    PerformanceMode.on => true,
+    PerformanceMode.off => false,
+    PerformanceMode.auto => device.shouldReduceUiEffects,
+  };
+
+  LyricsQualityProfile get lyricsProfile => switch (lyricsQualityMode) {
+    LyricsQualityMode.auto => device.recommendedLyricsTier.profile,
+    LyricsQualityMode.high => LyricsQualityTier.high.profile,
+    LyricsQualityMode.balanced => LyricsQualityTier.balanced.profile,
+    LyricsQualityMode.power => LyricsQualityTier.power.profile,
+    LyricsQualityMode.extreme => LyricsQualityTier.extreme.profile,
+    LyricsQualityMode.custom => LyricsQualityProfile(
+      scale: lyricsScale.clamp(.25, 1.5),
+      fps: lyricsFps == 0 ? 0 : lyricsFps.clamp(30, 240),
+      effects: lyricsEffects,
+    ),
+  };
+
+  /// Caps the physical blur radius instead of the logical one. At 300% DPI a
+  /// logical sigma of 12 becomes a 36px physical kernel and is very expensive.
+  double effectiveBlur(double configured, double devicePixelRatio) {
+    if (!performanceUiEnabled) return configured;
+    return configured.clamp(0, 12 / max(1.0, devicePixelRatio));
+  }
+
+  Map<String, String> get lyricsQuery {
+    final profile = lyricsProfile;
+    return {
+      'scale': profile.scale.toStringAsFixed(2),
+      'fps': '${profile.fps}',
+      'effects': profile.effects ? '1' : '0',
+    };
+  }
+
   Future<void> initialize() async {
     try {
       final raw = await SharedPreferencesAsync().getString(
         'nekoplayer.flutter.appearance.v1',
       );
-      if (raw == null) return;
-      final body = jsonDecode(raw) as Map<String, dynamic>;
-      if (body['version'] != 1) throw const FormatException();
-      theme = ThemeMode.values.byName(body['theme'] as String);
-      scale = (body['scale'] as num).toDouble().clamp(.85, 1.4);
-      mask = (body['mask'] as num).toDouble().clamp(.35, .95);
-      blur = (body['blur'] as num).toDouble().clamp(0, 20);
-      controls = (body['controls'] as num).toDouble().clamp(.2, 1);
-      playerBackground = PlayerBackground.values.byName(
-        body['playerBackground'] as String? ?? 'cover',
-      );
-      playerMask = (body['playerMask'] as num? ?? .85).toDouble().clamp(
-        .35,
-        .95,
-      );
-      playerBlur = (body['playerBlur'] as num? ?? 12).toDouble().clamp(0, 20);
-      if ([
-        scale,
-        mask,
-        blur,
-        controls,
-        playerMask,
-        playerBlur,
-      ].any((value) => !value.isFinite)) {
-        throw const FormatException();
+      if (raw != null) {
+        final body = jsonDecode(raw) as Map<String, dynamic>;
+        if (body['version'] != 1) throw const FormatException();
+        theme = ThemeMode.values.byName(body['theme'] as String);
+        scale = (body['scale'] as num).toDouble().clamp(.85, 1.4);
+        mask = (body['mask'] as num).toDouble().clamp(.35, .95);
+        blur = (body['blur'] as num).toDouble().clamp(0, 20);
+        controls = (body['controls'] as num).toDouble().clamp(.2, 1);
+        playerBackground = PlayerBackground.values.byName(
+          body['playerBackground'] as String? ?? 'cover',
+        );
+        playerMask = (body['playerMask'] as num? ?? .85).toDouble().clamp(
+          .35,
+          .95,
+        );
+        playerBlur = (body['playerBlur'] as num? ?? 12).toDouble().clamp(0, 20);
+        performanceMode =
+            PerformanceMode.values
+                .where((mode) => mode.name == body['performanceMode'])
+                .firstOrNull ??
+            PerformanceMode.auto;
+        lyricsQualityMode =
+            LyricsQualityMode.values
+                .where((mode) => mode.name == body['lyricsQualityMode'])
+                .firstOrNull ??
+            LyricsQualityMode.auto;
+        lyricsScale = (body['lyricsScale'] as num? ?? 1).toDouble().clamp(
+          .25,
+          1.5,
+        );
+        final savedFps = (body['lyricsFps'] as num?)?.toInt() ?? 60;
+        lyricsFps = savedFps == 0 ? 0 : savedFps.clamp(30, 240);
+        lyricsEffects = body['lyricsEffects'] as bool? ?? true;
+        if ([
+          scale,
+          mask,
+          blur,
+          controls,
+          playerMask,
+          playerBlur,
+          lyricsScale,
+        ].any((value) => !value.isFinite)) {
+          throw const FormatException();
+        }
+        wallpaper = body['wallpaper'] as String?;
+        wallpaperEnabled = body['wallpaperEnabled'] == true;
+        downloadDirectory = body['downloadDirectory'] as String?;
+        fontPath = body['fontPath'] is String
+            ? body['fontPath'] as String
+            : null;
       }
-      wallpaper = body['wallpaper'] as String?;
-      wallpaperEnabled = body['wallpaperEnabled'] == true;
-      downloadDirectory = body['downloadDirectory'] as String?;
-      fontPath = body['fontPath'] is String ? body['fontPath'] as String : null;
     } catch (_) {
       theme = ThemeMode.dark;
       scale = 1;
@@ -89,6 +159,11 @@ class AppearanceController extends ChangeNotifier {
       playerBackground = PlayerBackground.cover;
       playerMask = .85;
       playerBlur = 12;
+      performanceMode = PerformanceMode.auto;
+      lyricsQualityMode = LyricsQualityMode.auto;
+      lyricsScale = 1;
+      lyricsFps = 60;
+      lyricsEffects = true;
       wallpaper = null;
       wallpaperEnabled = false;
       downloadDirectory = null;
@@ -98,6 +173,7 @@ class AppearanceController extends ChangeNotifier {
       readable = false;
       error = tr('外观设置读取失败，已保留原数据；本次修改不会覆盖它。');
     }
+    device = await DevicePerformance.detect();
     if (fontPath != null) {
       try {
         fontFamily = await _registerFont(File(fontPath!));
@@ -198,6 +274,30 @@ class AppearanceController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
+  void updatePerformance({PerformanceMode? mode}) {
+    if (_disposed) return;
+    performanceMode = mode ?? performanceMode;
+    _persist();
+    notifyListeners();
+  }
+
+  void updateLyricsQuality({
+    LyricsQualityMode? mode,
+    double? renderScale,
+    int? fps,
+    bool? effects,
+  }) {
+    if (_disposed) return;
+    lyricsQualityMode = mode ?? lyricsQualityMode;
+    if (renderScale != null && renderScale.isFinite) {
+      lyricsScale = renderScale.clamp(.25, 1.5);
+    }
+    if (fps != null) lyricsFps = fps == 0 ? 0 : fps.clamp(30, 240);
+    if (effects != null) lyricsEffects = effects;
+    _persist();
+    notifyListeners();
+  }
+
   void _persist() {
     if (!readable || _disposed) return;
     final encoded = jsonEncode({
@@ -210,6 +310,11 @@ class AppearanceController extends ChangeNotifier {
       'playerBackground': playerBackground.name,
       'playerMask': playerMask,
       'playerBlur': playerBlur,
+      'performanceMode': performanceMode.name,
+      'lyricsQualityMode': lyricsQualityMode.name,
+      'lyricsScale': lyricsScale,
+      'lyricsFps': lyricsFps,
+      'lyricsEffects': lyricsEffects,
       'wallpaper': wallpaper,
       'wallpaperEnabled': wallpaperEnabled,
       'downloadDirectory': downloadDirectory,

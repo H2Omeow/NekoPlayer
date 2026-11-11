@@ -4,6 +4,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
+import '../../appearance_controller.dart';
 import '../../domain/library.dart';
 import '../../player_controller.dart';
 import '../neko_theme.dart';
@@ -247,6 +248,12 @@ class _ContinueCard extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final uri = Artwork.safeUri(track.online?.artwork);
     final compact = MediaQuery.sizeOf(context).width < 720;
+    final appearance = AppearanceScope.maybeOf(context);
+    final blur = appearance?.effectiveBlur(
+          40,
+          MediaQuery.devicePixelRatioOf(context),
+        ) ??
+        40.0;
     return ClipRRect(
       borderRadius: BorderRadius.circular(NekoRadius.artwork),
       child: Stack(
@@ -255,7 +262,7 @@ class _ContinueCard extends StatelessWidget {
             child: uri == null
                 ? Artwork(size: 1000, track: track, radius: 0, icon: null)
                 : ImageFiltered(
-                    imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                    imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
                     child: Image.network(
                       uri.toString(),
                       fit: BoxFit.cover,

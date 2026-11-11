@@ -29,6 +29,8 @@ class SettingsStore(context: Context) {
         cacheEnabled = prefs.getBoolean(KEY_CACHE_ENABLED, true),
         controlAlpha = prefs.getFloat(KEY_CTRL_ALPHA, 0.3f),
         playbackSpeed = prefs.getFloat(KEY_SPEED, 1.0f),
+        fadePlayback = prefs.getBoolean(KEY_FADE_PLAYBACK, true),
+        fadeMilliseconds = prefs.getInt(KEY_FADE_MS, 300).coerceIn(50, 2000),
         floatingLyricEnabled = prefs.getBoolean(KEY_FLOAT_LYRIC, false),
         floatingLyricDoubleRow = prefs.getBoolean(KEY_FLOAT_DOUBLE_ROW, false),
         floatingLyricShowTranslation = prefs.getBoolean(KEY_FLOAT_TRANSLATION, true),
@@ -68,6 +70,8 @@ class SettingsStore(context: Context) {
             .putBoolean(KEY_CACHE_ENABLED, s.cacheEnabled)
             .putFloat(KEY_CTRL_ALPHA, s.controlAlpha)
             .putFloat(KEY_SPEED, s.playbackSpeed)
+            .putBoolean(KEY_FADE_PLAYBACK, s.fadePlayback)
+            .putInt(KEY_FADE_MS, s.fadeMilliseconds.coerceIn(50, 2000))
             .putBoolean(KEY_FLOAT_LYRIC, s.floatingLyricEnabled)
             .putBoolean(KEY_FLOAT_DOUBLE_ROW, s.floatingLyricDoubleRow)
             .putBoolean(KEY_FLOAT_TRANSLATION, s.floatingLyricShowTranslation)
@@ -103,6 +107,8 @@ class SettingsStore(context: Context) {
         private const val KEY_CACHE_ENABLED = "cache_enabled"
         private const val KEY_CTRL_ALPHA = "ctrl_alpha"
         private const val KEY_SPEED = "playback_speed"
+        private const val KEY_FADE_PLAYBACK = "fade_playback"
+        private const val KEY_FADE_MS = "fade_milliseconds"
         private const val KEY_FLOAT_LYRIC = "floating_lyric"
         private const val KEY_FLOAT_DOUBLE_ROW = "floating_double_row"
         private const val KEY_FLOAT_TRANSLATION = "floating_translation"

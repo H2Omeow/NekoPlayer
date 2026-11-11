@@ -994,6 +994,16 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         _ui.value = _ui.value.copy(settings = updated)
     }
 
+    fun setFadePlayback(enabled: Boolean) {
+        val updated = settingsVm.setFadePlayback(enabled, _ui.value.settings)
+        _ui.value = _ui.value.copy(settings = updated)
+    }
+
+    fun setFadeMilliseconds(milliseconds: Int) {
+        val updated = settingsVm.setFadeMilliseconds(milliseconds, _ui.value.settings)
+        _ui.value = _ui.value.copy(settings = updated)
+    }
+
     // ==================== 下载 ====================
     /**
      * 下载歌曲到本地（音频 + .lrc 歌词）。

@@ -193,6 +193,7 @@ ThemeData nekoTheme({
   double controlAlpha = 1,
   bool wallpaper = false,
   String? customFont,
+  bool reduceMotion = false,
 }) {
   final dark = brightness == Brightness.dark;
   final colors = dark ? _darkScheme : _lightScheme;
@@ -460,21 +461,53 @@ ThemeData nekoTheme({
     ),
     // FadeForwards paints colorScheme.surface between the two routes by
     // default, which covers the window wallpaper during page changes.
-    pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {
-        TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(
-          backgroundColor: Colors.transparent,
-        ),
-        TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(
-          backgroundColor: Colors.transparent,
-        ),
-        TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(
-          backgroundColor: Colors.transparent,
-        ),
-        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(
-          backgroundColor: Colors.transparent,
-        ),
-      },
-    ),
+    // Performance mode skips route animations entirely: on a 4K screen each
+    // transition composites two full-resolution scenes and can cause drops.
+    pageTransitionsTheme: reduceMotion
+        ? const PageTransitionsTheme(
+            builders: {
+              TargetPlatform.linux: _NoTransitionsBuilder(),
+              TargetPlatform.windows: _NoTransitionsBuilder(),
+              TargetPlatform.macOS: _NoTransitionsBuilder(),
+              TargetPlatform.android: _NoTransitionsBuilder(),
+              TargetPlatform.iOS: _NoTransitionsBuilder(),
+              TargetPlatform.fuchsia: _NoTransitionsBuilder(),
+            },
+          )
+        : const PageTransitionsTheme(
+            builders: {
+              TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(
+                backgroundColor: Colors.transparent,
+              ),
+              TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(
+                backgroundColor: Colors.transparent,
+              ),
+              TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(
+                backgroundColor: Colors.transparent,
+              ),
+              TargetPlatform.android: FadeForwardsPageTransitionsBuilder(
+                backgroundColor: Colors.transparent,
+              ),
+            },
+          ),
   );
+}
+
+class _NoTransitionsBuilder extends PageTransitionsBuilder {
+  const _NoTransitionsBuilder();
+
+  @override
+  Duration get transitionDuration => Duration.zero;
+
+  @override
+  Duration get reverseTransitionDuration => Duration.zero;
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => child;
 }

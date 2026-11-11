@@ -104,6 +104,20 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         return updated
     }
 
+    // ==================== 淡入淡出 ====================
+
+    fun setFadePlayback(enabled: Boolean, current: AppSettings): AppSettings {
+        val updated = current.copy(fadePlayback = enabled)
+        settingsStore.save(updated)
+        return updated
+    }
+
+    fun setFadeMilliseconds(milliseconds: Int, current: AppSettings): AppSettings {
+        val updated = current.copy(fadeMilliseconds = milliseconds.coerceIn(50, 2000))
+        settingsStore.save(updated)
+        return updated
+    }
+
     // ==================== 悬浮窗歌词设置 ====================
 
     fun setFloatingLyricEnabled(enabled: Boolean, current: AppSettings): AppSettings {

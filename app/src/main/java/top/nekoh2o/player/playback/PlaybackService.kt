@@ -9,6 +9,7 @@ import android.net.Uri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.AuxEffectInfo
 import androidx.media3.common.C
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.datasource.DefaultDataSource
@@ -37,11 +38,19 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import java.io.File
+import kotlin.math.max
 
 @UnstableApi
 class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
+    private var exoPlayer: ExoPlayer? = null
+    private val fadeHandler = Handler(Looper.getMainLooper())
+    private var fadeRunnable: Runnable? = null
+    private var fadeToken = 0
+    private var fadeMode = FadeMode.NONE
+    private var pendingFadeIn = false
+    private var userVolume = 1f
     private val repo = MusicRepository()
     private var audioEffectsManager: SystemAudioEffectsManager? = null
     private var nativeAudioProcessor: NativeAudioProcessor? = null
@@ -121,6 +130,8 @@ class PlaybackService : MediaSessionService() {
             // 网络播放时持有 WifiLock + WakeLock，避免 CPU/WiFi 休眠导致后台断流
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
+        exoPlayer = player
+        userVolume = player.volume
 
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
@@ -134,12 +145,48 @@ class PlaybackService : MediaSessionService() {
                         .onFailure { Log.e(TAG, "初始化系统音效失败", it) }
                 }
             }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying && pendingFadeIn) {
+                    startFadeIn(fadeDuration())
+                } else if (!isPlaying && pendingFadeIn) {
+                    // 还没真正开始出声就结束（例如加载失败），恢复用户音量。
+                    pendingFadeIn = false
+                    cancelFade(resetVolume = true)
+                }
+            }
+
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                pendingFadeIn = false
+                cancelFade(resetVolume = true)
+            }
         })
 
-        val session = runCatching { MediaSession.Builder(this, player).build() }
+        // MediaSession 使用包装后的播放器，使通知栏、耳机按键和蓝牙控制
+        // 与界面按钮走同一套淡入淡出逻辑。
+        val fadingPlayer = object : ForwardingPlayer(player) {
+            override fun play() = requestPlay()
+
+            override fun pause() = requestPause()
+
+            override fun setPlayWhenReady(playWhenReady: Boolean) {
+                if (playWhenReady) requestPlay() else requestPause()
+            }
+
+            override fun setVolume(volume: Float) {
+                userVolume = volume.coerceIn(0f, 1f)
+                cancelFade(resetVolume = true)
+                player.volume = userVolume
+            }
+
+            override fun getVolume(): Float = userVolume
+        }
+
+        val session = runCatching { MediaSession.Builder(this, fadingPlayer).build() }
             .onFailure { error ->
                 Log.e(TAG, "创建媒体会话失败", error)
                 runCatching { player.release() }
+                exoPlayer = null
             }
             .getOrNull()
         mediaSession = session
@@ -147,6 +194,131 @@ class PlaybackService : MediaSessionService() {
             // 连接方会收到失败并自行重试，不能在这里抛异常导致整个进程崩溃
             stopSelf()
         }
+    }
+
+    // ==================== 播放 / 暂停淡入淡出 ====================
+
+    private enum class FadeMode { NONE, IN, OUT }
+
+    private fun fadeDuration(): Int =
+        SettingsStore(this).load().fadeMilliseconds.coerceIn(0, 2000)
+
+    private fun fadeEnabled(): Boolean = SettingsStore(this).load().fadePlayback
+
+    private fun requestPlay() {
+        val player = exoPlayer ?: return
+        if (player.playWhenReady) {
+            // 播放中再次收到 play（例如淡出尚未结束），取消淡出并恢复音量。
+            if (fadeMode == FadeMode.OUT) cancelFade(resetVolume = true)
+            player.play()
+            return
+        }
+        val duration = fadeDuration()
+        if (!fadeEnabled() || duration <= 0 || userVolume <= 0f) {
+            cancelFade(resetVolume = true)
+            player.play()
+            return
+        }
+        cancelFade(resetVolume = false)
+        pendingFadeIn = true
+        player.volume = 0f
+        player.play()
+    }
+
+    private fun requestPause() {
+        val player = exoPlayer ?: return
+        pendingFadeIn = false
+        if (!player.playWhenReady || !player.isPlaying) {
+            cancelFade(resetVolume = true)
+            player.pause()
+            return
+        }
+        val duration = fadeDuration()
+        if (!fadeEnabled() || duration <= 0 || userVolume <= 0f) {
+            cancelFade(resetVolume = true)
+            player.pause()
+            return
+        }
+        if (fadeMode == FadeMode.OUT) return
+        startFadeOut(duration)
+    }
+
+    private fun startFadeIn(duration: Int) {
+        val player = exoPlayer ?: return
+        pendingFadeIn = false
+        if (!fadeEnabled() || duration <= 0 || userVolume <= 0f) {
+            player.volume = userVolume
+            return
+        }
+        cancelFade(resetVolume = false)
+        fadeMode = FadeMode.IN
+        val token = ++fadeToken
+        val steps = max(1, duration / FADE_STEP_MS)
+        val interval = max(1L, duration.toLong() / steps)
+        var step = 0
+        val runnable = object : Runnable {
+            override fun run() {
+                if (token != fadeToken) return
+                step++
+                val progress = step.toFloat() / steps
+                player.volume = userVolume * progress
+                if (step >= steps) {
+                    fadeMode = FadeMode.NONE
+                    fadeRunnable = null
+                    player.volume = userVolume
+                } else {
+                    fadeHandler.postDelayed(this, interval)
+                }
+            }
+        }
+        fadeRunnable = runnable
+        fadeHandler.postDelayed(runnable, interval)
+    }
+
+    private fun startFadeOut(duration: Int) {
+        val player = exoPlayer ?: return
+        val startVolume = player.volume.coerceIn(0f, userVolume)
+        cancelFade(resetVolume = false)
+        if (startVolume <= 0f) {
+            // Keep the output muted while paused so buffered frames cannot
+            // leak through at full volume; the next play restores it.
+            player.pause()
+            return
+        }
+        fadeMode = FadeMode.OUT
+        val token = ++fadeToken
+        val steps = max(1, duration / FADE_STEP_MS)
+        val interval = max(1L, duration.toLong() / steps)
+        var step = 0
+        val runnable = object : Runnable {
+            override fun run() {
+                if (token != fadeToken) return
+                step++
+                val progress = step.toFloat() / steps
+                player.volume = startVolume * (1f - progress)
+                if (step >= steps) {
+                    fadeMode = FadeMode.NONE
+                    fadeRunnable = null
+                    // Stay at zero until the next play. Restoring the user
+                    // volume right after pause() can briefly unmute buffered
+                    // audio frames.
+                    player.pause()
+                } else {
+                    fadeHandler.postDelayed(this, interval)
+                }
+            }
+        }
+        fadeRunnable = runnable
+        fadeHandler.postDelayed(runnable, interval)
+    }
+
+    private fun cancelFade(resetVolume: Boolean) {
+        fadeToken++
+        fadeRunnable?.let(fadeHandler::removeCallbacks)
+        fadeRunnable = null
+        fadeMode = FadeMode.NONE
+        pendingFadeIn = false
+        if (resetVolume) exoPlayer?.volume = userVolume
     }
 
     private fun createRenderersFactory(): RenderersFactory {
@@ -221,7 +393,7 @@ class PlaybackService : MediaSessionService() {
 
     private fun updateAudioEffects(settings: AudioEffectSettings) {
         val safe = settings.normalized()
-        val player = mediaSession?.player as? ExoPlayer ?: return
+        val player = exoPlayer ?: return
         if (safe.engine != AudioEffectEngine.SYSTEM) {
             player.setAuxEffectInfo(AuxEffectInfo(0, 0f))
             audioEffectsManager?.release()
@@ -282,20 +454,22 @@ class PlaybackService : MediaSessionService() {
     ): MediaSession? = mediaSession
 
     override fun onDestroy() {
+        cancelFade(resetVolume = false)
+        fadeHandler.removeCallbacksAndMessages(null)
         runCatching { audioEffectsManager?.release() }
         audioEffectsManager = null
         nativeAudioProcessor = null
         runCatching {
-            mediaSession?.run {
-                player.release()
-                release()
-            }
+            mediaSession?.release()
+            exoPlayer?.release()
         }.onFailure { Log.e(TAG, "释放媒体会话失败", it) }
         mediaSession = null
+        exoPlayer = null
         super.onDestroy()
     }
 
     companion object {
         private const val TAG = "PlaybackService"
+        private const val FADE_STEP_MS = 16
     }
 }
