@@ -5,6 +5,7 @@ import top.nekoh2o.player.i18n.NekoI18n.tr
 import android.app.Application
 import android.content.ComponentName
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -12,6 +13,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
@@ -140,6 +142,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private val kgRepo = top.nekoh2o.player.data.repo.KugouRepository()
     private val local = (app as PlayerApp).localStore
     private val settingsStore = SettingsStore(app)
+    private val appContext: Application = app
 
     /** 云同步：所有上传/拉取都经由此处，没有隐式整包上传。 */
     val cloudSync = SyncEngine(
@@ -179,6 +182,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private var sleepJob: Job? = null
     private var sourceSearchJob: Job? = null
     private var recommendationJob: Job? = null
+    private var controllerFuture: ListenableFuture<MediaController>? = null
+    private var controllerRetryJob: Job? = null
+    private var controllerAttempts = 0
 
     init {
         pushMineToState()
@@ -189,40 +195,23 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             quality = CookieStore.level
         )
 
-        val token = SessionToken(app, ComponentName(app, PlaybackService::class.java))
-        val future = MediaController.Builder(app, token).buildAsync()
-        future.addListener({
-            controller = future.get()
-            controller?.addListener(object : Player.Listener {
-                override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    _ui.value = _ui.value.copy(isPlaying = isPlaying)
-                    if (isPlaying) startProgressLoop() else stopProgressLoop()
-                }
-                override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
-                    onSongChanged()
-                }
-                override fun onPlaybackStateChanged(state: Int) {
-                    syncFromController()
-                }
-            })
-            syncFromController()
-            // 恢复已保存的播放倍速
-            val savedSpeed = _ui.value.settings.playbackSpeed
-            if (savedSpeed != 1.0f) controller?.setPlaybackSpeed(savedSpeed)
-            // 恢复上次播放状态
-            restorePlaybackState()
-        }, MoreExecutors.directExecutor())
+        connectController()
 
         viewModelScope.launch {
             // 等待 CookieStore 和 ApiFactory 初始化完成
-            CookieStore.awaitReady()
-            ApiFactory.awaitReady()
+            runCatching {
+                CookieStore.awaitReady()
+                ApiFactory.awaitReady()
+            }.onFailure { Log.e(TAG, "等待网络层初始化失败", it) }
             _ui.value = _ui.value.copy(quality = CookieStore.level)
-            // 初始化酷狗（确保 dfid 存在）
-            kgRepo.ensureInitialized()
-            refreshLoginInternal()
+            // 初始化酷狗（确保 dfid 存在）；网络失败不能影响应用启动
+            runCatching { kgRepo.ensureInitialized() }
+                .onFailure { Log.w(TAG, "酷狗设备初始化失败，稍后自动重试", it) }
+            runCatching { refreshLoginInternal() }
+                .onFailure { Log.e(TAG, "刷新登录状态失败", it) }
             // 检测网易云 Cookie 有效性
-            checkNcCookieValidity()
+            runCatching { checkNcCookieValidity() }
+                .onFailure { Log.e(TAG, "检测网易云登录状态失败", it) }
         }
         refreshWallpaper(_ui.value.settings.landscapeMode)
 
@@ -242,6 +231,62 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             } catch (failure: CancellationException) { throw failure }
             catch (_: Exception) { toast(tr("音源数据读取失败，已保留原文件")) }
         }
+    }
+
+    // ==================== 播放服务连接 ====================
+
+    /**
+     * 连接 PlaybackService。连接失败（服务正在重启、系统限制等）时不能直接让
+     * future.get() 抛到主线程导致整个应用闪退，改为延迟重试。
+     */
+    private fun connectController() {
+        if (controller != null || controllerFuture != null) return
+        val token = SessionToken(appContext, ComponentName(appContext, PlaybackService::class.java))
+        val future = MediaController.Builder(appContext, token).buildAsync()
+        controllerFuture = future
+        future.addListener({
+            controllerFuture = null
+            val connected = try {
+                future.get()
+            } catch (error: Exception) {
+                Log.e(TAG, "连接播放服务失败（第 ${controllerAttempts + 1} 次）", error)
+                runCatching { MediaController.releaseFuture(future) }
+                if (controllerAttempts < MAX_CONTROLLER_ATTEMPTS) {
+                    controllerAttempts++
+                    controllerRetryJob?.cancel()
+                    controllerRetryJob = viewModelScope.launch {
+                        delay(1000L * controllerAttempts)
+                        connectController()
+                    }
+                } else {
+                    toast(tr("播放服务启动失败，请稍后重试"))
+                }
+                null
+            } ?: return@addListener
+
+            controllerAttempts = 0
+            controller = connected
+            connected.addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    _ui.value = _ui.value.copy(isPlaying = isPlaying)
+                    if (isPlaying) startProgressLoop() else stopProgressLoop()
+                }
+                override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
+                    onSongChanged()
+                }
+                override fun onPlaybackStateChanged(state: Int) {
+                    syncFromController()
+                }
+            })
+            syncFromController()
+            // 恢复已保存的播放倍速
+            runCatching {
+                val savedSpeed = _ui.value.settings.playbackSpeed
+                if (savedSpeed != 1.0f) connected.setPlaybackSpeed(savedSpeed)
+            }.onFailure { Log.w(TAG, "恢复播放倍速失败", it) }
+            // 恢复上次播放状态；队列损坏时清除即可，不影响启动
+            restorePlaybackState()
+        }, MoreExecutors.directExecutor())
     }
 
     // ==================== 状态同步 ====================
@@ -1045,8 +1090,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     // ==================== 登录与同步 ====================
     fun refreshLogin() {
         viewModelScope.launch {
-            CookieStore.awaitReady()
-            refreshLoginInternal()
+            runCatching {
+                CookieStore.awaitReady()
+                refreshLoginInternal()
+            }.onFailure { Log.e(TAG, "刷新登录状态失败", it) }
         }
     }
 
@@ -1094,9 +1141,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     // 浏览器登录完成后，账户中心通过深链回跳并携带 JWT：存下 token 再拉取用户信息
     fun onSsoTokenReceived(token: String) {
         viewModelScope.launch {
-            CookieStore.awaitReady()
-            CookieStore.setAppToken(token)
-            refreshLoginInternal()
+            runCatching {
+                CookieStore.awaitReady()
+                CookieStore.setAppToken(token)
+                refreshLoginInternal()
+            }.onFailure {
+                Log.e(TAG, "处理登录回跳失败", it)
+                toast(tr("登录状态保存失败，请重试"))
+            }
         }
     }
 
@@ -1119,7 +1171,16 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private fun markCredentialsChanged() = local.touch(SyncSection.CREDENTIALS)
 
     /** Activity 回到前台时调用，同步层自行节流。 */
-    fun onAppForeground() = cloudSync.onForeground()
+    fun onAppForeground() {
+        cloudSync.onForeground()
+        // 启动时播放服务连接失败的话，回到前台再试一次
+        if (controller == null) {
+            controllerRetryJob?.cancel()
+            controllerRetryJob = null
+            controllerAttempts = 0
+            connectController()
+        }
+    }
 
     fun logout() {
         viewModelScope.launch {
@@ -1140,17 +1201,19 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun checkNcCookieValidity() {
         if (!CookieStore.hasNcUserCookie()) return
         viewModelScope.launch {
-            val valid = userRepo.checkNcLoginStatus()
-            if (!valid) {
-                toast(tr("网易云 Cookie 已失效，请重新登录"))
-                // 清除失效的网易云账号信息
-                _ui.value = _ui.value.copy(
-                    ncAccount = NcAccountState(isValid = false)
-                )
-            } else {
-                // Cookie 有效时加载账号信息
-                refreshNcAccount()
-            }
+            runCatching {
+                val valid = userRepo.checkNcLoginStatus()
+                if (!valid) {
+                    toast(tr("网易云 Cookie 已失效，请重新登录"))
+                    // 清除失效的网易云账号信息
+                    _ui.value = _ui.value.copy(
+                        ncAccount = NcAccountState(isValid = false)
+                    )
+                } else {
+                    // Cookie 有效时加载账号信息
+                    refreshNcAccount()
+                }
+            }.onFailure { Log.w(TAG, "检测网易云登录状态失败", it) }
         }
     }
 
@@ -1279,21 +1342,32 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         viewModelScope.launch {
-            android.util.Log.d("PlayerViewModel", "恢复播放状态：队列 ${state.queue.size} 首，索引 ${state.currentIndex}，进度 ${state.position} ms")
-            // 恢复队列
-            queue.clear()
-            queue.addAll(state.queue)
-            c.clearMediaItems()
-            c.addMediaItems(state.queue.map { it.toMediaItem() })
+            try {
+                android.util.Log.d("PlayerViewModel", "恢复播放状态：队列 ${state.queue.size} 首，索引 ${state.currentIndex}，进度 ${state.position} ms")
+                // 恢复队列
+                queue.clear()
+                queue.addAll(state.queue)
+                c.clearMediaItems()
+                c.addMediaItems(state.queue.map { it.toMediaItem() })
 
-            // 恢复播放位置
-            val safeIndex = state.currentIndex.coerceIn(0, state.queue.size - 1)
-            c.seekTo(safeIndex, state.position)
-            c.prepare()
-            // 不自动播放，让用户手动开始
+                // 恢复播放位置
+                val safeIndex = state.currentIndex.coerceIn(0, state.queue.size - 1)
+                c.seekTo(safeIndex, state.position)
+                c.prepare()
+                // 不自动播放，让用户手动开始
 
-            syncFromController()
-            android.util.Log.d("PlayerViewModel", "播放状态恢复成功")
+                syncFromController()
+                android.util.Log.d("PlayerViewModel", "播放状态恢复成功")
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                // 旧版本保存的队列可能缺字段或已损坏；清掉状态继续启动
+                android.util.Log.e("PlayerViewModel", "恢复播放状态失败，已清除保存的队列", error)
+                queue.clear()
+                runCatching { c.clearMediaItems() }
+                runCatching { settingsStore.clearPlaybackState() }
+                syncFromController()
+            }
         }
     }
 
@@ -1426,7 +1500,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         // 保存播放状态
         saveCurrentPlaybackState()
         stopProgressLoop()
+        controllerRetryJob?.cancel()
         controller?.release()
         super.onCleared()
+    }
+
+    companion object {
+        private const val TAG = "PlayerViewModel"
+        private const val MAX_CONTROLLER_ATTEMPTS = 5
     }
 }

@@ -12,6 +12,8 @@ void main() {
       ],
       volume: 42,
       rate: 1.25,
+      fadePlayback: false,
+      fadeMilliseconds: 1200,
     );
     final restored = LibraryData.decode(original.encode());
     expect(restored.tracks.single.title, '猫');
@@ -19,6 +21,8 @@ void main() {
     expect(restored.playlists.single.name, '夜晚');
     expect(restored.volume, 42);
     expect(restored.rate, 1.25);
+    expect(restored.fadePlayback, isFalse);
+    expect(restored.fadeMilliseconds, 1200);
   });
 
   test('library drops dangling references and deduplicates records', () {

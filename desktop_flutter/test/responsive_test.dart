@@ -97,6 +97,9 @@ void main() {
         store: MemoryStore(),
       );
       await controller.initialize();
+      // Fade uses real timers; disable it so this widget test never waits on
+      // timers that only advance while pumping frames.
+      controller.setFadePlayback(enabled: false);
       await controller.play([Track.fromOnline(song)], 0);
       OnlineSong? downloaded;
       OnlineSong? commented;

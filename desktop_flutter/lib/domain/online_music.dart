@@ -174,6 +174,32 @@ class MusicHttpException extends MusicSearchException {
   final int status;
 }
 
+/// Human-readable label for the quality that was actually resolved for a
+/// track. Unknown platform/plugin identifiers are shown as-is, and a known
+/// file format is used as the fallback for local or format-only sources.
+String describeAudioQuality(String quality, {String format = ''}) {
+  final id = quality.trim().toLowerCase();
+  final label = switch (id) {
+    'standard' || '128' || '128k' || 'low' => '标准 128k',
+    'higher' || '192' || '192k' => '较高 192k',
+    'exhigh' || '320' || '320k' || 'high_320' => '高品质 320k',
+    'lossless' || 'sq' => '无损 SQ',
+    'flac' || 'flac24bit' || 'hires' || 'high' => 'Hi-Res',
+    'jyeffect' => '高清臻音',
+    'sky' => '沉浸环绕声',
+    'jymaster' || 'super' => '超清母带',
+    'dolby' => '臻音全景声',
+    'viper_atmos' => '全景声',
+    'viper_tape' => '蝰蛇磁带',
+    'viper_clear' => '蝰蛇超清',
+    _ => '',
+  };
+  if (label.isNotEmpty) return tr(label);
+  if (id.isNotEmpty) return quality.trim().toUpperCase();
+  final extension = format.trim().toUpperCase();
+  return extension;
+}
+
 abstract interface class MusicCatalog {
   Future<SearchPage> search(MusicProvider provider, String keyword, int page);
 }

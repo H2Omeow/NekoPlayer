@@ -29,10 +29,19 @@ class DesktopIntegration extends ChangeNotifier {
   bool closeToTray = false;
   bool overlay = false;
   bool locked = false;
+  // Saved top-left position of the floating lyrics window. Null means the
+  // platform should choose its default (usually centered / bottom-center).
+  double? overlayX;
+  double? overlayY;
   // Optional pieces of the desktop lyrics window; each can be turned off.
   bool overlayTitle = true;
   bool overlayProgress = true;
   bool overlayControls = true;
+  // Optional entries in the system-tray menu.
+  bool trayShow = true;
+  bool trayPlayback = true;
+  bool trayVolume = true;
+  bool trayLyrics = true;
   double fontSize = 30;
   double opacity = .9;
   String? error;
@@ -45,6 +54,7 @@ class DesktopIntegration extends ChangeNotifier {
   String? _signature;
   bool _settingsReadable = true;
   Future<void> _writes = Future.value();
+  Timer? _positionSave;
   Future<void> get flushed => _writes;
 
   Future<void> _readSettings() async {
@@ -68,6 +78,16 @@ class DesktopIntegration extends ChangeNotifier {
       overlayTitle = value['overlayTitle'] as bool? ?? true;
       overlayProgress = value['overlayProgress'] as bool? ?? true;
       overlayControls = value['overlayControls'] as bool? ?? true;
+      trayShow = value['trayShow'] as bool? ?? true;
+      trayPlayback = value['trayPlayback'] as bool? ?? true;
+      trayVolume = value['trayVolume'] as bool? ?? true;
+      trayLyrics = value['trayLyrics'] as bool? ?? true;
+      final savedX = value['overlayX'];
+      final savedY = value['overlayY'];
+      if (savedX is num && savedY is num && savedX.isFinite && savedY.isFinite) {
+        overlayX = savedX.toDouble();
+        overlayY = savedY.toDouble();
+      }
       fontSize = size.clamp(18, 64);
       opacity = alpha.clamp(.25, 1);
     } catch (_) {
@@ -86,6 +106,14 @@ class DesktopIntegration extends ChangeNotifier {
       'overlayTitle': overlayTitle,
       'overlayProgress': overlayProgress,
       'overlayControls': overlayControls,
+      'trayShow': trayShow,
+      'trayPlayback': trayPlayback,
+      'trayVolume': trayVolume,
+      'trayLyrics': trayLyrics,
+      if (overlayX != null && overlayY != null) ...{
+        'overlayX': overlayX,
+        'overlayY': overlayY,
+      },
       'fontSize': fontSize,
       'opacity': opacity,
     });
@@ -138,6 +166,20 @@ class DesktopIntegration extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    if (call.method == 'overlayPosition') {
+      final x = arguments['x'];
+      final y = arguments['y'];
+      if (x is num && y is num && x.isFinite && y.isFinite) {
+        overlayX = x.toDouble();
+        overlayY = y.toDouble();
+        _signature = null;
+        _positionSave?.cancel();
+        _positionSave = Timer(const Duration(milliseconds: 350), () {
+          if (!_disposed) _saveSettings();
+        });
+      }
+      return;
+    }
     if (call.method == 'overlayClosed') {
       overlay = false;
       _saveSettings();
@@ -158,6 +200,10 @@ class DesktopIntegration extends ChangeNotifier {
         await player.pause();
       case 'toggle':
         await player.toggle();
+      case 'toggleLyrics':
+        if (lyricsAvailable) {
+          configureOverlay(enabled: !overlay);
+        }
       case 'next':
         await player.next();
       case 'previous':
@@ -258,21 +304,52 @@ class DesktopIntegration extends ChangeNotifier {
     'toggle': tr('播放 / 暂停'),
     'previous': tr('上一首'),
     'next': tr('下一首'),
+    'lyrics': tr('桌面歌词'),
+    'volume': tr('音量'),
     'quit': tr('退出'),
     'lyricsTitle': tr('NekoPlayer 桌面歌词'),
   };
 
-  /// Re-sends localized tray and lyrics-window labels after a language change.
-  Future<void> refreshTrayLabels() async {
+  Map<String, bool> _trayOptions() => {
+    'show': trayShow,
+    'playback': trayPlayback,
+    'volume': trayVolume,
+    'lyrics': trayLyrics,
+  };
+
+  Future<void> _sendTrayConfiguration() async {
     if (_disposed || !trayAvailable) return;
     try {
       await channel.invokeMethod<bool>('configureTray', {
         'closeToTray': closeToTray,
         'labels': _trayLabels(),
+        'items': _trayOptions(),
       });
     } catch (_) {
-      // Labels are best effort; the previous language remains usable.
+      // Labels and menu items are best effort; the previous menu remains.
     }
+  }
+
+  /// Re-sends localized tray and lyrics-window labels after a language change.
+  Future<void> refreshTrayLabels() async {
+    await _sendTrayConfiguration();
+  }
+
+  /// Enables or disables individual functions in the system-tray menu.
+  Future<void> setTrayOptions({
+    bool? show,
+    bool? playback,
+    bool? volume,
+    bool? lyrics,
+  }) async {
+    if (_disposed) return;
+    trayShow = show ?? trayShow;
+    trayPlayback = playback ?? trayPlayback;
+    trayVolume = volume ?? trayVolume;
+    trayLyrics = lyrics ?? trayLyrics;
+    _saveSettings();
+    await _sendTrayConfiguration();
+    notifyListeners();
   }
 
   Future<void> configureTray(bool enabled) async {
@@ -281,6 +358,7 @@ class DesktopIntegration extends ChangeNotifier {
       final result = await channel.invokeMethod<bool>('configureTray', {
         'closeToTray': enabled,
         'labels': _trayLabels(),
+        'items': _trayOptions(),
       });
       if (_disposed) return;
       closeToTray = enabled && result == true && trayAvailable;
@@ -333,6 +411,10 @@ class DesktopIntegration extends ChangeNotifier {
       'showTitle': overlayTitle,
       'showProgress': overlayProgress,
       'showControls': overlayControls,
+      if (overlayX != null && overlayY != null) ...{
+        'lyricsX': overlayX,
+        'lyricsY': overlayY,
+      },
     };
   }
 
@@ -369,6 +451,7 @@ class DesktopIntegration extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _positionSave?.cancel();
     player.removeListener(_changed);
     player.engine.removeListener(_changed);
     channel.setMethodCallHandler(null);

@@ -101,7 +101,16 @@ struct DesktopIntegration::State {
   std::string tray_toggle_text = "播放 / 暂停";
   std::string tray_previous_text = "上一首";
   std::string tray_next_text = "下一首";
+  std::string tray_lyrics_text = "桌面歌词";
+  std::string tray_volume_text = "音量";
   std::string tray_quit_text = "退出";
+  bool tray_show_enabled = true;
+  bool tray_playback_enabled = true;
+  bool tray_volume_enabled = true;
+  bool tray_lyrics_enabled = true;
+  bool has_lyrics_position = false;
+  double lyrics_x = 0;
+  double lyrics_y = 0;
   std::string lyrics_window_title = "NekoPlayer 桌面歌词";
 
   void ApplyLabels(const EncodableMap& values) {
@@ -117,6 +126,8 @@ struct DesktopIntegration::State {
     read("toggle", tray_toggle_text);
     read("previous", tray_previous_text);
     read("next", tray_next_text);
+    read("lyrics", tray_lyrics_text);
+    read("volume", tray_volume_text);
     read("quit", tray_quit_text);
     read("lyricsTitle", lyrics_window_title);
     if (tray_available) {
@@ -124,6 +135,21 @@ struct DesktopIntegration::State {
       Shell_NotifyIconW(NIM_MODIFY, &tray);
     }
     if (lyrics_window != nullptr) SetWindowTextW(lyrics_window, Wide(lyrics_window_title).c_str());
+  }
+
+  void ApplyItems(const EncodableMap& values) {
+    const auto* found = Find(values, "items");
+    const auto* items = found == nullptr ? nullptr : std::get_if<EncodableMap>(found);
+    if (items == nullptr) return;
+    const auto read = [&](const char* key, bool& target) {
+      const auto* value = Find(*items, key);
+      const auto* boolean = value == nullptr ? nullptr : std::get_if<bool>(value);
+      if (boolean != nullptr) target = *boolean;
+    };
+    read("show", tray_show_enabled);
+    read("playback", tray_playback_enabled);
+    read("volume", tray_volume_enabled);
+    read("lyrics", tray_lyrics_enabled);
   }
 
 
@@ -173,6 +199,20 @@ struct DesktopIntegration::State {
     SetForegroundWindow(main_window);
   }
 
+  void ReportLyricsPosition() {
+    if (lyrics_window == nullptr) return;
+    RECT frame{};
+    GetWindowRect(lyrics_window, &frame);
+    if (!has_lyrics_position || std::abs(frame.left - lyrics_x) > 1 || std::abs(frame.top - lyrics_y) > 1) {
+      has_lyrics_position = true;
+      lyrics_x = frame.left;
+      lyrics_y = frame.top;
+      channel->InvokeMethod("overlayPosition", std::make_unique<EncodableValue>(EncodableMap{
+          {EncodableValue("x"), EncodableValue(lyrics_x)},
+          {EncodableValue("y"), EncodableValue(lyrics_y)}}));
+    }
+  }
+
   void StartTray() {
     tray_enabled = true;
     if (tray_available) return;
@@ -205,10 +245,23 @@ struct DesktopIntegration::State {
   void TrayMenu() {
     const HMENU menu = CreatePopupMenu();
     if (menu == nullptr) return;
-    AppendMenuW(menu, MF_STRING, 1, Wide(tray_show_text).c_str());
-    AppendMenuW(menu, MF_STRING, 2, Wide(tray_toggle_text).c_str());
-    AppendMenuW(menu, MF_STRING, 3, Wide(tray_previous_text).c_str());
-    AppendMenuW(menu, MF_STRING, 4, Wide(tray_next_text).c_str());
+    if (tray_show_enabled) AppendMenuW(menu, MF_STRING, 1, Wide(tray_show_text).c_str());
+    if (tray_playback_enabled) {
+      AppendMenuW(menu, MF_STRING, 2, Wide(tray_toggle_text).c_str());
+      AppendMenuW(menu, MF_STRING, 3, Wide(tray_previous_text).c_str());
+      AppendMenuW(menu, MF_STRING, 4, Wide(tray_next_text).c_str());
+    }
+    if (tray_lyrics_enabled) AppendMenuW(menu, MF_STRING, 6, Wide(tray_lyrics_text).c_str());
+    if (tray_volume_enabled) {
+      const HMENU volume = CreatePopupMenu();
+      if (volume != nullptr) {
+        for (const int percent : {0, 25, 50, 75, 100}) {
+          const std::wstring label = std::to_wstring(percent) + L"%";
+          AppendMenuW(volume, MF_STRING, 10 + percent / 25, label.c_str());
+        }
+        AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(volume), Wide(tray_volume_text).c_str());
+      }
+    }
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, 5, Wide(tray_quit_text).c_str());
     POINT location{};
@@ -228,6 +281,12 @@ struct DesktopIntegration::State {
       case 3: Action("previous"); break;
       case 4: Action("next"); break;
       case 5: quitting = true; PostMessage(main_window, WM_CLOSE, 0, 0); break;
+      case 6: Action("toggleLyrics"); break;
+      case 10: Setting("volume", EncodableValue(0.0)); break;
+      case 11: Setting("volume", EncodableValue(0.25)); break;
+      case 12: Setting("volume", EncodableValue(0.5)); break;
+      case 13: Setting("volume", EncodableValue(0.75)); break;
+      case 14: Setting("volume", EncodableValue(1.0)); break;
       default: break;
     }
   }
@@ -327,6 +386,7 @@ struct DesktopIntegration::State {
     if (self == nullptr) return DefWindowProc(window, message, wparam, lparam);
     switch (message) {
       case WM_MOUSEACTIVATE: return MA_NOACTIVATE;
+      case WM_MOVE: self->ReportLyricsPosition(); return 0;
       case WM_NCHITTEST: return self->locked ? HTTRANSPARENT : HTCLIENT;
       case WM_LBUTTONDOWN:
         if (!self->locked) {
@@ -443,6 +503,20 @@ struct DesktopIntegration::State {
     if (!visible) { if (lyrics_window != nullptr) ShowWindow(lyrics_window, SW_HIDE); return; }
     lyric = Wide(Text(values, "lyric"));
     next_lyric = Wide(Text(values, "nextLyric"));
+    if (Find(values, "lyricsX") != nullptr && Find(values, "lyricsY") != nullptr) {
+      const double x = Number(values, "lyricsX");
+      const double y = Number(values, "lyricsY");
+      if (!has_lyrics_position || std::abs(x - lyrics_x) > 1 || std::abs(y - lyrics_y) > 1) {
+        has_lyrics_position = true;
+        lyrics_x = x;
+        lyrics_y = y;
+        if (lyrics_window != nullptr) {
+          SetWindowPos(lyrics_window, nullptr, static_cast<int>(std::lround(lyrics_x)),
+                       static_cast<int>(std::lround(lyrics_y)), 0, 0,
+                       SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+      }
+    }
     const std::wstring artist = Wide(Text(values, "artist"));
     title_line = Wide(Text(values, "title"));
     if (!artist.empty()) title_line += L" · " + artist;
@@ -467,8 +541,14 @@ struct DesktopIntegration::State {
       GetMonitorInfo(monitor, &info);
       const int width = std::min(760L, info.rcWork.right - info.rcWork.left);
       const int height = OverlayHeight();
+      const int x = has_lyrics_position
+          ? static_cast<int>(std::lround(lyrics_x))
+          : info.rcWork.left + (info.rcWork.right - info.rcWork.left - width) / 2;
+      const int y = has_lyrics_position
+          ? static_cast<int>(std::lround(lyrics_y))
+          : info.rcWork.bottom - 50 - height;
       lyrics_window = CreateWindowEx(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED, kLyricsClass, Wide(lyrics_window_title).c_str(), WS_POPUP,
-        info.rcWork.left + (info.rcWork.right - info.rcWork.left - width) / 2, info.rcWork.bottom - 50 - height, width, height, nullptr, nullptr, registration.hInstance, this);
+        x, y, width, height, nullptr, nullptr, registration.hInstance, this);
     }
     if (lyrics_window == nullptr) return;
     LONG_PTR style = GetWindowLongPtr(lyrics_window, GWL_EXSTYLE);
@@ -525,7 +605,10 @@ DesktopIntegration::DesktopIntegration(flutter::BinaryMessenger* messenger, HWND
         result->Success(EncodableValue(EncodableMap{{EncodableValue("media"), EncodableValue(media)}, {EncodableValue("lyrics"), EncodableValue(true)}, {EncodableValue("positioning"), EncodableValue(true)}, {EncodableValue("tray"), EncodableValue(state_->tray_available)}}));
       } else if (call.method_name() == "configureTray") {
         const auto* values = call.arguments() == nullptr ? nullptr : std::get_if<EncodableMap>(call.arguments());
-        if (values != nullptr) state_->ApplyLabels(*values);
+        if (values != nullptr) {
+          state_->ApplyLabels(*values);
+          state_->ApplyItems(*values);
+        }
         state_->close_to_tray = values != nullptr && Boolean(*values, "closeToTray") && state_->tray_available;
         result->Success(EncodableValue(state_->close_to_tray));
       } else if (call.method_name() == "state") {

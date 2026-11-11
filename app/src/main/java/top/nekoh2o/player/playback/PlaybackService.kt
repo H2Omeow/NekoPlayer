@@ -35,6 +35,7 @@ import top.nekoh2o.player.data.repo.MusicRepository
 import top.nekoh2o.player.data.store.SettingsStore
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import java.io.File
 
 @UnstableApi
@@ -49,7 +50,9 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-        MusicCache.init(this)
+        // 缓存数据库损坏时必须继续提供播放能力，否则 MediaController 连接失败会导致应用启动闪退
+        runCatching { MusicCache.init(this) }
+            .onFailure { Log.e(TAG, "音乐缓存初始化失败，本次启动不启用缓存", it) }
 
         val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent("NekoPlayer/1.0")
@@ -61,7 +64,12 @@ class PlaybackService : MediaSessionService() {
         val settingsStore = SettingsStore(this)
 
         val playbackFactory = androidx.media3.datasource.DataSource.Factory {
-            if (settingsStore.load().cacheEnabled) cacheFactory.createDataSource() else localAndHttpFactory.createDataSource()
+            if (settingsStore.load().cacheEnabled) {
+                runCatching { cacheFactory.createDataSource() }
+                    .getOrElse { localAndHttpFactory.createDataSource() }
+            } else {
+                localAndHttpFactory.createDataSource()
+            }
         }
         val resolvingFactory = ResolvingDataSource.Factory(playbackFactory) { dataSpec ->
             val raw = dataSpec.uri.toString()
@@ -116,17 +124,29 @@ class PlaybackService : MediaSessionService() {
 
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                initAudioEffects(audioSessionId)
+                runCatching { initAudioEffects(audioSessionId) }
+                    .onFailure { Log.e(TAG, "初始化系统音效失败", it) }
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY && audioEffectsManager == null) {
-                    initAudioEffects(player.audioSessionId)
+                    runCatching { initAudioEffects(player.audioSessionId) }
+                        .onFailure { Log.e(TAG, "初始化系统音效失败", it) }
                 }
             }
         })
 
-        mediaSession = MediaSession.Builder(this, player).build()
+        val session = runCatching { MediaSession.Builder(this, player).build() }
+            .onFailure { error ->
+                Log.e(TAG, "创建媒体会话失败", error)
+                runCatching { player.release() }
+            }
+            .getOrNull()
+        mediaSession = session
+        if (session == null) {
+            // 连接方会收到失败并自行重试，不能在这里抛异常导致整个进程崩溃
+            stopSelf()
+        }
     }
 
     private fun createRenderersFactory(): RenderersFactory {
@@ -134,10 +154,15 @@ class PlaybackService : MediaSessionService() {
             val settings = SettingsStore(this).load()
 
             // Native processor 常驻为透明旁路，运行时切换引擎无需销毁播放器。
-            val processor = NativeAudioProcessor()
-            nativeAudioProcessor = processor
-            processor.applySettings(settings.audioEffects)
-            val audioProcessors = arrayOf<AudioProcessor>(processor)
+            // 某些 ABI/ROM 上 JNI 库可能不可用；此时退化为无音效播放而不是让服务崩溃。
+            val processor = runCatching { NativeAudioProcessor() }
+                .onFailure { Log.e(TAG, "专业音效处理器不可用，已回退到普通播放", it) }
+                .getOrNull()
+            if (processor != null) {
+                nativeAudioProcessor = processor
+                processor.applySettings(settings.audioEffects)
+            }
+            val audioProcessors = listOfNotNull(processor).toTypedArray<AudioProcessor>()
 
             // 创建带自定义 AudioProcessor 的 AudioSink
             val audioSink = DefaultAudioSink.Builder(this)
@@ -226,7 +251,8 @@ class PlaybackService : MediaSessionService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "top.nekoh2o.player.ACTION_UPDATE_AUDIO_EFFECTS") {
-            handleAudioEffectsUpdate(intent)
+            runCatching { handleAudioEffectsUpdate(intent) }
+                .onFailure { Log.e(TAG, "更新音效设置失败", it) }
         }
         return super.onStartCommand(intent, flags, startId)
     }
@@ -256,14 +282,20 @@ class PlaybackService : MediaSessionService() {
     ): MediaSession? = mediaSession
 
     override fun onDestroy() {
-        audioEffectsManager?.release()
+        runCatching { audioEffectsManager?.release() }
         audioEffectsManager = null
         nativeAudioProcessor = null
-        mediaSession?.run {
-            player.release()
-            release()
-        }
+        runCatching {
+            mediaSession?.run {
+                player.release()
+                release()
+            }
+        }.onFailure { Log.e(TAG, "释放媒体会话失败", it) }
         mediaSession = null
         super.onDestroy()
+    }
+
+    companion object {
+        private const val TAG = "PlaybackService"
     }
 }

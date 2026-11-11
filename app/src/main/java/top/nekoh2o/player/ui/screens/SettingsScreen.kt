@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -34,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import top.nekoh2o.player.data.model.AppSettings
 import top.nekoh2o.player.data.model.BgSource
+import top.nekoh2o.player.diagnostics.CrashLog
 import top.nekoh2o.player.i18n.NekoI18n
 import top.nekoh2o.player.i18n.NekoI18n.tr
 import top.nekoh2o.player.ui.PlayerViewModel
@@ -416,6 +419,27 @@ private fun AdvancedSettings(vm: PlayerViewModel, context: Context) {
         description = tr("允许应用忽略电池优化，防止系统在后台暂停播放。部分机型长时间熄屏后仍可能结束播放，请同时设置自启动白名单。")
     ) {
         SettingsTile(title = tr("申请电池优化豁免"), onClick = { vm.requestIgnoreBatteryOptimizations(context) })
+    }
+    val crashLog = remember { CrashLog.latest() }
+    if (crashLog != null) {
+        SettingsSection(
+            title = tr("故障诊断"),
+            description = tr("应用异常退出时会记录诊断信息，可复制后发送给开发者。")
+        ) {
+            SettingsTile(
+                title = tr("复制最近崩溃日志"),
+                onClick = {
+                    val text = runCatching { crashLog.readText() }.getOrNull()
+                    if (text.isNullOrBlank()) {
+                        Toast.makeText(context, tr("没有可用的崩溃日志"), Toast.LENGTH_SHORT).show()
+                    } else {
+                        context.getSystemService(ClipboardManager::class.java)
+                            ?.setPrimaryClip(ClipData.newPlainText("NekoPlayer crash log", text))
+                        Toast.makeText(context, tr("已复制崩溃日志"), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+        }
     }
     InlineNotice(
         tr("MIUI、ColorOS、HarmonyOS 等系统需要手动允许自启动：系统设置 → 应用管理 → NekoPlayer → 自启动 / 后台限制。")

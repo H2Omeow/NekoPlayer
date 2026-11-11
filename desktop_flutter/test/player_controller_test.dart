@@ -436,6 +436,8 @@ void main() {
     );
     timedController.setSleepTimer(const Duration(minutes: 15));
     await tester.pump(const Duration(minutes: 15));
+    // 暂停默认带淡出，等淡出计时器全部触发
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.pump();
     expect(timedEngine.playing, isFalse);
     expect(timedController.sleepDeadline, isNull);
@@ -445,5 +447,21 @@ void main() {
     await tester.pump(const Duration(minutes: 16));
     expect(timedEngine.playing, isTrue);
     timedController.dispose();
+  });
+
+  test('play and pause fade the engine volume without changing user volume', () async {
+    final audio = await song('Fade.mp3');
+    await controller.importFiles([audio.path]);
+    controller.setFadePlayback(milliseconds: 80);
+    expect(controller.fadePlayback, isTrue);
+
+    await controller.play(controller.tracks, 0);
+    expect(engine.playing, isTrue);
+    expect(engine.volume, closeTo(controller.volume, 0.01));
+
+    await controller.pause();
+    expect(engine.playing, isFalse);
+    expect(engine.volume, closeTo(controller.volume, 0.01));
+    expect(controller.volume, 75);
   });
 }

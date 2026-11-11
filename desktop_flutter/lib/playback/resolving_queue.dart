@@ -21,10 +21,12 @@ class ResolvingQueue {
   int index = 0;
   RepeatMode repeat = RepeatMode.sequential;
   String preferredQuality = 'exhigh';
+  ResolvedAudio? currentAudio;
   Track? get current => _tracks.isEmpty ? null : _tracks[index];
   void clear() {
     _tracks = [];
     index = 0;
+    currentAudio = null;
   }
 
   void replace(List<Track> tracks, int selected) {
@@ -69,9 +71,11 @@ class ResolvingQueue {
     if (track.online != null && source == null) {
       throw       MusicSearchException(tr('在线播放服务未初始化。'));
     }
+    currentAudio = null;
     final audio = track.online == null
         ? ResolvedAudio(Uri.file(track.path), '')
         : await source!.resolve(track.online!, preferred: preferredQuality);
+    currentAudio = audio;
     if (loadAudio != null) {
       await loadAudio!(audio);
     } else {

@@ -44,6 +44,7 @@ class PlayerBar extends StatelessWidget {
 
   Widget _trackInfo(BuildContext context, {double art = 56}) {
     final track = controller.current;
+    final quality = controller.currentQuality;
     final text = Theme.of(context).textTheme;
     final palette = NekoPalette.of(context);
     final favorite = track != null && controller.favorites.contains(track.path);
@@ -74,7 +75,13 @@ class PlayerBar extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          track?.artist ?? tr('选择一首歌开始播放'),
+                          track == null
+                              ? tr('选择一首歌开始播放')
+                              : [
+                                  track.artist,
+                                  if (quality != null && quality.isNotEmpty)
+                                    quality,
+                                ].where((part) => part.isNotEmpty).join(' · '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: text.bodySmall,

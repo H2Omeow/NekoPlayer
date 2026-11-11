@@ -113,6 +113,8 @@ class LibraryData {
     this.preferredQuality = 'exhigh',
     this.showTranslation = true,
     this.doubleLyrics = true,
+    this.fadePlayback = true,
+    this.fadeMilliseconds = 300,
     this.repeatMode = 'sequential',
     this.session,
   });
@@ -126,6 +128,8 @@ class LibraryData {
   final String preferredQuality;
   final bool showTranslation;
   final bool doubleLyrics;
+  final bool fadePlayback;
+  final int fadeMilliseconds;
   final String repeatMode;
   final PlaybackSession? session;
 
@@ -167,6 +171,11 @@ class LibraryData {
       preferredQuality: json['preferredQuality'] as String? ?? 'exhigh',
       showTranslation: json['showTranslation'] as bool? ?? true,
       doubleLyrics: json['doubleLyrics'] as bool? ?? true,
+      fadePlayback: json['fadePlayback'] as bool? ?? true,
+      fadeMilliseconds:
+          (((json['fadeMilliseconds'] as num?)?.toInt() ?? 300)
+              .clamp(50, 3000))
+              .toInt(),
       repeatMode: json['repeatMode'] as String? ?? 'sequential',
       session: session != null && session.paths.every(paths.contains)
           ? session
@@ -185,6 +194,8 @@ class LibraryData {
     'preferredQuality': preferredQuality,
     'showTranslation': showTranslation,
     'doubleLyrics': doubleLyrics,
+    'fadePlayback': fadePlayback,
+    'fadeMilliseconds': fadeMilliseconds,
     'repeatMode': repeatMode,
     if (session != null) 'session': session!.toJson(),
   });

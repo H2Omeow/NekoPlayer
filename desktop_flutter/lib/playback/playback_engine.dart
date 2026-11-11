@@ -21,6 +21,10 @@ abstract class PlaybackEngine extends ChangeNotifier {
   String? get currentPath;
   String? get error;
 
+  /// The resolved source for the current track, including the actual quality
+  /// returned by the music platform (which may be lower than requested).
+  ResolvedAudio? get currentAudio => null;
+
   Future<void> open(List<Track> tracks, int index, {bool play = true});
   Future<void> replaceQueue(List<Track> tracks, int index) async {
     throw UnsupportedError('Queue editing is unavailable');
@@ -157,6 +161,8 @@ class MediaKitEngine extends PlaybackEngine {
   int get index => _index;
   @override
   String? get currentPath => _currentPath;
+  @override
+  ResolvedAudio? get currentAudio => _queue.currentAudio;
   @override
   String? get error => _error;
 

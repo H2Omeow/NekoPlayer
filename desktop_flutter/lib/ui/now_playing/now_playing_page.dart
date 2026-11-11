@@ -193,6 +193,7 @@ class _FullPlayerState extends State<FullPlayer> {
     final palette = NekoPalette.of(context);
     final favorite = track != null && controller.favorites.contains(track.path);
     final online = track?.online;
+    final quality = controller.currentQuality;
     final actions = <Widget>[
       if (track != null)
         IconButton(
@@ -241,6 +242,7 @@ class _FullPlayerState extends State<FullPlayer> {
           [
             track?.artist ?? '',
             online?.album ?? '',
+            if (quality != null && quality.isNotEmpty) quality,
           ].where((part) => part.isNotEmpty).join(' · '),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

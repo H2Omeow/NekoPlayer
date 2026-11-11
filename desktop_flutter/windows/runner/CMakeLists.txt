@@ -33,7 +33,7 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 # Add dependency libraries and include directories. Add any application-specific
 # dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
-target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
+target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib" "shell32.lib")
 add_library(nekoplayer_desktop_integration STATIC "desktop_integration.cpp")
 target_compile_features(nekoplayer_desktop_integration PRIVATE cxx_std_20)
 target_compile_definitions(nekoplayer_desktop_integration PRIVATE NOMINMAX _HAS_EXCEPTIONS=1)

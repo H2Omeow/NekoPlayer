@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -50,16 +51,55 @@ object CookieStore {
             if (ready.isCompleted) return
 
             appContext = context.applicationContext
-            val prefs = appContext.dataStore.data.first()
-            userCookie = prefs[KEY_USER] ?: ""
-            guestCookie = prefs[KEY_GUEST] ?: ""
-            appToken = prefs[KEY_APP_TOKEN] ?: ""
-            kgPlatform = prefs[KEY_KG_PLATFORM] ?: "0"
-            level = prefs[KEY_LEVEL] ?: "exhigh"
+            var user = ""
+            var guest = ""
+            var token = ""
+            var platform = "0"
+            var quality = "exhigh"
+            var kgToken = ""
+            var kgUser = ""
+            var kgDfid = ""
+            try {
+                val prefs = appContext.dataStore.data.first()
+                user = prefs[KEY_USER] ?: ""
+                guest = prefs[KEY_GUEST] ?: ""
+                token = prefs[KEY_APP_TOKEN] ?: ""
+                platform = prefs[KEY_KG_PLATFORM] ?: "0"
+                quality = prefs[KEY_LEVEL] ?: "exhigh"
+                kgToken = prefs[KEY_KG_TOKEN].orEmpty()
+                kgUser = prefs[KEY_KG_USERID].orEmpty()
+                kgDfid = prefs[KEY_KG_DFID].orEmpty()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 数据文件损坏 / 磁盘暂时不可读时用空凭据继续启动，避免每次冷启动都闪退
+                android.util.Log.e("CookieStore", "读取本地凭据失败，以空凭据继续启动", e)
+            }
 
-
-            kgSessions = KugouSessionStore(top.nekoh2o.player.data.net.AndroidProviderPreferences(appContext.getSharedPreferences("kugou_sessions", Context.MODE_PRIVATE)))
-            kgSessions.migrate(kgPlatformValue(), prefs[KEY_KG_TOKEN].orEmpty(), prefs[KEY_KG_USERID].orEmpty(), prefs[KEY_KG_DFID].orEmpty())
+            userCookie = user
+            guestCookie = guest
+            appToken = token
+            kgPlatform = platform
+            level = quality
+            runCatching {
+                kgSessions = KugouSessionStore(
+                    AndroidProviderPreferences(
+                        appContext.getSharedPreferences("kugou_sessions", Context.MODE_PRIVATE)
+                    )
+                )
+                kgSessions.migrate(kgPlatformValue(), kgToken, kgUser, kgDfid)
+            }.onFailure { error ->
+                android.util.Log.e("CookieStore", "酷狗登录状态初始化失败", error)
+                if (!this::kgSessions.isInitialized) {
+                    runCatching {
+                        kgSessions = KugouSessionStore(
+                            AndroidProviderPreferences(
+                                appContext.getSharedPreferences("kugou_sessions", Context.MODE_PRIVATE)
+                            )
+                        )
+                    }
+                }
+            }
             ready.complete(Unit)
         }
     }

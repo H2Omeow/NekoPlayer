@@ -138,6 +138,8 @@ class EffectsPlaybackEngine extends PlaybackEngine {
   @override
   String? get currentPath => active.currentPath;
   @override
+  ResolvedAudio? get currentAudio => active.currentAudio;
+  @override
   String? get error => active.error;
   @override
   Future<void> open(List<Track> tracks, int index, {bool play = true}) async {

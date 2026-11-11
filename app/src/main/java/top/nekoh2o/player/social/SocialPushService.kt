@@ -11,9 +11,11 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,19 +35,37 @@ import top.nekoh2o.player.data.social.SocialSseConnection
 /** 常驻的社区消息 SSE 服务：只在登录期间运行，SSE 断线指数退避重连。 */
 class SocialPushService : Service() {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, error ->
+            Log.e(TAG, "社区后台任务异常", error)
+        }
+    )
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
     private var loopJob: Job? = null
     @Volatile private var connection: SocialSseConnection? = null
+    @Volatile private var foregroundStarted = false
 
     override fun onCreate() {
         super.onCreate()
-        SocialNotifications.ensureChannels(this)
-        startForeground(SERVICE_ID, SocialNotifications.serviceNotification(this))
+        runCatching {
+            SocialNotifications.ensureChannels(this)
+            startForeground(SERVICE_ID, SocialNotifications.serviceNotification(this))
+            foregroundStarted = true
+        }.onFailure { error ->
+            // Android 12+ 在后台启动前台服务会抛异常；服务直接退出，
+            // 不能让异常从 onCreate 冒出去导致整个应用闪退。
+            Log.w(TAG, "社区前台服务启动失败，等待下次回到前台再试", error)
+            foregroundStarted = false
+            stopSelf()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        if (!foregroundStarted) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -120,6 +140,7 @@ class SocialPushService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
+        private const val TAG = "SocialPushService"
         private const val SERVICE_ID = 4102
         const val ACTION_STOP = "top.nekoh2o.player.social.STOP"
 

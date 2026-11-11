@@ -41,6 +41,8 @@ class PlayerController extends ChangeNotifier {
   String preferredQuality = 'exhigh';
   bool showTranslation = true;
   bool doubleLyrics = true;
+  bool fadePlayback = true;
+  int fadeMilliseconds = 300;
   String? error;
   String? _lyricPath;
   String? _historyPath;
@@ -54,6 +56,8 @@ class PlayerController extends ChangeNotifier {
   PlaybackSession? _pendingSession;
   Timer? _sessionTimer;
   int _savedPosition = -1;
+  double _engineVolume = 75;
+  int _fadeToken = 0;
 
   PlaybackSession? get _session {
     if (_pendingSession != null) return _pendingSession;
@@ -105,6 +109,23 @@ class PlayerController extends ChangeNotifier {
       .map((path) => tracks.where((track) => track.path == path).firstOrNull)
       .nonNulls
       .toList();
+
+  /// Quality actually returned for the current stream. Local files fall back
+  /// to their container extension because no network quality was negotiated.
+  String? get currentQuality {
+    final audio = engine.currentAudio;
+    if (audio != null) {
+      final label = describeAudioQuality(audio.quality, format: audio.format);
+      if (label.isNotEmpty) return label;
+    }
+    final track = current;
+    if (track != null && track.online == null) {
+      final extension = paths.extension(track.path).replaceFirst('.', '');
+      if (extension.isNotEmpty) return extension.toUpperCase();
+    }
+    return null;
+  }
+
   int get lyricIndex => lyrics.lastIndexWhere((line) => line.time <= position);
   Future<void> get flushed => _writes;
 
@@ -118,6 +139,8 @@ class PlayerController extends ChangeNotifier {
     preferredQuality: preferredQuality,
     showTranslation: showTranslation,
     doubleLyrics: doubleLyrics,
+    fadePlayback: fadePlayback,
+    fadeMilliseconds: fadeMilliseconds,
     repeatMode: repeat.name,
     session: _session,
   );
@@ -228,6 +251,8 @@ class PlayerController extends ChangeNotifier {
       preferredQuality = library.preferredQuality;
       showTranslation = library.showTranslation;
       doubleLyrics = library.doubleLyrics;
+      fadePlayback = library.fadePlayback;
+      fadeMilliseconds = library.fadeMilliseconds;
       repeat =
           RepeatMode.values
               .where((mode) => mode.name == library.repeatMode)
@@ -244,6 +269,7 @@ class PlayerController extends ChangeNotifier {
     }
     await perform(() async {
       await engine.setVolume(volume);
+      _engineVolume = volume;
       await engine.setRate(rate);
       await engine.setPreferredQuality(preferredQuality);
       await engine.setRepeatMode(repeat);
@@ -268,10 +294,71 @@ class PlayerController extends ChangeNotifier {
         ? engine.duration
         : session.position;
     if (offset > Duration.zero) await engine.seek(offset);
-    if (play) await engine.toggle();
+    if (play) await _startWithFade(engine.toggle);
     _pendingSession = null;
     _playbackChanged();
     _notify();
+  }
+
+  /// Smoothly ramps the engine volume without changing the persisted user
+  /// volume. Commands stay serialized by [perform], so the fade cannot fight
+  /// with a seek/next operation.
+  Future<void> _rampVolumeTo(double target) async {
+    final total = fadePlayback ? fadeMilliseconds.clamp(0, 3000) : 0;
+    if (total == 0 || volume <= 0) {
+      _engineVolume = target;
+      await engine.setVolume(target);
+      return;
+    }
+    final token = ++_fadeToken;
+    final steps = max(1, (total / 20).ceil());
+    final start = _engineVolume;
+    for (var step = 1; step <= steps; step++) {
+      if (_disposed || token != _fadeToken) return;
+      final value = start + (target - start) * step / steps;
+      _engineVolume = value;
+      await engine.setVolume(value);
+      if (step < steps) {
+        await Future<void>.delayed(
+          Duration(milliseconds: max(1, (total / steps).round())),
+        );
+      }
+    }
+    _engineVolume = target;
+  }
+
+  Future<void> _startWithFade(Future<void> Function() start) async {
+    if (!fadePlayback || fadeMilliseconds <= 0 || volume <= 0) {
+      await start();
+      _engineVolume = volume;
+      return;
+    }
+    ++_fadeToken;
+    _engineVolume = 0;
+    await engine.setVolume(0);
+    try {
+      await start();
+    } catch (_) {
+      _engineVolume = volume;
+      await engine.setVolume(volume);
+      rethrow;
+    }
+    await _rampVolumeTo(volume);
+  }
+
+  Future<void> _pauseWithFade() async {
+    if (!fadePlayback || fadeMilliseconds <= 0 || volume <= 0) {
+      await engine.pause();
+      _engineVolume = volume;
+      return;
+    }
+    try {
+      await _rampVolumeTo(0);
+      await engine.pause();
+    } finally {
+      _engineVolume = volume;
+      await engine.setVolume(volume);
+    }
   }
 
   Future<void> perform(Future<void> Function() action) {
@@ -377,7 +464,7 @@ class PlayerController extends ChangeNotifier {
     _historyPath = null;
     await engine.setRepeatMode(repeat);
     try {
-      await engine.open(queue, index);
+      await _startWithFade(() => engine.open(queue, index));
     } catch (_) {
       queue = previousQueue;
       rethrow;
@@ -393,13 +480,15 @@ class PlayerController extends ChangeNotifier {
       await _restoreSession(play: true);
     } else if (current == null) {
       await _play(tracks, 0);
+    } else if (engine.playing) {
+      await _pauseWithFade();
     } else {
-      await engine.toggle();
+      await _startWithFade(engine.toggle);
     }
   });
 
   Future<void> pause() => perform(() async {
-    if (!sessionPending || engine.playing) await engine.pause();
+    if (!sessionPending || engine.playing) await _pauseWithFade();
   });
 
   Future<void> resume() => perform(() async {
@@ -408,7 +497,7 @@ class PlayerController extends ChangeNotifier {
     } else if (current == null) {
       await _play(tracks, 0);
     } else if (!engine.playing) {
-      await engine.toggle();
+      await _startWithFade(engine.toggle);
     }
   });
 
@@ -419,9 +508,9 @@ class PlayerController extends ChangeNotifier {
     final session = _pendingSession;
     if (session == null) {
       if (direction > 0) {
-        await engine.next();
+        await _startWithFade(engine.next);
       } else {
-        await engine.previous();
+        await _startWithFade(engine.previous);
       }
       return;
     }
@@ -465,7 +554,7 @@ class PlayerController extends ChangeNotifier {
   }
 
   Future<void> stop() => perform(() async {
-    if (!sessionPending || engine.playing) await engine.pause();
+    if (!sessionPending || engine.playing) await _pauseWithFade();
     await _seek(Duration.zero);
   });
 
@@ -652,7 +741,18 @@ class PlayerController extends ChangeNotifier {
 
   void setVolume(double value) {
     volume = value.clamp(0, 100);
+    ++_fadeToken;
+    _engineVolume = volume;
     unawaited(perform(() => engine.setVolume(volume)));
+    _persist();
+    _notify();
+  }
+
+  void setFadePlayback({bool? enabled, int? milliseconds}) {
+    fadePlayback = enabled ?? fadePlayback;
+    if (milliseconds != null) {
+      fadeMilliseconds = milliseconds.clamp(50, 3000).toInt();
+    }
     _persist();
     _notify();
   }

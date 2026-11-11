@@ -37,17 +37,31 @@ struct DesktopIntegration {
   double volume = .75;
   double rate = 1;
   gboolean positioning = FALSE;
+  gboolean layer_shell = FALSE;
+  gboolean dragging_lyrics = FALSE;
+  gboolean has_lyrics_position = FALSE;
+  double lyrics_x = 0;
+  double lyrics_y = 0;
+  double drag_origin_x = 0;
+  double drag_origin_y = 0;
+  double drag_press_x = 0;
+  double drag_press_y = 0;
   GObject* tray = nullptr;
   GDBusProxy* tray_watcher = nullptr;
   gboolean indicator = FALSE;
   gboolean indicator_connected = FALSE;
   GtkWidget* tray_menu = nullptr;
-  GtkWidget* tray_items[5] = {};
+  gboolean tray_show_enabled = TRUE;
+  gboolean tray_playback_enabled = TRUE;
+  gboolean tray_volume_enabled = TRUE;
+  gboolean tray_lyrics_enabled = TRUE;
   std::string tray_tooltip_text = "NekoPlayer — 点击显示播放器";
   std::string tray_show_text = "显示播放器";
   std::string tray_toggle_text = "播放 / 暂停";
   std::string tray_previous_text = "上一首";
   std::string tray_next_text = "下一首";
+  std::string tray_lyrics_text = "桌面歌词";
+  std::string tray_volume_text = "音量";
   std::string tray_quit_text = "退出";
   std::string lyrics_window_title = "NekoPlayer 桌面歌词";
   gulong close_handler = 0;
@@ -124,6 +138,46 @@ static const IndicatorApi& indicator_api() {
   return api;
 }
 
+// gtk-layer-shell is optional at compile time: load it at runtime so the
+// packaged app still starts on systems without it. Under Wayland it gives the
+// lyrics overlay a real always-on-top, positionable, transparent surface
+// instead of an ordinary toplevel window.
+struct LayerShellApi {
+  gboolean (*is_supported)() = nullptr;
+  gboolean (*init_for_window)(GtkWindow*) = nullptr;
+  void (*set_namespace)(GtkWindow*, const gchar*) = nullptr;
+  void (*set_layer)(GtkWindow*, int) = nullptr;
+  void (*set_anchor)(GtkWindow*, int, gboolean) = nullptr;
+  void (*set_margin)(GtkWindow*, int, int) = nullptr;
+  void (*set_exclusive_zone)(GtkWindow*, int) = nullptr;
+  void (*set_keyboard_mode)(GtkWindow*, int) = nullptr;
+};
+
+static const LayerShellApi& layer_shell_api() {
+  static const LayerShellApi api = [] {
+    void* module = dlopen("libgtk-layer-shell.so.0", RTLD_NOW | RTLD_LOCAL);
+    if (module == nullptr) return LayerShellApi{};
+    LayerShellApi loaded;
+    loaded.is_supported = reinterpret_cast<decltype(loaded.is_supported)>(dlsym(module, "gtk_layer_is_supported"));
+    loaded.init_for_window = reinterpret_cast<decltype(loaded.init_for_window)>(dlsym(module, "gtk_layer_init_for_window"));
+    loaded.set_namespace = reinterpret_cast<decltype(loaded.set_namespace)>(dlsym(module, "gtk_layer_set_namespace"));
+    loaded.set_layer = reinterpret_cast<decltype(loaded.set_layer)>(dlsym(module, "gtk_layer_set_layer"));
+    loaded.set_anchor = reinterpret_cast<decltype(loaded.set_anchor)>(dlsym(module, "gtk_layer_set_anchor"));
+    loaded.set_margin = reinterpret_cast<decltype(loaded.set_margin)>(dlsym(module, "gtk_layer_set_margin"));
+    loaded.set_exclusive_zone = reinterpret_cast<decltype(loaded.set_exclusive_zone)>(dlsym(module, "gtk_layer_set_exclusive_zone"));
+    loaded.set_keyboard_mode = reinterpret_cast<decltype(loaded.set_keyboard_mode)>(dlsym(module, "gtk_layer_set_keyboard_mode"));
+    if (loaded.is_supported != nullptr && loaded.init_for_window != nullptr &&
+        loaded.set_namespace != nullptr && loaded.set_layer != nullptr &&
+        loaded.set_anchor != nullptr && loaded.set_margin != nullptr &&
+        loaded.set_exclusive_zone != nullptr && loaded.set_keyboard_mode != nullptr) {
+      return loaded;
+    }
+    dlclose(module);
+    return LayerShellApi{};
+  }();
+  return api;
+}
+
 static gboolean tray_host_available(DesktopIntegration* self) {
   if (self->tray_watcher == nullptr) return FALSE;
   g_autofree gchar* owner = g_dbus_proxy_get_name_owner(self->tray_watcher);
@@ -165,6 +219,12 @@ static void tray_show(GtkWidget*, gpointer data) {
 static void tray_toggle(GtkWidget*, gpointer data) { action(static_cast<DesktopIntegration*>(data), "toggle"); }
 static void tray_previous(GtkWidget*, gpointer data) { action(static_cast<DesktopIntegration*>(data), "previous"); }
 static void tray_next(GtkWidget*, gpointer data) { action(static_cast<DesktopIntegration*>(data), "next"); }
+static void tray_lyrics(GtkWidget*, gpointer data) { action(static_cast<DesktopIntegration*>(data), "toggleLyrics"); }
+static void tray_volume(GtkMenuItem* item, gpointer data) {
+  auto* self = static_cast<DesktopIntegration*>(data);
+  const int percent = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(item), "neko-volume"));
+  action(self, "volume", fl_value_new_float(CLAMP(percent, 0, 100) / 100.0));
+}
 static void tray_quit(GtkWidget*, gpointer data) {
   auto* self = static_cast<DesktopIntegration*>(data);
   self->quitting = TRUE;
@@ -201,19 +261,75 @@ static void read_tray_labels(DesktopIntegration* self, FlValue* values) {
   read("toggle", self->tray_toggle_text);
   read("previous", self->tray_previous_text);
   read("next", self->tray_next_text);
+  read("lyrics", self->tray_lyrics_text);
+  read("volume", self->tray_volume_text);
   read("quit", self->tray_quit_text);
   read("lyricsTitle", self->lyrics_window_title);
+}
+
+static void read_tray_items(DesktopIntegration* self, FlValue* values) {
+  if (values == nullptr || fl_value_get_type(values) != FL_VALUE_TYPE_MAP) return;
+  auto* items = fl_value_lookup_string(values, "items");
+  if (items == nullptr || fl_value_get_type(items) != FL_VALUE_TYPE_MAP) return;
+  auto read = [&](const char* key, gboolean& target) {
+    auto* value = fl_value_lookup_string(items, key);
+    if (value != nullptr && fl_value_get_type(value) == FL_VALUE_TYPE_BOOL) {
+      target = fl_value_get_bool(value);
+    }
+  };
+  read("show", self->tray_show_enabled);
+  read("playback", self->tray_playback_enabled);
+  read("volume", self->tray_volume_enabled);
+  read("lyrics", self->tray_lyrics_enabled);
+}
+
+static void update_tray_menu(DesktopIntegration* self) {
+  if (self->tray == nullptr) return;
+  if (self->tray_menu != nullptr) {
+    gtk_widget_destroy(self->tray_menu);
+    g_clear_object(&self->tray_menu);
+  }
+  GtkWidget* menu = gtk_menu_new();
+  g_object_ref_sink(menu);
+  self->tray_menu = menu;
+  auto add_item = [self, menu](const char* label, GCallback callback) {
+    GtkWidget* item = gtk_menu_item_new_with_label(label);
+    g_signal_connect(item, "activate", callback, self);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+    return item;
+  };
+  if (self->tray_show_enabled) add_item(self->tray_show_text.c_str(), G_CALLBACK(tray_show));
+  if (self->tray_playback_enabled) {
+    add_item(self->tray_toggle_text.c_str(), G_CALLBACK(tray_toggle));
+    add_item(self->tray_previous_text.c_str(), G_CALLBACK(tray_previous));
+    add_item(self->tray_next_text.c_str(), G_CALLBACK(tray_next));
+  }
+  if (self->tray_lyrics_enabled) add_item(self->tray_lyrics_text.c_str(), G_CALLBACK(tray_lyrics));
+  if (self->tray_volume_enabled) {
+    GtkWidget* volume = gtk_menu_item_new_with_label(self->tray_volume_text.c_str());
+    GtkWidget* submenu = gtk_menu_new();
+    for (const int percent : {0, 25, 50, 75, 100}) {
+      char label[8];
+      g_snprintf(label, sizeof(label), "%d%%", percent);
+      GtkWidget* item = gtk_menu_item_new_with_label(label);
+      g_object_set_data(G_OBJECT(item), "neko-volume", GINT_TO_POINTER(percent));
+      g_signal_connect(item, "activate", G_CALLBACK(tray_volume), self);
+      gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+    }
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(volume), submenu);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), volume);
+  }
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
+  add_item(self->tray_quit_text.c_str(), G_CALLBACK(tray_quit));
+  gtk_widget_show_all(menu);
+  if (self->indicator) indicator_api().menu(self->tray, GTK_MENU(menu));
 }
 
 static void apply_tray_labels(DesktopIntegration* self) {
   if (self->tray != nullptr && !self->indicator) {
     gtk_status_icon_set_tooltip_text(GTK_STATUS_ICON(self->tray), self->tray_tooltip_text.c_str());
   }
-  const char* labels[] = {self->tray_show_text.c_str(), self->tray_toggle_text.c_str(),
-      self->tray_previous_text.c_str(), self->tray_next_text.c_str(), self->tray_quit_text.c_str()};
-  for (int index = 0; index < 5; ++index) {
-    if (self->tray_items[index] != nullptr) gtk_menu_item_set_label(GTK_MENU_ITEM(self->tray_items[index]), labels[index]);
-  }
+  update_tray_menu(self);
   if (self->lyrics_window != nullptr) gtk_window_set_title(GTK_WINDOW(self->lyrics_window), self->lyrics_window_title.c_str());
 }
 
@@ -235,23 +351,11 @@ static void start_tray(DesktopIntegration* self) {
     gtk_status_icon_set_title(GTK_STATUS_ICON(self->tray), "NekoPlayer");
     gtk_status_icon_set_tooltip_text(GTK_STATUS_ICON(self->tray), self->tray_tooltip_text.c_str());
   }
-  self->tray_menu = gtk_menu_new();
-  g_object_ref_sink(self->tray_menu);
-  const char* labels[] = {self->tray_show_text.c_str(), self->tray_toggle_text.c_str(),
-      self->tray_previous_text.c_str(), self->tray_next_text.c_str(), self->tray_quit_text.c_str()};
-  GCallback callbacks[] = {G_CALLBACK(tray_show), G_CALLBACK(tray_toggle), G_CALLBACK(tray_previous), G_CALLBACK(tray_next), G_CALLBACK(tray_quit)};
-  for (int index = 0; index < 5; ++index) {
-    GtkWidget* item = gtk_menu_item_new_with_label(labels[index]);
-    self->tray_items[index] = item;
-    gtk_menu_shell_append(GTK_MENU_SHELL(self->tray_menu), item);
-    g_signal_connect(item, "activate", callbacks[index], self);
-  }
-  gtk_widget_show_all(self->tray_menu);
+  update_tray_menu(self);
   if (self->indicator) {
     g_signal_connect(self->tray, "connection-changed", G_CALLBACK(indicator_connection), self);
     g_signal_connect(self->tray_watcher, "g-properties-changed", G_CALLBACK(tray_host_changed), self);
     g_signal_connect(self->tray_watcher, "notify::g-name-owner", G_CALLBACK(tray_changed), self);
-    api.menu(self->tray, GTK_MENU(self->tray_menu));
     api.status(self->tray, 1);
     g_object_get(self->tray, "connected", &self->indicator_connected, nullptr);
   } else {
@@ -273,7 +377,6 @@ static void stop_tray(DesktopIntegration* self) {
   g_clear_object(&self->tray);
   g_clear_object(&self->tray_watcher);
   self->indicator = self->indicator_connected = FALSE;
-  for (auto*& item : self->tray_items) item = nullptr;
   if (self->tray_menu != nullptr) {
     gtk_widget_destroy(self->tray_menu);
     g_clear_object(&self->tray_menu);
@@ -384,6 +487,45 @@ static void stop_media(DesktopIntegration* self) {
   g_clear_object(&self->bus);
 }
 
+static void notify_lyrics_position(DesktopIntegration* self) {
+  if (self->channel == nullptr || !self->has_lyrics_position) return;
+  g_autoptr(FlValue) arguments = fl_value_new_map();
+  fl_value_set_string_take(arguments, "x", fl_value_new_float(self->lyrics_x));
+  fl_value_set_string_take(arguments, "y", fl_value_new_float(self->lyrics_y));
+  fl_method_channel_invoke_method(self->channel, "overlayPosition", arguments, nullptr, nullptr, nullptr);
+}
+
+static void apply_lyrics_position(DesktopIntegration* self) {
+  if (self->lyrics_window == nullptr || !self->has_lyrics_position) return;
+  const int x = static_cast<int>(std::lround(std::max(0.0, self->lyrics_x)));
+  const int y = static_cast<int>(std::lround(std::max(0.0, self->lyrics_y)));
+  if (self->layer_shell) {
+    const auto& api = layer_shell_api();
+    api.set_anchor(GTK_WINDOW(self->lyrics_window), 0, TRUE);  // LEFT
+    api.set_anchor(GTK_WINDOW(self->lyrics_window), 2, TRUE);  // TOP
+    api.set_margin(GTK_WINDOW(self->lyrics_window), 0, x);  // LEFT
+    api.set_margin(GTK_WINDOW(self->lyrics_window), 2, y);  // TOP
+  } else if (self->positioning) {
+    gtk_window_move(GTK_WINDOW(self->lyrics_window), x, y);
+  }
+}
+
+static gboolean lyrics_configure(GtkWidget* widget, GdkEventConfigure*, gpointer data) {
+  auto* self = static_cast<DesktopIntegration*>(data);
+  if (self->layer_shell || self->dragging_lyrics) return FALSE;
+  gint x = 0;
+  gint y = 0;
+  gtk_window_get_position(GTK_WINDOW(widget), &x, &y);
+  if (!self->has_lyrics_position ||
+      std::abs(x - self->lyrics_x) > 1 || std::abs(y - self->lyrics_y) > 1) {
+    self->has_lyrics_position = TRUE;
+    self->lyrics_x = x;
+    self->lyrics_y = y;
+    notify_lyrics_position(self);
+  }
+  return FALSE;
+}
+
 static gboolean lyrics_delete(GtkWidget* widget, GdkEvent*, gpointer data) {
   auto* self = static_cast<DesktopIntegration*>(data);
   gtk_widget_hide(widget);
@@ -394,10 +536,41 @@ static gboolean lyrics_delete(GtkWidget* widget, GdkEvent*, gpointer data) {
 static gboolean lyrics_press(GtkWidget* widget, GdkEventButton* event, gpointer data) {
   auto* self = static_cast<DesktopIntegration*>(data);
   if (event->button == 1) {
-    if (event->type == GDK_2BUTTON_PRESS) action(self, "toggle");
-    else if (self->positioning) gtk_window_begin_move_drag(GTK_WINDOW(widget), event->button, event->x_root, event->y_root, event->time);
+    if (event->type == GDK_2BUTTON_PRESS) {
+      action(self, "toggle");
+    } else if (self->layer_shell && self->positioning) {
+      // Layer-shell surfaces are positioned by margins, so GTK's native move
+      // drag cannot be used under Wayland.
+      self->dragging_lyrics = TRUE;
+      self->drag_origin_x = self->lyrics_x;
+      self->drag_origin_y = self->lyrics_y;
+      self->drag_press_x = event->x_root;
+      self->drag_press_y = event->y_root;
+    } else if (self->positioning) {
+      gtk_window_begin_move_drag(GTK_WINDOW(widget), event->button, event->x_root, event->y_root, event->time);
+    }
   }
   return TRUE;
+}
+
+static gboolean lyrics_motion(GtkWidget*, GdkEventMotion* event, gpointer data) {
+  auto* self = static_cast<DesktopIntegration*>(data);
+  if (!self->dragging_lyrics) return FALSE;
+  self->lyrics_x = std::max(0.0, self->drag_origin_x + event->x_root - self->drag_press_x);
+  self->lyrics_y = std::max(0.0, self->drag_origin_y + event->y_root - self->drag_press_y);
+  self->has_lyrics_position = TRUE;
+  apply_lyrics_position(self);
+  return TRUE;
+}
+
+static gboolean lyrics_release(GtkWidget*, GdkEventButton* event, gpointer data) {
+  auto* self = static_cast<DesktopIntegration*>(data);
+  if (event->button == 1 && self->dragging_lyrics) {
+    self->dragging_lyrics = FALSE;
+    notify_lyrics_position(self);
+    return TRUE;
+  }
+  return FALSE;
 }
 
 static void lyrics_control(GtkButton* button, gpointer data) {
@@ -440,6 +613,22 @@ static void create_lyrics(DesktopIntegration* self) {
   gtk_widget_set_app_paintable(self->lyrics_window, TRUE);
   GdkVisual* visual = gdk_screen_get_rgba_visual(gtk_widget_get_screen(self->lyrics_window));
   if (visual != nullptr) gtk_widget_set_visual(self->lyrics_window, visual);
+  if (self->layer_shell) {
+    const auto& api = layer_shell_api();
+    if (!api.init_for_window(window)) {
+      self->layer_shell = FALSE;
+      self->positioning = FALSE;
+    } else {
+      api.set_namespace(window, "nekoplayer-lyrics");
+      api.set_layer(window, 3);          // OVERLAY
+      api.set_exclusive_zone(window, -1);
+      api.set_keyboard_mode(window, 0);  // NONE
+      // 没有保存位置时只锚定顶部，由合成器水平居中；
+      // apply_lyrics_position() 在拿到位置后改为左上锚定。
+      api.set_anchor(window, 2, TRUE);   // TOP
+      api.set_margin(window, 2, 100);    // TOP margin for the default spot
+    }
+  }
   GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
   gtk_container_set_border_width(GTK_CONTAINER(box), 14);
   self->lyric_title = gtk_label_new("");
@@ -473,12 +662,16 @@ static void create_lyrics(DesktopIntegration* self) {
   add_button("next", "▶▶");
   gtk_box_pack_start(GTK_BOX(box), self->controls, FALSE, FALSE, 0);
   gtk_container_add(GTK_CONTAINER(window), box);
-  gtk_widget_add_events(self->lyrics_window, GDK_BUTTON_PRESS_MASK);
+  gtk_widget_add_events(self->lyrics_window,
+      GDK_BUTTON_PRESS_MASK | GDK_BUTTON_MOTION_MASK | GDK_BUTTON_RELEASE_MASK);
   g_signal_connect(self->lyrics_window, "button-press-event", G_CALLBACK(lyrics_press), self);
+  g_signal_connect(self->lyrics_window, "motion-notify-event", G_CALLBACK(lyrics_motion), self);
+  g_signal_connect(self->lyrics_window, "button-release-event", G_CALLBACK(lyrics_release), self);
+  g_signal_connect(self->lyrics_window, "configure-event", G_CALLBACK(lyrics_configure), self);
   g_signal_connect(self->lyrics_window, "delete-event", G_CALLBACK(lyrics_delete), self);
   GtkCssProvider* css = gtk_css_provider_new();
   gtk_css_provider_load_from_data(css,
-      "window { background-color: rgba(17,17,22,0.82); border-radius: 14px; }\n"
+      "window { background-color: transparent; background-image: none; }\n"
       "label { font-family: 'Noto Sans CJK SC', sans-serif; }\n"
       "progressbar trough { min-height: 5px; border-radius: 3px; background-color: rgba(255,255,255,0.16); }\n"
       "progressbar progress { min-height: 5px; border-radius: 3px; background-color: #ff8c96; }\n"
@@ -487,6 +680,7 @@ static void create_lyrics(DesktopIntegration* self) {
       -1, nullptr);
   gtk_style_context_add_provider(gtk_widget_get_style_context(self->lyrics_window), GTK_STYLE_PROVIDER(css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   g_object_unref(css);
+  apply_lyrics_position(self);
   gtk_widget_show_all(self->lyrics_window);
 }
 
@@ -521,6 +715,20 @@ static void update(DesktopIntegration* self, FlValue* values) {
   self->shuffle = boolean(values, "shuffle"); self->loop = text(values, "loop");
   self->position = number(values, "position"); self->duration = number(values, "duration");
   self->volume = number(values, "volume"); self->rate = number(values, "rate");
+  auto* saved_x = fl_value_lookup_string(values, "lyricsX");
+  auto* saved_y = fl_value_lookup_string(values, "lyricsY");
+  if (saved_x != nullptr && saved_y != nullptr &&
+      (fl_value_get_type(saved_x) == FL_VALUE_TYPE_FLOAT || fl_value_get_type(saved_x) == FL_VALUE_TYPE_INT) &&
+      (fl_value_get_type(saved_y) == FL_VALUE_TYPE_FLOAT || fl_value_get_type(saved_y) == FL_VALUE_TYPE_INT)) {
+    const double x = fl_value_get_type(saved_x) == FL_VALUE_TYPE_FLOAT ? fl_value_get_float(saved_x) : fl_value_get_int(saved_x);
+    const double y = fl_value_get_type(saved_y) == FL_VALUE_TYPE_FLOAT ? fl_value_get_float(saved_y) : fl_value_get_int(saved_y);
+    if (!self->has_lyrics_position || std::abs(x - self->lyrics_x) > 1 || std::abs(y - self->lyrics_y) > 1) {
+      self->has_lyrics_position = TRUE;
+      self->lyrics_x = x;
+      self->lyrics_y = y;
+      apply_lyrics_position(self);
+    }
+  }
   if (self->bus != nullptr) {
     GVariantBuilder changed;
     GVariantBuilder invalidated;
@@ -654,6 +862,7 @@ static void channel_call(FlMethodChannel*, FlMethodCall* call, gpointer data) {
     fl_value_set_string_take(result, "tray", fl_value_new_bool(tray_available(self)));
   } else if (method == "configureTray") {
     read_tray_labels(self, fl_method_call_get_args(call));
+    read_tray_items(self, fl_method_call_get_args(call));
     apply_tray_labels(self);
     self->close_to_tray = boolean(fl_method_call_get_args(call), "closeToTray") && tray_available(self);
     g_autoptr(FlValue) enabled = fl_value_new_bool(self->close_to_tray);
@@ -675,7 +884,11 @@ static void channel_call(FlMethodChannel*, FlMethodCall* call, gpointer data) {
 DesktopIntegration* desktop_integration_new(FlView* view, GtkWindow* window) {
   auto* self = new DesktopIntegration();
   self->main_window = GTK_WINDOW(g_object_ref(window));
-  self->positioning = g_strcmp0(G_OBJECT_TYPE_NAME(gtk_widget_get_display(GTK_WIDGET(window))), "GdkX11Display") == 0;
+  const char* display_type = G_OBJECT_TYPE_NAME(gtk_widget_get_display(GTK_WIDGET(window)));
+  const gboolean x11 = g_strcmp0(display_type, "GdkX11Display") == 0;
+  const auto& layer = layer_shell_api();
+  self->layer_shell = !x11 && layer.is_supported != nullptr && layer.is_supported();
+  self->positioning = x11 || self->layer_shell;
   g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
   self->channel = fl_method_channel_new(fl_engine_get_binary_messenger(fl_view_get_engine(view)), "top.nekoh2o/desktop", FL_METHOD_CODEC(codec));
   fl_method_channel_set_method_call_handler(self->channel, channel_call, self, nullptr);

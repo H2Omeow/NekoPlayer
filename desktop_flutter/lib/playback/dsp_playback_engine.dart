@@ -85,6 +85,8 @@ class DspPlaybackEngine extends PlaybackEngine {
   @override
   String? get currentPath => _currentPath;
   @override
+  ResolvedAudio? get currentAudio => _queue.currentAudio;
+  @override
   String? get error => _error;
 
   static String executable(String name) {

@@ -319,4 +319,51 @@ void main() {
       expect(saved['overlay'], isTrue);
     },
   );
+
+  test('dragged lyrics position is saved and restored', () async {
+    desktop.dispose();
+    final settings = MemoryStore();
+    desktop = DesktopIntegration(player, channel: channel, settings: settings);
+    await desktop.initialize();
+    await send('overlayPosition', {'x': 120.5, 'y': 340.25});
+    expect(desktop.overlayX, 120.5);
+    expect(desktop.overlayY, 340.25);
+    expect(desktop.state()['lyricsX'], 120.5);
+    expect(desktop.state()['lyricsY'], 340.25);
+
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    await desktop.flushed;
+    final saved = jsonDecode(settings.value!);
+    expect(saved['overlayX'], 120.5);
+    expect(saved['overlayY'], 340.25);
+
+    desktop.dispose();
+    desktop = DesktopIntegration(player, channel: channel, settings: settings);
+    await desktop.initialize();
+    expect(desktop.overlayX, 120.5);
+    expect(desktop.overlayY, 340.25);
+  });
+
+  test('tray menu items can be toggled and are persisted', () async {
+    desktop.dispose();
+    final settings = MemoryStore();
+    desktop = DesktopIntegration(player, channel: channel, settings: settings);
+    await desktop.initialize();
+    await Future<void>.delayed(Duration.zero);
+    calls.clear();
+    await desktop.setTrayOptions(show: false, volume: false, lyrics: false);
+    final config = calls.lastWhere((call) => call.method == 'configureTray');
+    final items = config.arguments['items'] as Map;
+    expect(items['show'], isFalse);
+    expect(items['playback'], isTrue);
+    expect(items['volume'], isFalse);
+    expect(items['lyrics'], isFalse);
+
+    await desktop.flushed;
+    final saved = jsonDecode(settings.value!);
+    expect(saved['trayShow'], isFalse);
+    expect(saved['trayPlayback'], isTrue);
+    expect(saved['trayVolume'], isFalse);
+    expect(saved['trayLyrics'], isFalse);
+  });
 }

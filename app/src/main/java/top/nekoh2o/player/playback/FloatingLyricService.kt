@@ -14,12 +14,14 @@ import android.os.IBinder
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
+import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,7 +50,11 @@ class FloatingLyricService : Service() {
     private var secondTv: TextView? = null
     private var layoutParams: WindowManager.LayoutParams? = null
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, error ->
+            Log.e("FloatingLyricService", "更新悬浮歌词失败", error)
+        }
+    )
     private var collectJob: Job? = null
 
     // 拖动状态

@@ -70,9 +70,9 @@ def linux_packages(target, bundle, output):
         launcher.parent.mkdir(parents=True)
         launcher.write_text('#!/bin/sh\nexec /usr/lib/nekoplayer/nekoplayer "$@"\n')
         launcher.chmod(0o755)
-        desktop = package / "usr/share/applications/nekoplayer.desktop"
+        desktop = package / "usr/share/applications/top.nekoh2o.nekoplayer_desktop.desktop"
         desktop.parent.mkdir(parents=True)
-        desktop.write_text("[Desktop Entry]\nType=Application\nName=NekoPlayer\nComment=Music player\nExec=nekoplayer %U\nIcon=nekoplayer\nTerminal=false\nCategories=AudioVideo;Audio;Player;\nMimeType=x-scheme-handler/nekoplayer;\n")
+        desktop.write_text("[Desktop Entry]\nType=Application\nName=NekoPlayer\nComment=Music player\nExec=nekoplayer %U\nIcon=nekoplayer\nTerminal=false\nCategories=AudioVideo;Audio;Player;\nStartupWMClass=top.nekoh2o.nekoplayer_desktop\nMimeType=x-scheme-handler/nekoplayer;\n")
         icon = package / "usr/share/icons/hicolor/192x192/apps/nekoplayer.png"
         icon.parent.mkdir(parents=True)
         shutil.copy2(ROOT.parent / "app/src/main/res/mipmap-xxxhdpi/ic_launcher.png", icon)
@@ -81,7 +81,7 @@ def linux_packages(target, bundle, output):
         control.write_text(
             f"Package: nekoplayer\nVersion: {package_version(version)}\nArchitecture: {deb_arch}\n"
             "Maintainer: H2Omeow\nSection: sound\nPriority: optional\n"
-            "Depends: libgtk-3-0, libmpv2 | libmpv1, libsecret-1-0, libepoxy0, libegl1, libgles2, libgnutls30\n"
+            "Depends: libgtk-3-0, libmpv2 | libmpv1, libsecret-1-0, libepoxy0, libegl1, libgles2, libgnutls30, libgtk-layer-shell0\n"
             "Recommends: libwebkit2gtk-4.1-0\n"
             f"Homepage: {HOMEPAGE}\nDescription: NekoPlayer Flutter music player\n"
         )
@@ -91,7 +91,7 @@ def linux_packages(target, bundle, output):
             "if command -v update-desktop-database >/dev/null 2>&1; then "
             "update-desktop-database -q /usr/share/applications || true; fi\n"
             "if command -v xdg-mime >/dev/null 2>&1; then "
-            "xdg-mime default nekoplayer.desktop x-scheme-handler/nekoplayer || true; fi\n"
+            "xdg-mime default top.nekoh2o.nekoplayer_desktop.desktop x-scheme-handler/nekoplayer || true; fi\n"
             "exit 0\n"
         )
         postinst.chmod(0o755)
@@ -104,7 +104,7 @@ def linux_packages(target, bundle, output):
         spec.write_text(
             f"Name: nekoplayer\nVersion: {package_version(version)}\nRelease: 1\nSummary: NekoPlayer Flutter music player\n"
             f"License: LicenseRef-NekoPlayer\nURL: {HOMEPAGE}\nBuildArch: {rpm_arch}\nAutoReqProv: no\n"
-            "Requires: gtk3, (mpv-libs or libmpv2), libsecret, libepoxy, libglvnd-egl, libglvnd-gles, gnutls\n"
+            "Requires: gtk3, (mpv-libs or libmpv2), libsecret, libepoxy, libglvnd-egl, libglvnd-gles, gnutls, gtk-layer-shell\n"
             "Recommends: webkit2gtk4.1\n"
             "%description\nNekoPlayer Flutter music player.\n"
             f'%install\nmkdir -p "%{{buildroot}}"\ncp -a "{package}/usr" "%{{buildroot}}/"\n'
@@ -112,8 +112,8 @@ def linux_packages(target, bundle, output):
             "if command -v update-desktop-database >/dev/null 2>&1; then "
             "update-desktop-database -q /usr/share/applications || :; fi\n"
             "if command -v xdg-mime >/dev/null 2>&1; then "
-            "xdg-mime default nekoplayer.desktop x-scheme-handler/nekoplayer || :; fi\n"
-            "%files\n/usr/bin/nekoplayer\n/usr/lib/nekoplayer\n/usr/share/applications/nekoplayer.desktop\n/usr/share/icons/hicolor/192x192/apps/nekoplayer.png\n"
+            "xdg-mime default top.nekoh2o.nekoplayer_desktop.desktop x-scheme-handler/nekoplayer || :; fi\n"
+            "%files\n/usr/bin/nekoplayer\n/usr/lib/nekoplayer\n/usr/share/applications/top.nekoh2o.nekoplayer_desktop.desktop\n/usr/share/icons/hicolor/192x192/apps/nekoplayer.png\n"
         )
         run(["rpmbuild", "--define", f"_topdir {rpmbuild}", "--define", "__os_install_post %{nil}", "--define", "_build_id_links none", "--target", rpm_arch, "-bb", spec])
         packages = list((rpmbuild / "RPMS").rglob("*.rpm"))

@@ -1,7 +1,5 @@
 package top.nekoh2o.player.data.cache
 
-import top.nekoh2o.player.i18n.NekoI18n.tr
-
 import android.content.Context
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
@@ -27,20 +25,33 @@ object MusicCache {
 
         val appContext = context.applicationContext
         val cacheDirectory = File(appContext.cacheDir, "music")
-
-        instance = SimpleCache(
-            cacheDirectory,
-            LeastRecentlyUsedCacheEvictor(MAX_CACHE_BYTES),
-            StandaloneDatabaseProvider(appContext)
-        )
+        instance = runCatching {
+            SimpleCache(
+                cacheDirectory,
+                LeastRecentlyUsedCacheEvictor(MAX_CACHE_BYTES),
+                StandaloneDatabaseProvider(appContext)
+            )
+        }.getOrElse { error ->
+            // 上一次进程异常退出可能留下损坏的缓存数据库，清空后重试一次；
+            // 仍失败时退化为无缓存播放，不能让整个应用启动失败。
+            android.util.Log.e("MusicCache", "缓存初始化失败，清理缓存目录后重试", error)
+            runCatching { cacheDirectory.deleteRecursively() }
+            runCatching {
+                SimpleCache(
+                    cacheDirectory,
+                    LeastRecentlyUsedCacheEvictor(MAX_CACHE_BYTES),
+                    StandaloneDatabaseProvider(appContext)
+                )
+            }.onFailure {
+                android.util.Log.e("MusicCache", "缓存仍不可用，本次启动不启用缓存", it)
+            }.getOrNull()
+        }
     }
 
     fun dataSourceFactory(
         upstreamFactory: DataSource.Factory
     ): DataSource.Factory {
-        val cache = checkNotNull(instance) {
-            tr("MusicCache 尚未初始化，请先调用 MusicCache.init(context)")
-        }
+        val cache = instance ?: return upstreamFactory
 
         return CacheDataSource.Factory()
             .setCache(cache)

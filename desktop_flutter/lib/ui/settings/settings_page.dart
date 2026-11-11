@@ -252,6 +252,31 @@ class SettingsPage extends StatelessWidget {
                 },
               ),
               SettingsSwitchTile(
+                icon: Icons.graphic_eq_rounded,
+                title: tr('播放 / 暂停淡入淡出'),
+                subtitle: tr('播放或暂停时平滑调整音量，避免突然的响声'),
+                value: player.fadePlayback,
+                onChanged: (value) =>
+                    player.setFadePlayback(enabled: value),
+              ),
+              if (player.fadePlayback)
+                SettingsControlTile(
+                  title: tr('淡入淡出时长'),
+                  value: tr('{seconds} 秒', {
+                    'seconds': (player.fadeMilliseconds / 1000)
+                        .toStringAsFixed(1),
+                  }),
+                  child: Slider(
+                    min: 50,
+                    max: 2000,
+                    divisions: 39,
+                    value: player.fadeMilliseconds.toDouble(),
+                    onChanged: (value) => player.setFadePlayback(
+                      milliseconds: value.round(),
+                    ),
+                  ),
+                ),
+              SettingsSwitchTile(
                 icon: Icons.translate_rounded,
                 title: tr('显示歌词翻译'),
                 value: player.showTranslation,

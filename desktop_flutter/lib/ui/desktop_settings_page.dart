@@ -1,4 +1,6 @@
 import '../i18n/tr.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../desktop_integration.dart';
@@ -116,6 +118,45 @@ class DesktopSettingsPage extends StatelessWidget {
               ),
             ],
           ),
+          if (integration.trayAvailable)
+            SettingsSection(
+              title: tr('托盘菜单'),
+              description: tr('选择托盘图标菜单中显示的功能；退出菜单项始终保留。'),
+              children: [
+                SettingsSwitchTile(
+                  icon: Icons.open_in_new_rounded,
+                  title: tr('显示播放器'),
+                  subtitle: tr('点击托盘图标或菜单项显示主窗口'),
+                  value: integration.trayShow,
+                  onChanged: (value) =>
+                      unawaited(integration.setTrayOptions(show: value)),
+                ),
+                SettingsSwitchTile(
+                  icon: Icons.play_circle_outline_rounded,
+                  title: tr('播放控制'),
+                  subtitle: tr('上一首、播放 / 暂停、下一首'),
+                  value: integration.trayPlayback,
+                  onChanged: (value) =>
+                      unawaited(integration.setTrayOptions(playback: value)),
+                ),
+                SettingsSwitchTile(
+                  icon: Icons.volume_up_outlined,
+                  title: tr('音量调节'),
+                  subtitle: tr('0%、25%、50%、75%、100%'),
+                  value: integration.trayVolume,
+                  onChanged: (value) =>
+                      unawaited(integration.setTrayOptions(volume: value)),
+                ),
+                SettingsSwitchTile(
+                  icon: Icons.subtitles_outlined,
+                  title: tr('桌面歌词'),
+                  subtitle: tr('在菜单中快速显示或隐藏桌面歌词'),
+                  value: integration.trayLyrics,
+                  onChanged: (value) =>
+                      unawaited(integration.setTrayOptions(lyrics: value)),
+                ),
+              ],
+            ),
           SettingsSection(
             title: tr('系统'),
             children: [
