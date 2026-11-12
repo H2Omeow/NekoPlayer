@@ -295,6 +295,11 @@ Win32Window::MessageHandler(HWND hwnd,
       SaveWindowSize(hwnd);
       break;
 
+    case WM_EXITSIZEMOVE:
+      // Save after a resize even when closing is intercepted by close-to-tray.
+      SaveWindowSize(hwnd);
+      break;
+
     case WM_DESTROY:
       window_handle_ = nullptr;
       Destroy();
