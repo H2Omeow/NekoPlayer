@@ -59,6 +59,33 @@ void main() {
     },
   );
 
+  testWidgets(
+    'narrow full player tolerates a height below the artwork minimum',
+    (tester) async {
+      tester.view.physicalSize = const Size(500, 280);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final player = PlayerController(
+        engine: FakeEngine(),
+        store: MemoryStore(),
+      );
+      await player.initialize();
+      try {
+        await tester.pumpWidget(
+          MaterialApp(home: FullPlayer(controller: player)),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await player.flushed;
+        player.dispose();
+        await tester.pump();
+      }
+    },
+  );
+
   testWidgets('record rotation pauses in place and respects reduced motion', (
     tester,
   ) async {

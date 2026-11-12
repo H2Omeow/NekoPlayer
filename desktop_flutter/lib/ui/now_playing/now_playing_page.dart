@@ -127,7 +127,7 @@ class _FullPlayerState extends State<FullPlayer> {
           SegmentedButton<bool>(
             showSelectedIcon: false,
             style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            segments:       [
+            segments: [
               ButtonSegment(value: false, label: Text(tr('歌词'))),
               ButtonSegment(value: true, label: Text(tr('动态歌词'))),
             ],
@@ -321,9 +321,10 @@ class _FullPlayerState extends State<FullPlayer> {
   Widget _narrow(BuildContext context, BoxConstraints constraints) {
     final track = controller.current;
     final showLyrics = view == PlaybackView.lyrics || compactLyrics;
+    final heightLimit = constraints.maxHeight * 0.42;
     final art = (constraints.maxWidth - 64).clamp(
       120.0,
-      constraints.maxHeight * 0.42,
+      heightLimit < 120.0 ? 120.0 : heightLimit,
     );
     return Column(
       children: [
@@ -363,7 +364,7 @@ class _FullPlayerState extends State<FullPlayer> {
                       dynamicLyrics = false;
                     }),
                     icon: const Icon(Icons.album_rounded, size: 18),
-                    label:       Text(tr('封面')),
+                    label: Text(tr('封面')),
                   ),
                 )
               else if (!showLyrics)
@@ -372,7 +373,7 @@ class _FullPlayerState extends State<FullPlayer> {
                   child: TextButton.icon(
                     onPressed: () => setState(() => compactLyrics = true),
                     icon: const Icon(Icons.lyrics_outlined, size: 18),
-                    label:       Text(tr('歌词')),
+                    label: Text(tr('歌词')),
                   ),
                 ),
               _transport(),
@@ -453,7 +454,7 @@ class _LyricsViewState extends State<LyricsView> {
   Widget build(BuildContext context) {
     final lyrics = controller.lyrics;
     if (lyrics.isEmpty) {
-      return       EmptyState(
+      return EmptyState(
         icon: Icons.lyrics_outlined,
         title: tr('暂无歌词'),
         description: tr('在线歌曲会自动获取歌词；本地歌曲可把同名 .lrc 文件放在音频旁边。'),
