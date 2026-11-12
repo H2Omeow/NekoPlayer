@@ -90,7 +90,7 @@ void window_size_allocate_cb(GtkWidget* widget, GtkAllocation* allocation,
                              gpointer user_data) {
   auto* state = static_cast<SavedWindowSize*>(user_data);
   // A maximized allocation is the screen size, not the restored size.
-  if (!gtk_window_is_maximized(GTK_WINDOW(widget)) &&
+  if (!state->maximized && !gtk_window_is_maximized(GTK_WINDOW(widget)) &&
       allocation->width > 0 && allocation->height > 0 &&
       (allocation->width != state->width ||
        allocation->height != state->height)) {
@@ -103,8 +103,8 @@ void window_size_allocate_cb(GtkWidget* widget, GtkAllocation* allocation,
 gboolean window_configure_event_cb(GtkWidget* widget, GdkEventConfigure* event,
                                    gpointer user_data) {
   auto* state = static_cast<SavedWindowSize*>(user_data);
-  if (!gtk_window_is_maximized(GTK_WINDOW(widget)) && event->width > 0 &&
-      event->height > 0 &&
+  if (!state->maximized && !gtk_window_is_maximized(GTK_WINDOW(widget)) &&
+      event->width > 0 && event->height > 0 &&
       (event->width != state->width || event->height != state->height)) {
     state->width = event->width;
     state->height = event->height;
