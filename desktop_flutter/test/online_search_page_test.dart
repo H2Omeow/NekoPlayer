@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nekoplayer_desktop/domain/music_plugin.dart';
 import 'package:nekoplayer_desktop/domain/online_music.dart';
 import 'package:nekoplayer_desktop/search_controller.dart' as online;
 import 'package:nekoplayer_desktop/ui/neko_theme.dart';
@@ -28,6 +29,27 @@ class TestCatalog implements MusicCatalog {
       ],
       hasMore: page == 1,
     );
+  }
+}
+
+class RecommendationCatalog extends TestCatalog
+    implements SearchRecommendations {
+  final suggestionRequests = <String>[];
+
+  @override
+  Future<List<String>> hotSearches(
+    MusicProvider provider, {
+    MusicPluginSource? source,
+  }) async => const ['周深', '夜曲', '大鱼', '光亮', '若梦', '花开忘忧'];
+
+  @override
+  Future<List<String>> searchSuggestions(
+    MusicProvider provider,
+    String keyword, {
+    MusicPluginSource? source,
+  }) async {
+    suggestionRequests.add(keyword);
+    return ['$keyword 大鱼'];
   }
 }
 
@@ -104,7 +126,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final controller = online.SearchController(TestCatalog());
+    final controller = online.SearchController(RecommendationCatalog());
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
@@ -119,6 +141,41 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(find.text('热门搜索'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('hot searches and typing suggestions fill the search field', (
+    tester,
+  ) async {
+    final catalog = RecommendationCatalog();
+    final controller = online.SearchController(catalog);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: nekoTheme(),
+        home: Scaffold(body: OnlineSearchPage(controller: controller)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('热门搜索'), findsOneWidget);
+    expect(find.text('夜曲'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ActionChip, '周深'));
+    await tester.pumpAndSettle();
+    expect(controller.keyword, '周深');
+    expect(find.text('周深 1'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '大');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(catalog.suggestionRequests, ['大']);
+    expect(find.text('搜索建议'), findsOneWidget);
+    expect(find.text('大 大鱼'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ActionChip, '大 大鱼'));
+    await tester.pumpAndSettle();
+    expect(controller.keyword, '大 大鱼');
+    expect(find.text('大 大鱼 1'), findsOneWidget);
+    expect(find.text('搜索建议'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

@@ -22,6 +22,7 @@ class NativeMusicCatalog
     implements
         MusicCatalog,
         PluginMusicCatalog,
+        SearchRecommendations,
         OnlineAudioSource,
         OnlineDownloadSource {
   NativeMusicCatalog({
@@ -80,7 +81,7 @@ class NativeMusicCatalog
         .where((source) => source.id == id)
         .firstOrNull;
     if (current == null) {
-      throw       MusicSearchException(tr('该音源订阅已停用或删除，请先在订阅管理中启用。'));
+      throw MusicSearchException(tr('该音源订阅已停用或删除，请先在订阅管理中启用。'));
     }
     return current;
   }
@@ -130,7 +131,7 @@ class NativeMusicCatalog
       if ((accounts.kugou()['dfid'] ?? '').isNotEmpty) return;
       await (_initializingKugou[platform] ??= _registerKugou());
       if (accounts.platform != platform) {
-        throw       MusicSearchException(tr('音乐平台已切换，请重新播放。'));
+        throw MusicSearchException(tr('音乐平台已切换，请重新播放。'));
       }
     }
   }
@@ -154,7 +155,7 @@ class NativeMusicCatalog
       ).map((key, value) => MapEntry(key, _text(value)));
       if (_number(result['code']) != 200 ||
           (cookies['MUSIC_A'] ?? '').isEmpty) {
-        throw       MusicSearchException(tr('网易云访客会话初始化失败，请稍后重试或登录。'));
+        throw MusicSearchException(tr('网易云访客会话初始化失败，请稍后重试或登录。'));
       }
       await accounts.update(netease: cookies);
     } finally {
@@ -232,7 +233,12 @@ class NativeMusicCatalog
       final dfid = _text(_object(response['data'])['dfid'] ?? response['dfid']);
       if (_number(response['status']) != 1 || dfid.isEmpty) {
         throw MusicSearchException(
-          tr('酷狗设备初始化失败（{code}），请重试。', {'code': _number(response['error_code'] ?? response['errcode']) ?? _number(response['status']) ?? -1}),
+          tr('酷狗设备初始化失败（{code}），请重试。', {
+            'code':
+                _number(response['error_code'] ?? response['errcode']) ??
+                _number(response['status']) ??
+                -1,
+          }),
         );
       }
       await accounts.update(
@@ -266,7 +272,7 @@ class NativeMusicCatalog
       );
       final key = _text(result['unikey'] ?? _object(result['data'])['unikey']);
       if (_number(result['code']) != 200 || key.isEmpty) {
-        throw       MusicSearchException(tr('网易云未返回登录二维码。'));
+        throw MusicSearchException(tr('网易云未返回登录二维码。'));
       }
       return LoginQr(
         provider,
@@ -295,7 +301,7 @@ class NativeMusicCatalog
     final data = _object(result['data']);
     final key = _text(data['qrcode'] ?? data['key'] ?? data['unikey']);
     if (_number(result['status']) != 1 || key.isEmpty) {
-      throw       MusicSearchException(tr('酷狗未返回登录二维码。'));
+      throw MusicSearchException(tr('酷狗未返回登录二维码。'));
     }
     return LoginQr(
       provider,
@@ -336,16 +342,16 @@ class NativeMusicCatalog
             result['_cookies'],
           ).map((key, value) => MapEntry(key, _text(value)));
           if ((cookies['MUSIC_U'] ?? '').isEmpty) {
-            throw       MusicSearchException(tr('网易云未返回有效登录凭据。'));
+            throw MusicSearchException(tr('网易云未返回有效登录凭据。'));
           }
           if (accept?.call() ?? true) await accounts.update(netease: cookies);
           return LoginProgress.authorized;
         default:
-          throw       MusicSearchException(tr('网易云扫码登录失败，请刷新二维码。'));
+          throw MusicSearchException(tr('网易云扫码登录失败，请刷新二维码。'));
       }
     }
     if (qr.platform != accounts.platform) {
-      throw       MusicSearchException(tr('登录平台已切换，请刷新二维码。'));
+      throw MusicSearchException(tr('登录平台已切换，请刷新二维码。'));
     }
     final result = await _request(
       _gateway(
@@ -363,7 +369,7 @@ class NativeMusicCatalog
     );
     final data = _object(result['data']);
     if (_number(result['status']) != 1) {
-      throw       MusicSearchException(tr('酷狗扫码检查失败，请重试。'));
+      throw MusicSearchException(tr('酷狗扫码检查失败，请重试。'));
     }
     switch (_number(data['status'])) {
       case 0:
@@ -378,7 +384,7 @@ class NativeMusicCatalog
         if (token.isEmpty ||
             ['null', 'undefined'].contains(token) ||
             uid <= 0) {
-          throw       MusicSearchException(tr('酷狗未返回有效登录凭据。'));
+          throw MusicSearchException(tr('酷狗未返回有效登录凭据。'));
         }
         if (accept?.call() ?? true) {
           final device = {
@@ -406,7 +412,7 @@ class NativeMusicCatalog
         }
         return LoginProgress.authorized;
       default:
-        throw       MusicSearchException(tr('酷狗扫码授权失败，请刷新二维码。'));
+        throw MusicSearchException(tr('酷狗扫码授权失败，请刷新二维码。'));
     }
   }
 
@@ -482,7 +488,7 @@ class NativeMusicCatalog
 
   void _checkKugouAccount() {
     if (!accounts.kugouLoggedIn()) {
-      throw       MusicSearchException(tr('请先登录当前酷狗账号。'));
+      throw MusicSearchException(tr('请先登录当前酷狗账号。'));
     }
   }
 
@@ -494,7 +500,7 @@ class NativeMusicCatalog
 
   void _checkMobile(String mobile) {
     if (!RegExp(r'^1[3-9][0-9]{9}$').hasMatch(mobile)) {
-      throw       MusicSearchException(tr('请输入有效的大陆手机号。'));
+      throw MusicSearchException(tr('请输入有效的大陆手机号。'));
     }
   }
 
@@ -510,7 +516,7 @@ class NativeMusicCatalog
       ),
     );
     if (_number(result['status']) != 1 && _number(result['code']) != 200) {
-      throw       MusicSearchException(tr('酷狗未确认验证码发送成功，请稍后重试。'));
+      throw MusicSearchException(tr('酷狗未确认验证码发送成功，请稍后重试。'));
     }
   }
 
@@ -522,10 +528,10 @@ class NativeMusicCatalog
   }) async {
     _checkMobile(mobile);
     if (!RegExp(r'^\d{4,8}$').hasMatch(code)) {
-      throw       MusicSearchException(tr('请输入 4–8 位短信验证码。'));
+      throw MusicSearchException(tr('请输入 4–8 位短信验证码。'));
     }
     if (userId != null && (_number(userId) ?? 0) <= 0) {
-      throw       MusicSearchException(tr('所选账号 ID 无效。'));
+      throw MusicSearchException(tr('所选账号 ID 无效。'));
     }
     await _loginKugou(
       mobile: mobile,
@@ -550,7 +556,7 @@ class NativeMusicCatalog
     final originalToken = accounts.kugou()['token'];
     await initializeProvider(MusicProvider.kugou);
     if (accounts.platform != platform) {
-      throw       MusicSearchException(tr('酷狗平台已切换，请重试。'));
+      throw MusicSearchException(tr('酷狗平台已切换，请重试。'));
     }
     final session = accounts.kugou();
     final lite = platform == 1;
@@ -643,14 +649,14 @@ class NativeMusicCatalog
       ),
     );
     if (_number(result['status']) != 1) {
-      throw       MusicSearchException(tr('酷狗未确认登录成功，请检查验证码、设备验证或登录凭据。'));
+      throw MusicSearchException(tr('酷狗未确认登录成功，请检查验证码、设备验证或登录凭据。'));
     }
     final data = <String, dynamic>{..._object(result['data'])};
     final secured = _text(data['secu_params']);
     if (secured.isNotEmpty) {
       if (secured.length > 32768 ||
           !RegExp(r'^(?:[a-fA-F0-9]{2})+$').hasMatch(secured)) {
-        throw       MusicSearchException(tr('酷狗登录响应格式异常。'));
+        throw MusicSearchException(tr('酷狗登录响应格式异常。'));
       }
       final clear = NativeCrypto.decrypt(
         [
@@ -688,15 +694,15 @@ class NativeMusicCatalog
     if (_text(data['token']).isEmpty ||
         ['null', 'undefined'].contains(_text(data['token'])) ||
         (_number(data['userid']) ?? 0) <= 0) {
-      throw       MusicSearchException(tr('酷狗未返回有效登录凭据，原账号未修改。'));
+      throw MusicSearchException(tr('酷狗未返回有效登录凭据，原账号未修改。'));
     }
     if (accounts.platform != platform ||
         accounts.kugou()['token'] != originalToken ||
         !(accept?.call() ?? true)) {
-      throw       MusicSearchException(tr('登录操作已取消或账号已变化，未覆盖当前账号。'));
+      throw MusicSearchException(tr('登录操作已取消或账号已变化，未覆盖当前账号。'));
     }
     if (mobile == null && _text(data['userid']) != session['userid']) {
-      throw       MusicSearchException(tr('刷新结果的账号不匹配，未覆盖原凭据。'));
+      throw MusicSearchException(tr('刷新结果的账号不匹配，未覆盖原凭据。'));
     }
     await accounts.update(
       kugou: {
@@ -735,7 +741,7 @@ class NativeMusicCatalog
           );
     final result = await _request(request);
     if (_number(result['status']) != 1) {
-      throw       MusicSearchException(tr('酷狗账号信息读取失败，请检查登录状态。'));
+      throw MusicSearchException(tr('酷狗账号信息读取失败，请检查登录状态。'));
     }
     final data = _object(result['data']);
     return _object(data[vip ? 'vip' : 'userinfo']).isEmpty
@@ -746,7 +752,7 @@ class NativeMusicCatalog
   Future<void> claimKugouDailyVip() async {
     _checkKugouAccount();
     if (accounts.platform != 1) {
-      throw       MusicSearchException(tr('每日听歌权益仅支持酷狗概念版账号。'));
+      throw MusicSearchException(tr('每日听歌权益仅支持酷狗概念版账号。'));
     }
     final result = await _request(
       _gateway('/youth/v1/recharge/receive_vip_listen_song', {
@@ -755,7 +761,7 @@ class NativeMusicCatalog
       }, body: {}),
     );
     if (_number(result['status']) != 1 && _number(result['code']) != 200) {
-      throw       MusicSearchException(tr('平台未确认权益领取成功，请在官方客户端检查。'));
+      throw MusicSearchException(tr('平台未确认权益领取成功，请在官方客户端检查。'));
     }
   }
 
@@ -763,11 +769,11 @@ class NativeMusicCatalog
     try {
       return await _transport(request);
     } on TimeoutException {
-      throw       MusicSearchException(tr('音乐平台请求超时，请重试。'));
+      throw MusicSearchException(tr('音乐平台请求超时，请重试。'));
     } on IOException {
-      throw       MusicSearchException(tr('无法连接音乐平台，请检查网络。'));
+      throw MusicSearchException(tr('无法连接音乐平台，请检查网络。'));
     } on FormatException {
-      throw       MusicSearchException(tr('音乐平台响应格式异常。'));
+      throw MusicSearchException(tr('音乐平台响应格式异常。'));
     }
   }
 
@@ -830,7 +836,7 @@ class NativeMusicCatalog
   }) async {
     if (initializeSessions) await initializeProvider(song.provider);
     if (accept?.call() == false) {
-      throw       MusicSearchException(tr('音质检查已取消。'));
+      throw MusicSearchException(tr('音质检查已取消。'));
     }
     final netease = song.provider == MusicProvider.netease;
     final platform = accounts.platform;
@@ -846,20 +852,20 @@ class NativeMusicCatalog
               (accounts.platform != platform ||
                   accounts.kugou()['userid'] != userId)) ||
           active != credential) {
-        throw       MusicSearchException(tr('账号或平台已切换，请重新播放。'));
+        throw MusicSearchException(tr('账号或平台已切换，请重新播放。'));
       }
     }
 
     final choices = <String, String>{};
     if (netease) {
       if (!RegExp(r'^\d+$').hasMatch(song.id)) {
-        throw       MusicSearchException(tr('歌曲编号无效，请重新搜索。'));
+        throw MusicSearchException(tr('歌曲编号无效，请重新搜索。'));
       }
       final detail = await _request(
         neteaseRequest('/api/song/music/detail/get', {'songId': song.id}),
       );
       if (_number(detail['code']) != 200) {
-        throw       MusicSearchException(tr('无法获取网易云音质信息。'));
+        throw MusicSearchException(tr('无法获取网易云音质信息。'));
       }
       final data = _object(detail['data']);
       const fields = ['l', 'm', 'h', 'sq', 'hr', 'je', 'sk', 'jm', 'db'];
@@ -870,7 +876,7 @@ class NativeMusicCatalog
       }
     } else {
       if (!RegExp(r'^[a-fA-F0-9]{32}$').hasMatch(song.hash)) {
-        throw       MusicSearchException(tr('歌曲缺少有效 hash，请重新搜索。'));
+        throw MusicSearchException(tr('歌曲缺少有效 hash，请重新搜索。'));
       }
       final detail = await _request(
         _gateway(
@@ -898,7 +904,7 @@ class NativeMusicCatalog
         ),
       );
       if (_number(detail['status']) != 1) {
-        throw       MusicSearchException(tr('无法获取酷狗音质信息，请稍后重试。'));
+        throw MusicSearchException(tr('无法获取酷狗音质信息，请稍后重试。'));
       }
       final track =
           _items(detail['data']).firstOrNull ?? const <String, dynamic>{};
@@ -923,7 +929,7 @@ class NativeMusicCatalog
   }) async {
     void checkAccepted() {
       if (accept?.call() == false) {
-        throw       MusicSearchException(tr('音质检查已取消。'));
+        throw MusicSearchException(tr('音质检查已取消。'));
       }
     }
 
@@ -985,7 +991,7 @@ class NativeMusicCatalog
     if (song.pluginSource?.scripted == true) {
       final source = _pluginSource(song);
       if (source == null || subscriptions == null) {
-        throw       MusicSearchException(tr('请先重新安装该音源插件。'));
+        throw MusicSearchException(tr('请先重新安装该音源插件。'));
       }
       return scripts.resolve(source, song, preferred, exact: download);
     }
@@ -1057,7 +1063,7 @@ class NativeMusicCatalog
           ),
         );
         if ([401, 403, 429].contains(_number(body['code']))) {
-          throw       MusicSearchException(tr('音乐平台拒绝请求，请检查账号或稍后重试。'));
+          throw MusicSearchException(tr('音乐平台拒绝请求，请检查账号或稍后重试。'));
         }
         if (_number(body['code']) != 200) continue;
         data = body['data'] is Map<String, dynamic>
@@ -1105,7 +1111,7 @@ class NativeMusicCatalog
           20018,
           20028,
         ].contains(_number(body['errcode'] ?? body['error_code']))) {
-          throw       MusicSearchException(tr('酷狗要求账号或设备验证，请在官方客户端验证后重试。'));
+          throw MusicSearchException(tr('酷狗要求账号或设备验证，请在官方客户端验证后重试。'));
         }
         if (_number(body['status']) != 1) continue;
         data = body['data'] is Map<String, dynamic>
@@ -1163,7 +1169,7 @@ class NativeMusicCatalog
       }
     }
     if (fallback != null) return fallback;
-    throw       AudioUnavailableException(tr('暂无当前账号可播放的完整音源；不播放试听片段。'));
+    throw AudioUnavailableException(tr('暂无当前账号可播放的完整音源；不播放试听片段。'));
   }
 
   @override
@@ -1179,7 +1185,7 @@ class NativeMusicCatalog
     if (song.pluginSource?.scripted == true) {
       final source = _pluginSource(song);
       if (source == null || subscriptions == null) {
-        throw       MusicSearchException(tr('请先重新安装该音源插件。'));
+        throw MusicSearchException(tr('请先重新安装该音源插件。'));
       }
       return scripts.lyrics(source, song);
     }
@@ -1231,7 +1237,7 @@ class NativeMusicCatalog
         }),
       );
       if (_number(body['code']) != 200) {
-        throw       MusicSearchException(tr('网易云歌词读取失败。'));
+        throw MusicSearchException(tr('网易云歌词读取失败。'));
       }
       final original = _text(_object(body['lrc'])['lyric']);
       final translated = _text(_object(body['tlyric'])['lyric']);
@@ -1277,14 +1283,14 @@ class NativeMusicCatalog
   ) async {
     keyword = keyword.trim();
     if (keyword.isEmpty || keyword.length > 200 || page < 1) {
-      throw       MusicSearchException(tr('请输入 1–200 字的关键词。'));
+      throw MusicSearchException(tr('请输入 1–200 字的关键词。'));
     }
     if (provider.gateway != null) {
       final source = subscriptions?.sources
           .where((item) => item.id == provider.sourceId)
           .firstOrNull;
       if (subscriptions != null && source == null) {
-        throw       MusicSearchException(tr('内置订阅已停用，请先在订阅管理中启用。'));
+        throw MusicSearchException(tr('内置订阅已停用，请先在订阅管理中启用。'));
       }
       return _searchPlugin(provider, source, keyword, page);
     }
@@ -1300,13 +1306,117 @@ class NativeMusicCatalog
     } on MusicSearchException {
       rethrow;
     } on TimeoutException {
-      throw       MusicSearchException(tr('搜索超时，请稍后重试。'));
+      throw MusicSearchException(tr('搜索超时，请稍后重试。'));
     } on IOException {
-      throw       MusicSearchException(tr('无法连接音乐平台，请检查网络后重试。'));
+      throw MusicSearchException(tr('无法连接音乐平台，请检查网络后重试。'));
     } on FormatException {
-      throw       MusicSearchException(tr('音乐平台响应格式异常，请稍后重试。'));
+      throw MusicSearchException(tr('音乐平台响应格式异常，请稍后重试。'));
     }
   }
+
+  static const _hotSearchLimit = 12;
+  static const _suggestionLimit = 8;
+
+  String? _recommendationPlatform(MusicProvider provider) =>
+      provider.gateway ??
+      switch (provider) {
+        MusicProvider.netease => 'wy',
+        MusicProvider.kugou => 'kg',
+        _ => null,
+      };
+
+  /// Recommendations are an enhancement, not part of search: a disabled or
+  /// scripted source simply yields no words instead of raising an error.
+  ({bool enabled, MusicPluginSource? source}) _recommendationSource(
+    MusicProvider provider,
+    MusicPluginSource? source,
+    String capability,
+  ) {
+    MusicPluginSource? resolved = source;
+    if (resolved == null && provider.gateway != null && subscriptions != null) {
+      resolved = subscriptions!.sources
+          .where((item) => item.id == provider.sourceId)
+          .firstOrNull;
+      if (resolved == null) return (enabled: false, source: null);
+    }
+    if (resolved == null) return (enabled: true, source: null);
+    if (resolved.scripted || !resolved.capabilities.contains(capability)) {
+      return (enabled: false, source: null);
+    }
+    return (enabled: true, source: resolved);
+  }
+
+  @override
+  Future<List<String>> hotSearches(
+    MusicProvider provider, {
+    MusicPluginSource? source,
+  }) async {
+    final platform = _recommendationPlatform(provider);
+    final resolved = _recommendationSource(provider, source, 'hotSearch');
+    if (platform == null || !resolved.enabled) return const [];
+    try {
+      final body = await plugin.request('music/hotSearch', {
+        'platform': platform,
+      }, source: resolved.source);
+      if (_number(body['code']) != 200) return const [];
+      return _recommendationWords(
+        _items(body['list']).map((item) => _text(item['word'])),
+        limit: _hotSearchLimit,
+      );
+    } on Exception {
+      return const [];
+    }
+  }
+
+  @override
+  Future<List<String>> searchSuggestions(
+    MusicProvider provider,
+    String keyword, {
+    MusicPluginSource? source,
+  }) async {
+    final value = keyword.trim();
+    final platform = _recommendationPlatform(provider);
+    final resolved = _recommendationSource(provider, source, 'suggest');
+    if (platform == null ||
+        value.isEmpty ||
+        value.length > 200 ||
+        !resolved.enabled) {
+      return const [];
+    }
+    try {
+      final body = await plugin.request('music/suggest', {
+        'platform': platform,
+        'keyword': value,
+      }, source: resolved.source);
+      if (_number(body['code']) != 200) return const [];
+      final songs = _items(body['songs']).map((item) {
+        final title = _text(item['title']).trim();
+        final artist = _text(item['artist']).trim();
+        return artist.isEmpty ? title : '$title $artist';
+      });
+      final singers = _items(
+        body['singers'],
+      ).map((item) => _text(item['name']));
+      final albums = _items(body['albums']).map((item) => _text(item['name']));
+      return _recommendationWords([
+        ...songs,
+        ...singers,
+        ...albums,
+      ], limit: _suggestionLimit);
+    } on Exception {
+      return const [];
+    }
+  }
+
+  static List<String> _recommendationWords(
+    Iterable<String> words, {
+    required int limit,
+  }) => words
+      .map((word) => word.trim())
+      .where((word) => word.isNotEmpty && word.length <= 200)
+      .toSet()
+      .take(limit)
+      .toList(growable: false);
 
   @override
   Future<SearchPage> searchPlugin(
@@ -1315,7 +1425,7 @@ class NativeMusicCatalog
     int page,
   ) {
     if (keyword.trim().isEmpty || keyword.length > 200 || page < 1) {
-      throw       MusicSearchException(tr('请输入 1–200 字的关键词。'));
+      throw MusicSearchException(tr('请输入 1–200 字的关键词。'));
     }
     final provider =
         MusicProvider.values
@@ -1334,11 +1444,11 @@ class NativeMusicCatalog
         ) ??
         source;
     if (!reference.capabilities.contains('search')) {
-      throw       MusicSearchException(tr('该插件不支持歌曲搜索。'));
+      throw MusicSearchException(tr('该插件不支持歌曲搜索。'));
     }
     if (reference.scripted) {
       if (subscriptions == null) {
-        throw       MusicSearchException(tr('音源脚本引擎未初始化。'));
+        throw MusicSearchException(tr('音源脚本引擎未初始化。'));
       }
       return scripts.search(reference, keyword.trim(), page);
     }
@@ -1385,7 +1495,7 @@ class NativeMusicCatalog
       'limit': '$pageSize',
     }, source: source);
     if (_number(body['code']) != 200) {
-      throw       MusicSearchException(tr('音源服务未返回搜索结果。'));
+      throw MusicSearchException(tr('音源服务未返回搜索结果。'));
     }
     final songs = _items(body['data'])
         .map(
@@ -1506,7 +1616,7 @@ class NativeMusicCatalog
 
   SearchPage _neteasePage(Map<String, dynamic> body, int page) {
     if (body['code'] != 200) {
-      throw       MusicSearchException(tr('网易云暂未返回搜索结果，请稍后重试。'));
+      throw MusicSearchException(tr('网易云暂未返回搜索结果，请稍后重试。'));
     }
     final result = _object(body['result']);
     final songs = _items(result['songs'])
@@ -1535,7 +1645,7 @@ class NativeMusicCatalog
   SearchPage _kugouPage(Map<String, dynamic> body, int page) {
     if (_number(body['status']) != 1 ||
         (_number(body['error_code']) ?? 0) != 0) {
-      throw       MusicSearchException(tr('酷狗暂未返回搜索结果，请稍后重试。'));
+      throw MusicSearchException(tr('酷狗暂未返回搜索结果，请稍后重试。'));
     }
     final result = _object(body['data']);
     final songs = _items(result['lists'] ?? result['info'])
@@ -1634,7 +1744,7 @@ class NativeMusicCatalog
         checksum: _text(body['md5']),
       );
     }
-    throw       AudioUnavailableException(tr('音源服务未返回可用的完整音频。'));
+    throw AudioUnavailableException(tr('音源服务未返回可用的完整音频。'));
   }
 
   Future<SearchVideoPage> searchVideos(
@@ -1644,7 +1754,7 @@ class NativeMusicCatalog
   ) async {
     keyword = keyword.trim();
     if (keyword.isEmpty || keyword.length > 200 || page < 1) {
-      throw       MusicSearchException(tr('请输入 1–200 字的关键词。'));
+      throw MusicSearchException(tr('请输入 1–200 字的关键词。'));
     }
     final body = await plugin.request('music/mv/search', {
       'platform': BuiltinMusicPlugin.platformFor(provider),
@@ -1653,7 +1763,7 @@ class NativeMusicCatalog
       'limit': '$pageSize',
     });
     if (_number(body['code']) != 200) {
-      throw       MusicSearchException(tr('内置插件未返回 MV 搜索结果，请稍后重试。'));
+      throw MusicSearchException(tr('内置插件未返回 MV 搜索结果，请稍后重试。'));
     }
     final videos = _items(body['data'])
         .map(
@@ -1683,7 +1793,7 @@ class NativeMusicCatalog
         !['https', 'http'].contains(uri.scheme) ||
         uri.host.isEmpty ||
         uri.userInfo.isNotEmpty) {
-      throw       MusicSearchException(tr('MV 服务未返回可播放的视频。'));
+      throw MusicSearchException(tr('MV 服务未返回可播放的视频。'));
     }
     return uri;
   }

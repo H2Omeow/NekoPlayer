@@ -166,11 +166,7 @@ class AudioQuality {
 
 class MusicHttpException extends MusicSearchException {
   MusicHttpException(this.status)
-      : super(
-          tr('音乐平台请求失败（HTTP {status}），请稍后重试。', {
-            'status': status,
-          }),
-        );
+    : super(tr('音乐平台请求失败（HTTP {status}），请稍后重试。', {'status': status}));
   final int status;
 }
 
@@ -210,6 +206,22 @@ abstract interface class PluginMusicCatalog {
     String keyword,
     int page,
   );
+}
+
+/// Optional search affordances for catalogs backed by a music service that
+/// exposes hot searches and type-ahead keywords. Implemented separately from
+/// [MusicCatalog] so catalogs without those endpoints keep working unchanged.
+abstract interface class SearchRecommendations {
+  Future<List<String>> hotSearches(
+    MusicProvider provider, {
+    MusicPluginSource? source,
+  });
+
+  Future<List<String>> searchSuggestions(
+    MusicProvider provider,
+    String keyword, {
+    MusicPluginSource? source,
+  });
 }
 
 class ResolvedAudio {

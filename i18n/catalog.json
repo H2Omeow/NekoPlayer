@@ -4750,6 +4750,11 @@
       "ja": "検索に失敗しました。音楽 API サービスを確認してください",
       "zh-TW": "搜尋失敗，請檢查音樂 API 服務"
     },
+    "搜索建议": {
+      "en": "Search suggestions",
+      "ja": "検索候補",
+      "zh-TW": "搜尋建議"
+    },
     "搜索未完成，请稍后重试。": {
       "en": "Search didn't finish. Try again later.",
       "ja": "検索が完了しませんでした。しばらくしてから再試行してください。",
@@ -7339,6 +7344,11 @@
       "en": "Tap the heart next to a song to add it here.",
       "ja": "曲の横のハートをタップすると、ここに追加されます。",
       "zh-TW": "點歌曲旁的愛心，就會收進這裡。"
+    },
+    "热门搜索": {
+      "en": "Trending searches",
+      "ja": "人気の検索",
+      "zh-TW": "熱門搜尋"
     },
     "热门歌曲": {
       "en": "Popular songs",

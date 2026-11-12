@@ -64,6 +64,7 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
   void initState() {
     super.initState();
     input = TextEditingController(text: widget.controller.keyword);
+    unawaited(widget.controller.loadHotSearches());
   }
 
   @override
@@ -77,6 +78,54 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
   void toggleFavorite(OnlineSong song) =>
       setState(() => widget.onFavorite!(song));
 
+  void searchFor(String value) {
+    input.text = value;
+    input.selection = TextSelection.collapsed(offset: value.length);
+    setState(() {});
+    unawaited(widget.controller.search(value));
+  }
+
+  Widget recommendationChips(
+    BuildContext context,
+    String title,
+    IconData icon,
+    List<String> words,
+  ) {
+    if (words.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: NekoSpace.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: NekoSpace.sm),
+          Wrap(
+            spacing: NekoSpace.sm,
+            runSpacing: NekoSpace.sm,
+            children: [
+              for (final word in words)
+                ActionChip(
+                  avatar: Icon(icon, size: 18),
+                  label: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 280),
+                    child: Text(word, overflow: TextOverflow.ellipsis),
+                  ),
+                  onPressed: () => searchFor(word),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   List<SongAction> actions(BuildContext context, OnlineSong song) {
     if (widget.actionsFor != null) return widget.actionsFor!(context, song);
     return [
@@ -88,9 +137,7 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
         ),
       if (widget.onFavorite != null)
         SongAction(
-          widget.isFavorite?.call(song) == true
-              ? tr('取消收藏')
-              : tr('收藏'),
+          widget.isFavorite?.call(song) == true ? tr('取消收藏') : tr('收藏'),
           Icons.favorite_border_rounded,
           () => toggleFavorite(song),
         ),
@@ -155,7 +202,7 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                          PageHeader(title: tr('发现'), bottom: NekoSpace.lg),
+                    PageHeader(title: tr('发现'), bottom: NekoSpace.lg),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 720),
                       child: TextField(
@@ -163,6 +210,10 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
                         focusNode: focus,
                         maxLength: 200,
                         textInputAction: TextInputAction.search,
+                        onChanged: (value) {
+                          widget.controller.suggest(value);
+                          setState(() {});
+                        },
                         onSubmitted: (value) =>
                             unawaited(controller.search(value)),
                         style: Theme.of(context).textTheme.bodyLarge,
@@ -220,8 +271,11 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
                                   selected:
                                       controller.pluginSource == null &&
                                       controller.provider == provider,
-                                  onSelected: (_) =>
-                                      controller.selectProvider(provider),
+                                  onSelected: (_) {
+                                    controller.selectProvider(provider);
+                                    unawaited(controller.loadHotSearches());
+                                    controller.suggest(input.text);
+                                  },
                                 ),
                               ),
                           for (final source
@@ -235,14 +289,31 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
                                   label: Text(sourceLabel(source)),
                                   selected:
                                       controller.pluginSource?.id == source.id,
-                                  onSelected: (_) =>
-                                      controller.selectPlugin(source),
+                                  onSelected: (_) {
+                                    controller.selectPlugin(source);
+                                    unawaited(controller.loadHotSearches());
+                                    controller.suggest(input.text);
+                                  },
                                 ),
                               ),
                         ],
                       ),
                     ),
                     const SizedBox(height: NekoSpace.md),
+                    if (input.text.trim().isEmpty)
+                      recommendationChips(
+                        context,
+                        tr('热门搜索'),
+                        Icons.local_fire_department_outlined,
+                        controller.hotSearches,
+                      )
+                    else
+                      recommendationChips(
+                        context,
+                        tr('搜索建议'),
+                        Icons.north_west_rounded,
+                        controller.suggestions,
+                      ),
                     if (controller.loading && controller.songs.isEmpty)
                       const LinearProgressIndicator(),
                     if (controller.error != null)
@@ -299,7 +370,9 @@ class _OnlineSearchPageState extends State<OnlineSearchPage> {
                                       ? null
                                       : controller.loadMore,
                                   child: Text(
-                                    controller.loading ? tr('正在加载…') : tr('加载更多'),
+                                    controller.loading
+                                        ? tr('正在加载…')
+                                        : tr('加载更多'),
                                   ),
                                 )
                               : Text(
