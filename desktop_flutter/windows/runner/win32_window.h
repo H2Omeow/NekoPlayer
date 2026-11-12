@@ -52,6 +52,14 @@ class Win32Window {
   // If true, closing this window will quit the application.
   void SetQuitOnClose(bool quit_on_close);
 
+  // Show the window maximized instead of at its restored size.
+  void SetInitialMaximized(bool maximized);
+
+  // Loads the previous window size in logical pixels. Returns false when no
+  // valid saved state exists.
+  static bool LoadWindowSize(unsigned int* width, unsigned int* height,
+                             bool* maximized);
+
   // Return a RECT representing the bounds of the current client area.
   RECT GetClientArea();
 
@@ -91,6 +99,7 @@ class Win32Window {
   static void UpdateTheme(HWND const window);
 
   bool quit_on_close_ = false;
+  bool initial_maximized_ = false;
 
   // window handle for top level window.
   HWND window_handle_ = nullptr;

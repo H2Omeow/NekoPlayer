@@ -2,6 +2,13 @@
 
 #include <dwmapi.h>
 #include <flutter_windows.h>
+#include <shlobj.h>
+
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
 
 #include "resource.h"
 
@@ -25,6 +32,59 @@ constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 constexpr const wchar_t kGetPreferredBrightnessRegKey[] =
   L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize";
 constexpr const wchar_t kGetPreferredBrightnessRegValue[] = L"AppsUseLightTheme";
+
+constexpr unsigned int kMinWindowWidth = 640;
+constexpr unsigned int kMinWindowHeight = 480;
+constexpr unsigned int kMaxWindowWidth = 16384;
+constexpr unsigned int kMaxWindowHeight = 16384;
+constexpr const wchar_t kWindowStateFileName[] = L"window-state.txt";
+
+// The window size is stored in logical pixels so that moving the app to a
+// monitor with a different DPI keeps the same apparent size.
+std::wstring WindowStatePath() {
+  PWSTR root = nullptr;
+  if (FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE,
+                                  nullptr, &root)) ||
+      root == nullptr) {
+    if (root != nullptr) CoTaskMemFree(root);
+    return L"";
+  }
+  std::wstring folder = std::wstring(root) + L"\\NekoPlayer";
+  CoTaskMemFree(root);
+  SHCreateDirectoryExW(nullptr, folder.c_str(), nullptr);
+  return folder + L"\\" + kWindowStateFileName;
+}
+
+void SaveWindowSize(HWND window) {
+  WINDOWPLACEMENT placement{};
+  placement.length = sizeof(WINDOWPLACEMENT);
+  if (!GetWindowPlacement(window, &placement)) return;
+
+  const UINT dpi = FlutterDesktopGetDpiForMonitor(
+      MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST));
+  const double scale = dpi > 0 ? dpi / 96.0 : 1.0;
+  const RECT& rect = placement.rcNormalPosition;
+  const long width = std::lround((rect.right - rect.left) / scale);
+  const long height = std::lround((rect.bottom - rect.top) / scale);
+  if (width < static_cast<long>(kMinWindowWidth) ||
+      height < static_cast<long>(kMinWindowHeight)) {
+    return;
+  }
+
+  const std::wstring path = WindowStatePath();
+  if (path.empty()) return;
+  char content[96];
+  const int length = std::snprintf(
+      content, sizeof(content), "width=%ld\nheight=%ld\nmaximized=%d\n",
+      width, height, placement.showCmd == SW_SHOWMAXIMIZED ? 1 : 0);
+  if (length <= 0 || length >= static_cast<int>(sizeof(content))) return;
+  HANDLE file = CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr,
+                            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if (file == INVALID_HANDLE_VALUE) return;
+  DWORD written = 0;
+  WriteFile(file, content, static_cast<DWORD>(length), &written, nullptr);
+  CloseHandle(file);
+}
 
 // The number of Win32Window objects that currently exist.
 static int g_active_window_count = 0;
@@ -150,7 +210,58 @@ bool Win32Window::Create(const std::wstring& title,
 }
 
 bool Win32Window::Show() {
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  return ShowWindow(window_handle_, initial_maximized_ ? SW_SHOWMAXIMIZED
+                                                       : SW_SHOWNORMAL);
+}
+
+void Win32Window::SetInitialMaximized(bool maximized) {
+  initial_maximized_ = maximized;
+}
+
+// static
+bool Win32Window::LoadWindowSize(unsigned int* width, unsigned int* height,
+                                 bool* maximized) {
+  *width = 1280;
+  *height = 720;
+  *maximized = false;
+
+  const std::wstring path = WindowStatePath();
+  if (path.empty()) return false;
+  HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ,
+                            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,
+                            nullptr);
+  if (file == INVALID_HANDLE_VALUE) return false;
+
+  char content[256];
+  DWORD length = 0;
+  const BOOL read =
+      ReadFile(file, content, static_cast<DWORD>(sizeof(content) - 1),
+               &length, nullptr);
+  CloseHandle(file);
+  if (!read) return false;
+  content[length] = '\0';
+
+  const std::string text(content, length);
+  const auto integer = [&text](const char* key) -> long {
+    const size_t found = text.find(key);
+    return found == std::string::npos
+               ? 0
+               : std::strtol(text.c_str() + found + std::strlen(key), nullptr, 10);
+  };
+  const long loaded_width = integer("width=");
+  const long loaded_height = integer("height=");
+  const long loaded_maximized = integer("maximized=");
+
+  if (loaded_width < static_cast<long>(kMinWindowWidth) ||
+      loaded_height < static_cast<long>(kMinWindowHeight) ||
+      loaded_width > static_cast<long>(kMaxWindowWidth) ||
+      loaded_height > static_cast<long>(kMaxWindowHeight)) {
+    return false;
+  }
+  *width = static_cast<unsigned int>(loaded_width);
+  *height = static_cast<unsigned int>(loaded_height);
+  *maximized = loaded_maximized == 1;
+  return true;
 }
 
 // static
@@ -179,6 +290,11 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_CLOSE:
+      // Save before the default handler destroys the window.
+      SaveWindowSize(hwnd);
+      break;
+
     case WM_DESTROY:
       window_handle_ = nullptr;
       Destroy();

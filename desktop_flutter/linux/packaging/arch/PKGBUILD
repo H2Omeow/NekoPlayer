@@ -2,7 +2,7 @@
 # Installs the prebuilt release bundle. Run `updpkgsums` after bumping pkgver
 # (checksums are published in the release's SHA256SUMS file).
 pkgname=nekoplayer-bin
-pkgver=1.2.2
+pkgver=1.2.3
 pkgrel=1
 pkgdesc='NekoPlayer Flutter music player (prebuilt desktop bundle)'
 arch=('x86_64' 'aarch64')

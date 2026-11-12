@@ -18,6 +18,144 @@ struct _MyApplication {
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 
+namespace {
+
+constexpr int kDefaultWindowWidth = 1280;
+constexpr int kDefaultWindowHeight = 720;
+constexpr int kMinWindowWidth = 360;
+constexpr int kMinWindowHeight = 480;
+constexpr int kMaxWindowSize = 16384;
+
+struct SavedWindowSize {
+  int width = kDefaultWindowWidth;
+  int height = kDefaultWindowHeight;
+  gboolean maximized = FALSE;
+  guint save_timer = 0;
+};
+
+gchar* window_state_path() {
+  return g_build_filename(g_get_user_config_dir(), "nekoplayer",
+                          "window-state.ini", nullptr);
+}
+
+SavedWindowSize load_window_size() {
+  SavedWindowSize state;
+  g_autofree gchar* path = window_state_path();
+  g_autoptr(GKeyFile) file = g_key_file_new();
+  if (!g_key_file_load_from_file(file, path, G_KEY_FILE_NONE, nullptr)) {
+    return state;
+  }
+  const gint width =
+      g_key_file_get_integer(file, "window", "width", nullptr);
+  const gint height =
+      g_key_file_get_integer(file, "window", "height", nullptr);
+  if (width >= kMinWindowWidth && height >= kMinWindowHeight &&
+      width <= kMaxWindowSize && height <= kMaxWindowSize) {
+    state.width = width;
+    state.height = height;
+  }
+  state.maximized =
+      g_key_file_get_boolean(file, "window", "maximized", nullptr);
+  return state;
+}
+
+void save_window_size(const SavedWindowSize& state) {
+  g_autofree gchar* directory =
+      g_build_filename(g_get_user_config_dir(), "nekoplayer", nullptr);
+  if (g_mkdir_with_parents(directory, 0700) != 0) return;
+  g_autofree gchar* path = window_state_path();
+  g_autoptr(GKeyFile) file = g_key_file_new();
+  g_key_file_set_integer(file, "window", "width", state.width);
+  g_key_file_set_integer(file, "window", "height", state.height);
+  g_key_file_set_boolean(file, "window", "maximized", state.maximized);
+  g_key_file_save_to_file(file, path, nullptr);
+}
+
+gboolean save_window_size_timeout(gpointer user_data) {
+  auto* state = static_cast<SavedWindowSize*>(user_data);
+  state->save_timer = 0;
+  save_window_size(*state);
+  return G_SOURCE_REMOVE;
+}
+
+// Debounce continuous resize and maximize events; also persists the state if
+// the process is terminated without a clean window close.
+void schedule_window_size_save(SavedWindowSize* state) {
+  if (state->save_timer != 0) g_source_remove(state->save_timer);
+  state->save_timer =
+      g_timeout_add(500, save_window_size_timeout, state);
+}
+
+void window_size_allocate_cb(GtkWidget* widget, GtkAllocation* allocation,
+                             gpointer user_data) {
+  auto* state = static_cast<SavedWindowSize*>(user_data);
+  // A maximized allocation is the screen size, not the restored size.
+  if (!gtk_window_is_maximized(GTK_WINDOW(widget)) &&
+      allocation->width > 0 && allocation->height > 0 &&
+      (allocation->width != state->width ||
+       allocation->height != state->height)) {
+    state->width = allocation->width;
+    state->height = allocation->height;
+    schedule_window_size_save(state);
+  }
+}
+
+gboolean window_configure_event_cb(GtkWidget* widget, GdkEventConfigure* event,
+                                   gpointer user_data) {
+  auto* state = static_cast<SavedWindowSize*>(user_data);
+  if (!gtk_window_is_maximized(GTK_WINDOW(widget)) && event->width > 0 &&
+      event->height > 0 &&
+      (event->width != state->width || event->height != state->height)) {
+    state->width = event->width;
+    state->height = event->height;
+    schedule_window_size_save(state);
+  }
+  return FALSE;
+}
+
+gboolean window_state_event_cb(GtkWidget* widget, GdkEventWindowState* event,
+                               gpointer user_data) {
+  auto* state = static_cast<SavedWindowSize*>(user_data);
+  const gboolean maximized =
+      (event->new_window_state & GDK_WINDOW_STATE_MAXIMIZED) != 0;
+  if (maximized != state->maximized) {
+    state->maximized = maximized;
+    schedule_window_size_save(state);
+  }
+  return FALSE;
+}
+
+gboolean window_delete_event_cb(GtkWidget* widget, GdkEvent*,
+                                gpointer user_data) {
+  auto* state = static_cast<SavedWindowSize*>(user_data);
+  state->maximized = gtk_window_is_maximized(GTK_WINDOW(widget));
+  if (state->save_timer != 0) {
+    g_source_remove(state->save_timer);
+    state->save_timer = 0;
+  }
+  save_window_size(*state);
+  return FALSE;
+}
+
+void window_destroy_state_cb(GtkWidget* widget, gpointer user_data) {
+  auto* state = static_cast<SavedWindowSize*>(user_data);
+  if (state->save_timer != 0) {
+    g_source_remove(state->save_timer);
+    state->save_timer = 0;
+  }
+  if (!gtk_window_is_maximized(GTK_WINDOW(widget))) {
+    GtkAllocation allocation;
+    gtk_widget_get_allocation(widget, &allocation);
+    if (allocation.width > 0 && allocation.height > 0) {
+      state->width = allocation.width;
+      state->height = allocation.height;
+    }
+  }
+  save_window_size(*state);
+}
+
+}  // namespace
+
 // Frees the desktop integration while the Flutter engine is still alive; by
 // GObject dispose time the engine (and its method channel) is already gone.
 static void window_destroy_cb(MyApplication* self, GtkWidget*) {
@@ -78,8 +216,24 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_title(window, "NekoPlayer");
   }
 
-  gtk_window_set_default_size(window, 1280, 720);
+  SavedWindowSize* window_size = g_new0(SavedWindowSize, 1);
+  *window_size = load_window_size();
+  g_object_set_data_full(G_OBJECT(window), "nekoplayer-window-size",
+                         window_size, g_free);
+  g_signal_connect(window, "size-allocate",
+                   G_CALLBACK(window_size_allocate_cb), window_size);
+  g_signal_connect(window, "configure-event",
+                   G_CALLBACK(window_configure_event_cb), window_size);
+  g_signal_connect(window, "window-state-event",
+                   G_CALLBACK(window_state_event_cb), window_size);
+  g_signal_connect(window, "delete-event",
+                   G_CALLBACK(window_delete_event_cb), window_size);
+  g_signal_connect(window, "destroy",
+                   G_CALLBACK(window_destroy_state_cb), window_size);
+
+  gtk_window_set_default_size(window, window_size->width, window_size->height);
   gtk_widget_set_size_request(GTK_WIDGET(window), 360, 480);
+  if (window_size->maximized) gtk_window_maximize(window);
   apply_window_icon(window);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();

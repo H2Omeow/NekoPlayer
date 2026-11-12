@@ -46,21 +46,23 @@
   }
 
   // A soft frame cap. Cancellation stays correct because each virtual id owns
-  // the current native request id instead of returning a changing handle.
+  // the current native request id instead of returning a changing handle. The
+  // last rendered timestamp is tracked per callback: a shared timestamp would
+  // let whichever callback runs first in a frame starve every other animation
+  // callback forever.
   if (fpsCap > 0) {
     const nativeRequest = window.requestAnimationFrame.bind(window);
     const nativeCancel = window.cancelAnimationFrame.bind(window);
     const interval = 1000 / fpsCap;
-    let lastFrame = 0;
     let nextId = 1;
     const frames = new Map();
     window.requestAnimationFrame = callback => {
       const id = nextId++;
-      const state = { native: 0, cancelled: false };
+      const state = { native: 0, cancelled: false, lastFrame: 0 };
       const tick = timestamp => {
         if (state.cancelled) return;
-        if (timestamp - lastFrame >= interval - 0.5) {
-          lastFrame = timestamp;
+        if (timestamp - state.lastFrame >= interval - 0.5) {
+          state.lastFrame = timestamp;
           frames.delete(id);
           callback(timestamp);
         } else {
