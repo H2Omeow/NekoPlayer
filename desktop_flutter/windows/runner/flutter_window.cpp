@@ -1,9 +1,56 @@
 #include "flutter_window.h"
 
+#include <cstdio>
+#include <cwchar>
 #include <optional>
 
 #include "crash_handler.h"
 #include "flutter/generated_plugin_registrant.h"
+
+namespace {
+
+constexpr wchar_t kAccessibilityOverride[] =
+    L"NEKOPLAYER_ENABLE_ACCESSIBILITY";
+constexpr DWORD kAccessibilityOverrideSize = 16;
+constexpr DWORD kUiaRootObjectId = static_cast<DWORD>(-25);
+constexpr DWORD kClientObjectId = 0xFFFFFFFCu;
+
+WNDPROC g_original_view_proc = nullptr;
+
+bool AccessibilityRequestedByOverride() {
+  wchar_t value[kAccessibilityOverrideSize] = {};
+  const DWORD length = ::GetEnvironmentVariableW(
+      kAccessibilityOverride, value, kAccessibilityOverrideSize);
+  return length > 0 && length < kAccessibilityOverrideSize &&
+         (std::wcscmp(value, L"1") == 0 ||
+          std::wcscmp(value, L"true") == 0 ||
+          std::wcscmp(value, L"yes") == 0);
+}
+
+// Flutter enables its accessibility bridge when Windows asks for the UIA root
+// object or the MSAA client object. Flutter 3.47.7 then dereferences a null
+// AXNode parent in AccessibilityBridge::CreateRemoveReparentedNodesUpdate
+// (flutter/flutter#175041). Until that engine bug is fixed, answer those two
+// requests with "no accessible object" so the bridge is never created.
+bool IsAccessibilityRequest(UINT message, LPARAM lparam) {
+  if (message != WM_GETOBJECT) return false;
+  const DWORD object_id = static_cast<DWORD>(static_cast<DWORD_PTR>(lparam));
+  return object_id == kUiaRootObjectId || object_id == kClientObjectId;
+}
+
+LRESULT CALLBACK FilterAccessibilityRequests(HWND window,
+                                             UINT message,
+                                             WPARAM wparam,
+                                             LPARAM lparam) {
+  if (IsAccessibilityRequest(message, lparam)) return 0;
+  if (g_original_view_proc == nullptr) {
+    return ::DefWindowProcW(window, message, wparam, lparam);
+  }
+  return ::CallWindowProcW(g_original_view_proc, window, message, wparam,
+                           lparam);
+}
+
+}  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -27,6 +74,31 @@ bool FlutterWindow::OnCreate() {
   }
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
+
+  if (AccessibilityRequestedByOverride()) {
+    std::fprintf(stderr,
+                 "[a11y] Windows accessibility bridge enabled by "
+                 "NEKOPLAYER_ENABLE_ACCESSIBILITY\n");
+  } else {
+    filtered_view_ = flutter_controller_->view()->GetNativeWindow();
+    original_view_proc_ = reinterpret_cast<WNDPROC>(::SetWindowLongPtrW(
+        filtered_view_, GWLP_WNDPROC,
+        reinterpret_cast<LONG_PTR>(FilterAccessibilityRequests)));
+    if (original_view_proc_ == nullptr) {
+      filtered_view_ = nullptr;
+      std::fprintf(stderr,
+                   "[a11y] failed to install the Windows accessibility "
+                   "filter\n");
+    } else {
+      g_original_view_proc = original_view_proc_;
+      std::fprintf(stderr,
+                   "[a11y] Windows accessibility bridge disabled to avoid a "
+                   "Flutter engine crash; set NEKOPLAYER_ENABLE_ACCESSIBILITY=1 "
+                   "to enable it\n");
+    }
+  }
+  std::fflush(stderr);
+
   desktop_integration_ = std::make_unique<DesktopIntegration>(flutter_controller_->engine()->messenger(), GetHandle());
   lyrics_view_ = std::make_unique<LyricsView>(flutter_controller_->engine()->messenger(), GetHandle(), flutter_controller_->view()->GetNativeWindow());
 
@@ -43,6 +115,13 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  if (filtered_view_ != nullptr && original_view_proc_ != nullptr) {
+    ::SetWindowLongPtrW(filtered_view_, GWLP_WNDPROC,
+                        reinterpret_cast<LONG_PTR>(original_view_proc_));
+    g_original_view_proc = nullptr;
+    filtered_view_ = nullptr;
+    original_view_proc_ = nullptr;
+  }
   lyrics_view_.reset();
   desktop_integration_.reset();
   if (flutter_controller_) {

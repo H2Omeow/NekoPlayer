@@ -35,6 +35,11 @@ class FlutterWindow : public Win32Window {
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
   std::unique_ptr<DesktopIntegration> desktop_integration_;
   std::unique_ptr<LyricsView> lyrics_view_;
+
+  // Flutter view whose accessibility messages are filtered while the engine's
+  // null-parent accessibility crash is unresolved.
+  HWND filtered_view_ = nullptr;
+  WNDPROC original_view_proc_ = nullptr;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_
