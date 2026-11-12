@@ -4,7 +4,7 @@
 
 1.2.0 起的正式桌面端，面向 Windows / Linux 的 x86_64、ARM64，不支持 32 位。原 `desktop/` Compose 版本已停止功能更新。
 
-已接入本地音乐库、平台账号与系统密钥环、账号音乐库、分类搜索、多音源解析、翻译歌词、评论、MV、下载、音频/歌词离线缓存、手动云同步和旧版备份导入；另有独立播放器背景、原版 C++ DSP、系统媒体控制、桌面歌词与可选托盘。1.2.0 新增私信/关注/动态、歌曲分享链接、`nekoplayer://` 协议注册、单实例链接转发和系统通知；分享链接在未登录时也可播放网易云歌曲。1.2.1 新增实际音质显示、悬浮歌词位置记忆、可配置托盘菜单和播放 / 暂停淡入淡出，并修复 Wayland 悬浮歌词透明与 Linux / Windows 任务栏图标。1.2.2 新增性能与动态歌词画质设置，自动适配 4K / 高缩放设备，并修复 Windows 高缩放下内嵌动态歌词空白。1.2.3 修复动态歌词帧率限制导致画面停在第一帧或空白，并记住主窗口大小和最大化状态。
+已接入本地音乐库、平台账号与系统密钥环、账号音乐库、分类搜索、多音源解析、翻译歌词、评论、MV、下载、音频/歌词离线缓存、手动云同步和旧版备份导入；另有独立播放器背景、原版 C++ DSP、系统媒体控制、桌面歌词与可选托盘。1.2.0 新增私信/关注/动态、歌曲分享链接、`nekoplayer://` 协议注册、单实例链接转发和系统通知；分享链接在未登录时也可播放网易云歌曲。1.2.1 新增实际音质显示、悬浮歌词位置记忆、可配置托盘菜单和播放 / 暂停淡入淡出，并修复 Wayland 悬浮歌词透明与 Linux / Windows 任务栏图标。1.2.2 新增性能与动态歌词画质设置，自动适配 4K / 高缩放设备，并修复 Windows 高缩放下内嵌动态歌词空白。1.2.3 修复动态歌词帧率限制导致画面停在第一帧或空白，并记住主窗口大小和最大化状态。1.2.4 修复窄 / 矮窗口下播放页封面尺寸计算报错，并在「发现」页加入热门搜索和输入建议。
 
 - 🌐 多语言界面：支持简体中文、繁體中文、English、日本語，默认跟随系统，可在「设置」中切换。
 
@@ -19,7 +19,7 @@ Linux 托盘优先使用系统 Ayatana/AppIndicator，缺少可用托盘时不�
 ./deploy/flutter-low-resource.sh run -d linux
 ```
 
-Linux 需要 GTK 3、Clang、CMake、Ninja、pkg-config，以及同架构 libmpv、libsecret、libepoxy 的运行库和开发包；账号存储需要可用且已解锁的 Secret Service 密钥环。Windows 需要 Visual Studio C++ 工具链、CMake 3.31+、7-Zip；Windows 音视频插件固定到官方含 ARM64 支持的 Git 提交，勿直接删除覆盖。专业 DSP 另需同架构 FFmpeg / ffprobe；miniaudio 头文件由 CMake 按固定版本和 SHA256 获取。v1.2.3 的四个原生目标已由 CI 构建，本地仍建议通过 `tool/package_release.py` 打包后做启动验收。Wayland 下要让悬浮歌词保存位置，需要 `gtk-layer-shell`；DEB / RPM 已声明该依赖。
+Linux 需要 GTK 3、Clang、CMake、Ninja、pkg-config，以及同架构 libmpv、libsecret、libepoxy 的运行库和开发包；账号存储需要可用且已解锁的 Secret Service 密钥环。Windows 需要 Visual Studio C++ 工具链、CMake 3.31+、7-Zip；Windows 音视频插件固定到官方含 ARM64 支持的 Git 提交，勿直接删除覆盖。专业 DSP 另需同架构 FFmpeg / ffprobe；miniaudio 头文件由 CMake 按固定版本和 SHA256 获取。v1.2.4 的四个原生目标已由 CI 构建，本地仍建议通过 `tool/package_release.py` 打包后做启动验收。Wayland 下要让悬浮歌词保存位置，需要 `gtk-layer-shell`；DEB / RPM 已声明该依赖。
 
 生成 Linux 安装包：
 
