@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: 'Publish the release (stable or -pre) after all platforms pass validation'
+        description: 'Publish the release (stable, -fix, or -pre) after all platforms pass validation'
         type: boolean
         default: false
   push:
@@ -93,6 +93,7 @@ jobs:
           gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "NekoPlayer ${RELEASE_TAG#v}" \
             --notes-file "docs/RELEASE_${RELEASE_TAG}.md" --draft dist/*
           gh release view "$RELEASE_TAG" --json assets --jq '.assets | length' | grep -qx 10
+          # "-pre" is a prerelease; stable and "-fix" releases are both latest.
           if [[ "$RELEASE_TAG" == *-pre* ]]; then
             gh release edit "$RELEASE_TAG" --draft=false --prerelease=true --latest=false
           else

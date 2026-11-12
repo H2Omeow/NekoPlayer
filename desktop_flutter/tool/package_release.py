@@ -16,9 +16,9 @@ HOMEPAGE = "https://github.com/H2Omeow/NekoPlayer"
 
 
 def release_version():
-    match = re.search(r"^version: (\d+\.\d+\.\d+(?:-pre(?:\.\d+)?)?)\+(\d+)$", (ROOT / "pubspec.yaml").read_text(), re.MULTILINE)
+    match = re.search(r"^version: (\d+\.\d+\.\d+(?:-(?:pre|fix)(?:\.\d+)?)?)\+(\d+)$", (ROOT / "pubspec.yaml").read_text(), re.MULTILINE)
     if not match:
-        raise ValueError("A stable or prerelease Flutter version and build number are required")
+        raise ValueError("A stable, prerelease, or fix Flutter version and build number are required")
     version, build = match.groups()
     android = dict(line.split("=", 1) for line in (ROOT.parent / "app/version.properties").read_text().splitlines() if "=" in line)
     if android.get("versionName") != version or android.get("versionCode") != build:
@@ -27,7 +27,10 @@ def release_version():
 
 
 def package_version(version):
-    # DEB / RPM reject "-" in versions; "~" also sorts 1.2.0~pre before 1.2.0.
+    # DEB / RPM reject "-" in versions. "~" sorts prereleases before their
+    # stable release; "+" keeps a fix release after the base version.
+    if "-fix" in version:
+        return version.replace("-fix", "+fix")
     return version.replace("-", "~")
 
 

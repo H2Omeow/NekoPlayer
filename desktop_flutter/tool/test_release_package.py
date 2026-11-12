@@ -10,13 +10,31 @@ from test_artifact import elf, pe
 
 class ReleasePackageTests(unittest.TestCase):
     def test_android_and_desktop_versions_match(self):
-        self.assertRegex(release_version(), r"^\d+\.\d+\.\d+(-pre(\.\d+)?)?$")
+        self.assertRegex(release_version(), r"^\d+\.\d+\.\d+(?:-(?:pre|fix)(?:\.\d+)?)?$")
 
     def test_prerelease_uses_tilde_for_linux_packages(self):
         from package_release import package_version
         self.assertEqual(package_version("1.2.0-pre"), "1.2.0~pre")
         self.assertEqual(package_version("1.2.0-pre.2"), "1.2.0~pre.2")
         self.assertEqual(package_version("1.2.0"), "1.2.0")
+
+    def test_fix_release_sorts_after_linux_packages(self):
+        from package_release import package_version
+        self.assertEqual(package_version("1.2.4-fix"), "1.2.4+fix")
+        self.assertEqual(package_version("1.2.4-fix.2"), "1.2.4+fix.2")
+
+    def test_fix_release_versions_are_accepted(self):
+        from package_release import release_version
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "desktop_flutter"
+            root.mkdir()
+            (root / "pubspec.yaml").write_text("version: 1.2.4-fix.2+23\n", encoding="utf-8")
+            (Path(temporary) / "app").mkdir()
+            (Path(temporary) / "app/version.properties").write_text(
+                "versionCode=23\nversionName=1.2.4-fix.2\n", encoding="utf-8"
+            )
+            with patch("package_release.ROOT", root):
+                self.assertEqual(release_version(), "1.2.4-fix.2")
 
     def test_windows_installers_have_separate_native_architectures(self):
         for target, arch in (("windows-x64", "x64compatible"), ("windows-arm64", "arm64")):
