@@ -58,7 +58,7 @@ object AppDataExporter {
             runCatching { DownloadIndex.all() }.getOrDefault(emptyList()).forEach { entry ->
                 add(JsonObject().apply {
                     addProperty("songId", entry.songId)
-                    add("song", gson.toJsonTree(entry.song))
+                    add("song", parse(SyncCodec.encodeSong(entry.song)))
                     addProperty("audioUri", entry.audioUri)
                     addProperty("lrcPath", entry.lrcPath)
                     addProperty("quality", entry.quality)
@@ -69,7 +69,13 @@ object AppDataExporter {
         root.add("downloads", downloads)
 
         val playback = runCatching { settingsStore.loadPlaybackState() }.getOrNull()
-        root.add("playback", playback?.let { gson.toJsonTree(it) } ?: JsonNull.INSTANCE)
+        root.add("playback", playback?.let { state ->
+            JsonObject().apply {
+                add("queue", parse(SyncCodec.encodeSongs(state.queue)))
+                addProperty("currentIndex", state.currentIndex)
+                addProperty("position", state.position)
+            }
+        } ?: JsonNull.INSTANCE)
 
         val pluginState = runCatching {
             withTimeoutOrNull(3_000) { PluginStore.awaitReady() }
