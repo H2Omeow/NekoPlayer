@@ -53,6 +53,65 @@ def stage_bundle(target, bundle, staging):
     return staging
 
 
+def linux_launcher_script():
+    return r'''#!/bin/sh
+cd -- "$(dirname -- "$(readlink -f -- "$0")")" || exit 1
+
+# The portable bundle is not installed system-wide. Register a per-user
+# desktop entry and icon before starting so window managers can associate the
+# running window with NekoPlayer, including on Wayland where the window icon
+# is resolved through the .desktop file.
+install_desktop_entry() {
+  [ -n "${HOME:-}" ] || return 0
+  [ "${NEKOPLAYER_NO_DESKTOP_INSTALL:-0}" = "1" ] && return 0
+  [ -f nekoplayer ] && [ -f data/nekoplayer.png ] || return 0
+  data_home=${XDG_DATA_HOME:-$HOME/.local/share}
+  applications="$data_home/applications"
+  icon_dir="$data_home/icons/hicolor/192x192/apps"
+  desktop="$applications/top.nekoh2o.nekoplayer_desktop.desktop"
+  icon="$icon_dir/nekoplayer.png"
+  here=$(pwd -P)
+  escaped=$(printf '%s' "$here/NekoPlayer" | sed 's/\\/\\\\/g; s/"/\\"/g')
+  content=$(cat <<EOF
+[Desktop Entry]
+Type=Application
+Name=NekoPlayer
+Comment=Music player
+Exec="$escaped" %U
+Icon=nekoplayer
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+StartupWMClass=top.nekoh2o.nekoplayer_desktop
+MimeType=x-scheme-handler/nekoplayer;
+EOF
+)
+  changed=0
+  if [ ! -f "$desktop" ] || [ "$(cat "$desktop" 2>/dev/null)" != "$content" ]; then
+    mkdir -p "$applications" "$icon_dir" 2>/dev/null || return 0
+    printf '%s\n' "$content" > "$desktop" 2>/dev/null || return 0
+    changed=1
+  fi
+  if [ ! -f "$icon" ] || ! cmp -s data/nekoplayer.png "$icon"; then
+    mkdir -p "$icon_dir" 2>/dev/null && cp -f data/nekoplayer.png "$icon" 2>/dev/null || return 0
+    changed=1
+  fi
+  if [ "$changed" -eq 1 ]; then
+    if command -v update-desktop-database >/dev/null 2>&1; then
+      update-desktop-database -q "$applications" >/dev/null 2>&1 || :
+    fi
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+      gtk-update-icon-cache -q -t -f "$data_home/icons/hicolor" >/dev/null 2>&1 || :
+    fi
+    if command -v xdg-mime >/dev/null 2>&1; then
+      xdg-mime default top.nekoh2o.nekoplayer_desktop.desktop x-scheme-handler/nekoplayer >/dev/null 2>&1 || :
+    fi
+  fi
+}
+install_desktop_entry
+exec ./nekoplayer "$@"
+'''
+
+
 def linux_packages(target, bundle, output):
     version = release_version()
     arm64 = target.endswith("arm64")
@@ -61,7 +120,7 @@ def linux_packages(target, bundle, output):
     with tempfile.TemporaryDirectory(prefix="nekoplayer-package-") as temporary:
         work = Path(temporary)
         payload = stage_bundle(target, bundle, work / "NekoPlayer")
-        (payload / "NekoPlayer").write_text('#!/bin/sh\ncd -- "$(dirname -- "$(readlink -f -- "$0")")" || exit 1\nexec ./nekoplayer "$@"\n')
+        (payload / "NekoPlayer").write_text(linux_launcher_script())
         (payload / "NekoPlayer").chmod(0o755)
         with tarfile.open(output / (basename + ".tar.gz"), "w:gz") as archive:
             archive.add(payload, arcname="NekoPlayer")
@@ -85,7 +144,7 @@ def linux_packages(target, bundle, output):
             f"Package: nekoplayer\nVersion: {package_version(version)}\nArchitecture: {deb_arch}\n"
             "Maintainer: H2Omeow\nSection: sound\nPriority: optional\n"
             "Depends: libgtk-3-0, libmpv2 | libmpv1, libsecret-1-0, libepoxy0, libegl1, libgles2, libgnutls30, libgtk-layer-shell0\n"
-            "Recommends: libwebkit2gtk-4.1-0\n"
+            "Recommends: libwebkit2gtk-4.1-0, libayatana-appindicator3-1\n"
             f"Homepage: {HOMEPAGE}\nDescription: NekoPlayer Flutter music player\n"
         )
         postinst = package / "DEBIAN/postinst"
@@ -93,6 +152,8 @@ def linux_packages(target, bundle, output):
             "#!/bin/sh\n"
             "if command -v update-desktop-database >/dev/null 2>&1; then "
             "update-desktop-database -q /usr/share/applications || true; fi\n"
+            "if command -v gtk-update-icon-cache >/dev/null 2>&1; then "
+            "gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true; fi\n"
             "if command -v xdg-mime >/dev/null 2>&1; then "
             "xdg-mime default top.nekoh2o.nekoplayer_desktop.desktop x-scheme-handler/nekoplayer || true; fi\n"
             "exit 0\n"
@@ -108,12 +169,14 @@ def linux_packages(target, bundle, output):
             f"Name: nekoplayer\nVersion: {package_version(version)}\nRelease: 1\nSummary: NekoPlayer Flutter music player\n"
             f"License: LicenseRef-NekoPlayer\nURL: {HOMEPAGE}\nBuildArch: {rpm_arch}\nAutoReqProv: no\n"
             "Requires: gtk3, (mpv-libs or libmpv2), libsecret, libepoxy, libglvnd-egl, libglvnd-gles, gnutls, gtk-layer-shell\n"
-            "Recommends: webkit2gtk4.1\n"
+            "Recommends: webkit2gtk4.1, libayatana-appindicator-gtk3\n"
             "%description\nNekoPlayer Flutter music player.\n"
             f'%install\nmkdir -p "%{{buildroot}}"\ncp -a "{package}/usr" "%{{buildroot}}/"\n'
             "%post\n"
             "if command -v update-desktop-database >/dev/null 2>&1; then "
             "update-desktop-database -q /usr/share/applications || :; fi\n"
+            "if command -v gtk-update-icon-cache >/dev/null 2>&1; then "
+            "gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || :; fi\n"
             "if command -v xdg-mime >/dev/null 2>&1; then "
             "xdg-mime default top.nekoh2o.nekoplayer_desktop.desktop x-scheme-handler/nekoplayer || :; fi\n"
             "%files\n/usr/bin/nekoplayer\n/usr/lib/nekoplayer\n/usr/share/applications/top.nekoh2o.nekoplayer_desktop.desktop\n/usr/share/icons/hicolor/192x192/apps/nekoplayer.png\n"

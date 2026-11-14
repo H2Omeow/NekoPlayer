@@ -226,13 +226,47 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          Add-Type @"
+          using System;
+          using System.Text;
+          using System.Runtime.InteropServices;
+          public static class A11yProbe {
+            public delegate bool EnumChildProc(IntPtr hwnd, IntPtr lparam);
+            [DllImport("user32.dll")] public static extern bool EnumChildWindows(IntPtr parent, EnumChildProc callback, IntPtr lparam);
+            [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr hwnd, StringBuilder name, int max);
+            [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr SendMessageTimeout(IntPtr hwnd, uint msg, IntPtr wparam, IntPtr lparam, uint flags, uint timeout, out UIntPtr result);
+          }
+          "@
           $application = Start-Process -FilePath 'build/windows/${{ matrix.arch }}/runner/Release/NekoPlayer.exe' -PassThru
           try {
-            Start-Sleep -Seconds 15
+            $deadline = (Get-Date).AddSeconds(30)
+            $script:view = [IntPtr]::Zero
+            while ((Get-Date) -lt $deadline) {
+              Start-Sleep -Milliseconds 500
+              $application.Refresh()
+              if ($application.HasExited) { throw "Application exited unexpectedly: $($application.ExitCode)" }
+              if ($application.MainWindowHandle -eq 0) { continue }
+              $callback = [A11yProbe+EnumChildProc]{
+                param([IntPtr]$hwnd, [IntPtr]$lparam)
+                $name = New-Object System.Text.StringBuilder 256
+                [void][A11yProbe]::GetClassName($hwnd, $name, 256)
+                if ($name.ToString() -eq 'FLUTTERVIEW') { $script:view = $hwnd; return $false }
+                return $true
+              }
+              [void][A11yProbe]::EnumChildWindows($application.MainWindowHandle, $callback, [IntPtr]::Zero)
+              if ($script:view -ne [IntPtr]::Zero) { break }
+            }
+            if ($script:view -eq [IntPtr]::Zero) { throw 'Flutter view window not found' }
+            $result = [UIntPtr]::Zero
+            $sent = [A11yProbe]::SendMessageTimeout($script:view, 0x3D, [IntPtr]::Zero, [IntPtr](-4), 0x2, 5000, [ref]$result)
+            if ($sent -eq [IntPtr]::Zero) { throw 'WM_GETOBJECT timed out' }
+            Write-Host "WM_GETOBJECT(OBJID_CLIENT) = $($result.ToUInt64())"
+            if ($result.ToUInt64() -ne 0) { throw 'Accessibility filter did not answer WM_GETOBJECT' }
+            Start-Sleep -Seconds 3
             $application.Refresh()
-            if ($application.HasExited) { throw "Application exited unexpectedly: $($application.ExitCode)" }
+            if ($application.HasExited) { throw "Application exited after WM_GETOBJECT: $($application.ExitCode)" }
           } finally {
-            if (!$application.HasExited) { Stop-Process -Id $application.Id }
+            if (!$application.HasExited) { Stop-Process -Id $application.Id -Force }
           }
       - name: Install verified installer compiler
         if: runner.os == 'Windows'

@@ -1,5 +1,6 @@
 #include "flutter_window.h"
 
+#include <atomic>
 #include <cstdio>
 #include <cwchar>
 #include <optional>
@@ -12,10 +13,14 @@ namespace {
 constexpr wchar_t kAccessibilityOverride[] =
     L"NEKOPLAYER_ENABLE_ACCESSIBILITY";
 constexpr DWORD kAccessibilityOverrideSize = 16;
-constexpr DWORD kUiaRootObjectId = static_cast<DWORD>(-25);
-constexpr DWORD kClientObjectId = 0xFFFFFFFCu;
+constexpr wchar_t kOriginalProcProperty[] = L"NekoPlayerOriginalProc";
+constexpr wchar_t kFlutterViewClass[] = L"FLUTTERVIEW";
 
 WNDPROC g_original_view_proc = nullptr;
+HWND g_filtered_view = nullptr;
+HHOOK g_create_hook = nullptr;
+bool g_block_accessibility = false;
+std::atomic<int> g_blocked_requests{0};
 
 bool AccessibilityRequestedByOverride() {
   wchar_t value[kAccessibilityOverrideSize] = {};
@@ -27,27 +32,98 @@ bool AccessibilityRequestedByOverride() {
           std::wcscmp(value, L"yes") == 0);
 }
 
-// Flutter enables its accessibility bridge when Windows asks for the UIA root
-// object or the MSAA client object. Flutter 3.47.7 then dereferences a null
-// AXNode parent in AccessibilityBridge::CreateRemoveReparentedNodesUpdate
-// (flutter/flutter#175041). Until that engine bug is fixed, answer those two
-// requests with "no accessible object" so the bridge is never created.
-bool IsAccessibilityRequest(UINT message, LPARAM lparam) {
-  if (message != WM_GETOBJECT) return false;
-  const DWORD object_id = static_cast<DWORD>(static_cast<DWORD_PTR>(lparam));
-  return object_id == kUiaRootObjectId || object_id == kClientObjectId;
+void LogAccessibility(const char* message) {
+  crash_handler::LogNative(message);
+  ::OutputDebugStringA(message);
+  ::OutputDebugStringA("\n");
+  std::fprintf(stderr, "%s\n", message);
+  std::fflush(stderr);
 }
 
+void LogBlockedRequest(HWND window, LPARAM lparam) {
+  if (g_blocked_requests.fetch_add(1) >= 20) return;
+  char text[192];
+  std::snprintf(text, sizeof(text),
+                "a11y: blocked WM_GETOBJECT object=0x%08lX window=%p",
+                static_cast<unsigned long>(
+                    static_cast<DWORD>(static_cast<DWORD_PTR>(lparam))),
+                reinterpret_cast<void*>(window));
+  LogAccessibility(text);
+}
+
+// Flutter 3.47.7 enables its accessibility bridge when a UIA or MSAA client
+// asks for the view's accessible object and then dereferences a null AXNode
+// parent in AccessibilityBridge::CreateRemoveReparentedNodesUpdate
+// (flutter/flutter#175041). Until that engine bug is fixed, answer every
+// accessibility request with "no accessible object" so the bridge is never
+// created.
 LRESULT CALLBACK FilterAccessibilityRequests(HWND window,
                                              UINT message,
                                              WPARAM wparam,
                                              LPARAM lparam) {
-  if (IsAccessibilityRequest(message, lparam)) return 0;
-  if (g_original_view_proc == nullptr) {
+  if (message == WM_GETOBJECT) {
+    LogBlockedRequest(window, lparam);
+    return 0;
+  }
+  WNDPROC original = reinterpret_cast<WNDPROC>(
+      ::GetPropW(window, kOriginalProcProperty));
+  if (original == nullptr) original = g_original_view_proc;
+  if (original == nullptr) {
     return ::DefWindowProcW(window, message, wparam, lparam);
   }
-  return ::CallWindowProcW(g_original_view_proc, window, message, wparam,
-                           lparam);
+  return ::CallWindowProcW(original, window, message, wparam, lparam);
+}
+
+bool InstallViewFilter(HWND window) {
+  if (window == nullptr) return false;
+  if (::GetWindowThreadProcessId(window, nullptr) != ::GetCurrentThreadId()) {
+    return false;
+  }
+  WNDPROC original = reinterpret_cast<WNDPROC>(
+      ::GetWindowLongPtrW(window, GWLP_WNDPROC));
+  if (original == nullptr) {
+    original = reinterpret_cast<WNDPROC>(
+        ::GetClassLongPtrW(window, GCLP_WNDPROC));
+  }
+  if (original == nullptr || original == FilterAccessibilityRequests) {
+    return false;
+  }
+  if (::SetPropW(window, kOriginalProcProperty,
+                 reinterpret_cast<HANDLE>(original)) == FALSE) {
+    return false;
+  }
+  ::SetLastError(0);
+  const LONG_PTR previous = ::SetWindowLongPtrW(
+      window, GWLP_WNDPROC,
+      reinterpret_cast<LONG_PTR>(FilterAccessibilityRequests));
+  if (previous == 0 && ::GetLastError() != 0) {
+    ::RemovePropW(window, kOriginalProcProperty);
+    return false;
+  }
+  if (g_original_view_proc == nullptr) g_original_view_proc = original;
+  g_filtered_view = window;
+  return true;
+}
+
+// Install the filter while the engine creates its "FLUTTERVIEW" window. The
+// engine can be asked for accessibility as soon as the HWND exists, so a
+// filter installed after FlutterViewController construction can lose the race
+// and leave the bridge enabled for the rest of the session.
+LRESULT CALLBACK AccessibilityCreateHook(int code, WPARAM wparam,
+                                         LPARAM lparam) {
+  if (code == HCBT_CREATEWND) {
+    const auto* create = reinterpret_cast<const CBT_CREATEWNDW*>(lparam);
+    const wchar_t* class_name =
+        create != nullptr && create->lpcs != nullptr
+            ? create->lpcs->lpszClass
+            : nullptr;
+    if (class_name != nullptr &&
+        (reinterpret_cast<ULONG_PTR>(class_name) >> 16) != 0 &&
+        std::wcscmp(class_name, kFlutterViewClass) == 0) {
+      InstallViewFilter(reinterpret_cast<HWND>(wparam));
+    }
+  }
+  return ::CallNextHookEx(g_create_hook, code, wparam, lparam);
 }
 
 }  // namespace
@@ -63,6 +139,20 @@ bool FlutterWindow::OnCreate() {
   }
 
   RECT frame = GetClientArea();
+  const bool allow_accessibility = AccessibilityRequestedByOverride();
+  g_block_accessibility = !allow_accessibility;
+  if (allow_accessibility) {
+    LogAccessibility(
+        "a11y: Windows accessibility bridge enabled by "
+        "NEKOPLAYER_ENABLE_ACCESSIBILITY");
+  } else {
+    g_create_hook = ::SetWindowsHookExW(
+        WH_CBT, AccessibilityCreateHook, ::GetModuleHandleW(nullptr),
+        ::GetCurrentThreadId());
+    if (g_create_hook == nullptr) {
+      LogAccessibility("a11y: failed to install the window creation hook");
+    }
+  }
 
   // The size here must match the window dimensions to avoid unnecessary surface
   // creation / destruction in the startup path.
@@ -70,37 +160,37 @@ bool FlutterWindow::OnCreate() {
       frame.right - frame.left, frame.bottom - frame.top, project_);
   // Ensure that basic setup of the controller was successful.
   if (!flutter_controller_->engine() || !flutter_controller_->view()) {
+    if (g_create_hook != nullptr) {
+      ::UnhookWindowsHookEx(g_create_hook);
+      g_create_hook = nullptr;
+    }
     return false;
   }
-  RegisterPlugins(flutter_controller_->engine());
-  SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
-  if (AccessibilityRequestedByOverride()) {
-    std::fprintf(stderr,
-                 "[a11y] Windows accessibility bridge enabled by "
-                 "NEKOPLAYER_ENABLE_ACCESSIBILITY\n");
-  } else {
-    filtered_view_ = flutter_controller_->view()->GetNativeWindow();
-    original_view_proc_ = reinterpret_cast<WNDPROC>(::SetWindowLongPtrW(
-        filtered_view_, GWLP_WNDPROC,
-        reinterpret_cast<LONG_PTR>(FilterAccessibilityRequests)));
-    if (original_view_proc_ == nullptr) {
-      filtered_view_ = nullptr;
-      std::fprintf(stderr,
-                   "[a11y] failed to install the Windows accessibility "
-                   "filter\n");
+  HWND view = flutter_controller_->view()->GetNativeWindow();
+  if (!allow_accessibility) {
+    const WNDPROC current = reinterpret_cast<WNDPROC>(
+        ::GetWindowLongPtrW(view, GWLP_WNDPROC));
+    const bool early = current == FilterAccessibilityRequests;
+    if (!early && !InstallViewFilter(view)) {
+      LogAccessibility(
+          "a11y: failed to install the Windows accessibility filter");
     } else {
-      g_original_view_proc = original_view_proc_;
-      std::fprintf(stderr,
-                   "[a11y] Windows accessibility bridge disabled to avoid a "
-                   "Flutter engine crash; set NEKOPLAYER_ENABLE_ACCESSIBILITY=1 "
-                   "to enable it\n");
+      char text[224];
+      std::snprintf(text, sizeof(text),
+                    "a11y: Windows accessibility bridge disabled to avoid a "
+                    "Flutter engine crash; view=%p filter=%s (set "
+                    "NEKOPLAYER_ENABLE_ACCESSIBILITY=1 to enable it)",
+                    reinterpret_cast<void*>(view), early ? "early" : "late");
+      LogAccessibility(text);
     }
   }
-  std::fflush(stderr);
+
+  RegisterPlugins(flutter_controller_->engine());
+  SetChildContent(view);
 
   desktop_integration_ = std::make_unique<DesktopIntegration>(flutter_controller_->engine()->messenger(), GetHandle());
-  lyrics_view_ = std::make_unique<LyricsView>(flutter_controller_->engine()->messenger(), GetHandle(), flutter_controller_->view()->GetNativeWindow());
+  lyrics_view_ = std::make_unique<LyricsView>(flutter_controller_->engine()->messenger(), GetHandle(), view);
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -115,13 +205,13 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
-  if (filtered_view_ != nullptr && original_view_proc_ != nullptr) {
-    ::SetWindowLongPtrW(filtered_view_, GWLP_WNDPROC,
-                        reinterpret_cast<LONG_PTR>(original_view_proc_));
-    g_original_view_proc = nullptr;
-    filtered_view_ = nullptr;
-    original_view_proc_ = nullptr;
+  if (g_create_hook != nullptr) {
+    ::UnhookWindowsHookEx(g_create_hook);
+    g_create_hook = nullptr;
   }
+  g_filtered_view = nullptr;
+  g_original_view_proc = nullptr;
+  g_block_accessibility = false;
   lyrics_view_.reset();
   desktop_integration_.reset();
   if (flutter_controller_) {
@@ -147,6 +237,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
 LRESULT FlutterWindow::HandleMessageUnguarded(HWND hwnd, UINT const message,
                                               WPARAM const wparam,
                                               LPARAM const lparam) {
+  if (g_block_accessibility && message == WM_GETOBJECT) {
+    LogBlockedRequest(hwnd, lparam);
+    return 0;
+  }
   if (desktop_integration_ && desktop_integration_->HandleMessage(message, wparam, lparam)) return 0;
   if (lyrics_view_) lyrics_view_->HandleMessage(message, wparam, lparam);
   // Give Flutter, including plugins, an opportunity to handle window messages.

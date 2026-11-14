@@ -2,16 +2,15 @@
 # Installs the prebuilt release bundle. Run `updpkgsums` after bumping pkgver
 # (checksums are published in the release's SHA256SUMS file).
 pkgname=nekoplayer-bin
-pkgver=1.2.4+fix
-_releasever=1.2.4-fix
+pkgver=1.2.4+fix.2
+_releasever=1.2.4-fix.2
 pkgrel=1
 pkgdesc='NekoPlayer Flutter music player (prebuilt desktop bundle)'
 arch=('x86_64' 'aarch64')
 url='https://github.com/H2Omeow/NekoPlayer'
 license=('custom')
-depends=('gtk3' 'mpv' 'libsecret' 'libepoxy' 'libglvnd' 'gnutls' 'gtk-layer-shell')
-optdepends=('libayatana-appindicator: tray icon'
-            'webkit2gtk-4.1: embedded dynamic lyrics')
+depends=('gtk3' 'mpv' 'libsecret' 'libepoxy' 'libglvnd' 'gnutls' 'gtk-layer-shell' 'libayatana-appindicator')
+optdepends=('webkit2gtk-4.1: embedded dynamic lyrics')
 provides=('nekoplayer')
 conflicts=('nekoplayer')
 options=('!strip' '!debug')
@@ -25,7 +24,12 @@ noextract=("NekoPlayer-v${_releasever}-linux-x64.tar.gz" "NekoPlayer-v${_release
 
 post_install() {
   update-desktop-database -q /usr/share/applications 2>/dev/null || true
+  gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
   xdg-mime default top.nekoh2o.nekoplayer_desktop.desktop x-scheme-handler/nekoplayer 2>/dev/null || true
+}
+
+post_upgrade() {
+  post_install
 }
 
 package() {

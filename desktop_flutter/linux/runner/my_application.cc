@@ -181,6 +181,7 @@ static void apply_window_icon(GtkWindow* window) {
     }
   }
   gtk_window_set_icon_name(window, "nekoplayer");
+  gtk_window_set_default_icon_name("nekoplayer");
 }
 
 // Implements GApplication::activate.

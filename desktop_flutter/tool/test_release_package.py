@@ -50,6 +50,20 @@ class ReleasePackageTests(unittest.TestCase):
         self.assertIn("libmpv2 | libmpv1", source)
         self.assertIn("(mpv-libs or libmpv2)", source)
 
+    def test_linux_packages_recommend_status_notifier_backend(self):
+        source = Path(__file__).with_name("package_release.py").read_text(encoding="utf-8")
+        self.assertIn("libayatana-appindicator3-1", source)
+        self.assertIn("libayatana-appindicator-gtk3", source)
+
+    def test_portable_launcher_registers_desktop_entry(self):
+        from package_release import linux_launcher_script
+        script = linux_launcher_script()
+        self.assertTrue(script.startswith("#!/bin/sh\n"))
+        self.assertIn("top.nekoh2o.nekoplayer_desktop.desktop", script)
+        self.assertIn("Icon=nekoplayer", script)
+        self.assertIn('exec ./nekoplayer "$@"', script)
+        self.assertIn("NEKOPLAYER_NO_DESKTOP_INSTALL", script)
+
     def test_linux_staging_drops_the_jni_helper(self):
         with tempfile.TemporaryDirectory() as temporary:
             bundle = Path(temporary) / "bundle"

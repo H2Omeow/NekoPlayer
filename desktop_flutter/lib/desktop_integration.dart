@@ -45,6 +45,7 @@ class DesktopIntegration extends ChangeNotifier {
   double fontSize = 30;
   double opacity = .9;
   String? error;
+
   /// Receives URLs forwarded by native notifications (or the OS protocol
   /// handler, when the platform can route it through the channel).
   void Function(String uri)? onUri;
@@ -84,7 +85,10 @@ class DesktopIntegration extends ChangeNotifier {
       trayLyrics = value['trayLyrics'] as bool? ?? true;
       final savedX = value['overlayX'];
       final savedY = value['overlayY'];
-      if (savedX is num && savedY is num && savedX.isFinite && savedY.isFinite) {
+      if (savedX is num &&
+          savedY is num &&
+          savedX.isFinite &&
+          savedY.isFinite) {
         overlayX = savedX.toDouble();
         overlayY = savedY.toDouble();
       }
@@ -161,8 +165,12 @@ class DesktopIntegration extends ChangeNotifier {
     final arguments = call.arguments is Map ? call.arguments as Map : const {};
     final action = arguments['action'];
     if (call.method == 'trayChanged') {
+      final wasAvailable = trayAvailable;
       trayAvailable = arguments['available'] == true;
       if (!trayAvailable) closeToTray = false;
+      if (trayAvailable && !wasAvailable) {
+        unawaited(refreshTrayLabels());
+      }
       notifyListeners();
       return;
     }

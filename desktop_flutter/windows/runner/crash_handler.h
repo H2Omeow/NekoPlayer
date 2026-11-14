@@ -20,6 +20,9 @@ bool RedirectStandardStreams();
 // block) to logs\native.log. Never throws.
 void LogCaughtException(const char* where);
 
+// Appends |message| to logs\native.log. Never throws.
+void LogNative(const char* message);
+
 // Removes the unclean-shutdown marker (logs\session.json); call on orderly exit.
 void MarkCleanExit();
 

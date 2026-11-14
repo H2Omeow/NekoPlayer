@@ -38,6 +38,7 @@ struct DesktopIntegration {
   double rate = 1;
   gboolean positioning = FALSE;
   gboolean layer_shell = FALSE;
+  gboolean x11 = FALSE;
   gboolean dragging_lyrics = FALSE;
   gboolean has_lyrics_position = FALSE;
   double lyrics_x = 0;
@@ -47,7 +48,6 @@ struct DesktopIntegration {
   double drag_press_x = 0;
   double drag_press_y = 0;
   GObject* tray = nullptr;
-  GDBusProxy* tray_watcher = nullptr;
   gboolean indicator = FALSE;
   gboolean indicator_connected = FALSE;
   GtkWidget* tray_menu = nullptr;
@@ -119,6 +119,8 @@ struct IndicatorApi {
   GObject* (*create)(const gchar*, const gchar*, int) = nullptr;
   void (*status)(GObject*, int) = nullptr;
   void (*menu)(GObject*, GtkMenu*) = nullptr;
+  void (*icon)(GObject*, const gchar*) = nullptr;
+  void (*icon_full)(GObject*, const gchar*, const gchar*) = nullptr;
 };
 
 static const IndicatorApi& indicator_api() {
@@ -130,6 +132,8 @@ static const IndicatorApi& indicator_api() {
       loaded.create = reinterpret_cast<decltype(loaded.create)>(dlsym(module, "app_indicator_new"));
       loaded.status = reinterpret_cast<decltype(loaded.status)>(dlsym(module, "app_indicator_set_status"));
       loaded.menu = reinterpret_cast<decltype(loaded.menu)>(dlsym(module, "app_indicator_set_menu"));
+      loaded.icon = reinterpret_cast<decltype(loaded.icon)>(dlsym(module, "app_indicator_set_icon"));
+      loaded.icon_full = reinterpret_cast<decltype(loaded.icon_full)>(dlsym(module, "app_indicator_set_icon_full"));
       if (loaded.create != nullptr && loaded.status != nullptr && loaded.menu != nullptr) return loaded;
       dlclose(module);
     }
@@ -178,15 +182,8 @@ static const LayerShellApi& layer_shell_api() {
   return api;
 }
 
-static gboolean tray_host_available(DesktopIntegration* self) {
-  if (self->tray_watcher == nullptr) return FALSE;
-  g_autofree gchar* owner = g_dbus_proxy_get_name_owner(self->tray_watcher);
-  g_autoptr(GVariant) host = g_dbus_proxy_get_cached_property(self->tray_watcher, "IsStatusNotifierHostRegistered");
-  return owner != nullptr && host != nullptr && g_variant_is_of_type(host, G_VARIANT_TYPE_BOOLEAN) && g_variant_get_boolean(host);
-}
-
 static gboolean tray_available(DesktopIntegration* self) {
-  if (self->indicator) return self->indicator_connected && tray_host_available(self);
+  if (self->indicator) return self->indicator_connected;
   return self->tray != nullptr && gtk_status_icon_is_embedded(GTK_STATUS_ICON(self->tray));
 }
 
@@ -206,10 +203,6 @@ static void indicator_connection(GObject*, gboolean connected, gpointer data) {
   auto* self = static_cast<DesktopIntegration*>(data);
   self->indicator_connected = connected;
   tray_changed(nullptr, nullptr, self);
-}
-
-static void tray_host_changed(GDBusProxy*, GVariant*, const gchar* const*, gpointer data) {
-  tray_changed(nullptr, nullptr, data);
 }
 
 static void tray_show(GtkWidget*, gpointer data) {
@@ -333,29 +326,49 @@ static void apply_tray_labels(DesktopIntegration* self) {
   if (self->lyrics_window != nullptr) gtk_window_set_title(GTK_WINDOW(self->lyrics_window), self->lyrics_window_title.c_str());
 }
 
+static std::string bundled_icon_path() {
+  g_autofree gchar* executable = g_file_read_link("/proc/self/exe", nullptr);
+  if (executable == nullptr) return {};
+  g_autofree gchar* directory = g_path_get_dirname(executable);
+  g_autofree gchar* icon = g_build_filename(directory, "data", "nekoplayer.png", nullptr);
+  return g_file_test(icon, G_FILE_TEST_IS_REGULAR) ? std::string(icon) : std::string();
+}
+
 static void start_tray(DesktopIntegration* self) {
   if (self->tray != nullptr) return;
   self->quitting = FALSE;
-  self->tray_watcher = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION, G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START,
-      nullptr, "org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher", "org.kde.StatusNotifierWatcher", nullptr, nullptr);
   const auto& api = indicator_api();
-  self->indicator = api.create != nullptr && tray_host_available(self);
-  if (self->indicator) {
-    self->tray = api.create("nekoplayer", "multimedia-player", 1);
-    if (self->tray == nullptr) self->indicator = FALSE;
+  if (api.create != nullptr) {
+    // Do not gate this on the StatusNotifier watcher being visible right now:
+    // its properties are loaded asynchronously, and the indicator's
+    // connection-changed signal reports availability once the host arrives.
+    self->tray = api.create("nekoplayer", "nekoplayer", 0);
+    self->indicator = self->tray != nullptr;
   }
-  if (!self->indicator) {
-    g_clear_object(&self->tray_watcher);
-    if (!self->positioning) return;
-    self->tray = G_OBJECT(gtk_status_icon_new_from_icon_name("multimedia-player"));
+  if (self->indicator) {
+    // An absolute path makes libayatana load the bundled PNG itself, which
+    // works without installing an icon theme entry. The name fallback uses
+    // the icon installed by the DEB/RPM/PKGBUILD packages.
+    const std::string icon = bundled_icon_path();
+    if (api.icon_full != nullptr && !icon.empty()) {
+      api.icon_full(self->tray, icon.c_str(), "NekoPlayer");
+    } else if (api.icon != nullptr) {
+      api.icon(self->tray, "nekoplayer");
+    }
+  } else {
+    // GtkStatusIcon is XEmbed-only. On Wayland KDE has no XEmbed tray, so a
+    // GtkStatusIcon would never be embedded and must not be created.
+    if (!self->x11) return;
+    const std::string icon = bundled_icon_path();
+    self->tray = icon.empty()
+        ? G_OBJECT(gtk_status_icon_new_from_icon_name("nekoplayer"))
+        : G_OBJECT(gtk_status_icon_new_from_file(icon.c_str()));
     gtk_status_icon_set_title(GTK_STATUS_ICON(self->tray), "NekoPlayer");
     gtk_status_icon_set_tooltip_text(GTK_STATUS_ICON(self->tray), self->tray_tooltip_text.c_str());
   }
   update_tray_menu(self);
   if (self->indicator) {
     g_signal_connect(self->tray, "connection-changed", G_CALLBACK(indicator_connection), self);
-    g_signal_connect(self->tray_watcher, "g-properties-changed", G_CALLBACK(tray_host_changed), self);
-    g_signal_connect(self->tray_watcher, "notify::g-name-owner", G_CALLBACK(tray_changed), self);
     api.status(self->tray, 1);
     g_object_get(self->tray, "connected", &self->indicator_connected, nullptr);
   } else {
@@ -372,10 +385,8 @@ static void stop_tray(DesktopIntegration* self) {
   if (self->close_handler != 0 && g_signal_handler_is_connected(self->main_window, self->close_handler)) g_signal_handler_disconnect(self->main_window, self->close_handler);
   self->close_handler = 0;
   if (self->tray != nullptr) g_signal_handlers_disconnect_by_data(self->tray, self);
-  if (self->tray_watcher != nullptr) g_signal_handlers_disconnect_by_data(self->tray_watcher, self);
   if (self->indicator && self->tray != nullptr) indicator_api().status(self->tray, 0);
   g_clear_object(&self->tray);
-  g_clear_object(&self->tray_watcher);
   self->indicator = self->indicator_connected = FALSE;
   if (self->tray_menu != nullptr) {
     gtk_widget_destroy(self->tray_menu);
@@ -891,6 +902,7 @@ DesktopIntegration* desktop_integration_new(FlView* view, GtkWindow* window) {
   self->main_window = GTK_WINDOW(g_object_ref(window));
   const char* display_type = G_OBJECT_TYPE_NAME(gtk_widget_get_display(GTK_WIDGET(window)));
   const gboolean x11 = g_strcmp0(display_type, "GdkX11Display") == 0;
+  self->x11 = x11;
   const auto& layer = layer_shell_api();
   self->layer_shell = !x11 && layer.is_supported != nullptr && layer.is_supported();
   self->positioning = x11 || self->layer_shell;

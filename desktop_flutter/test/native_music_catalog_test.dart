@@ -73,6 +73,67 @@ void main() {
     },
   );
 
+  test('Netease search derives album artwork from picId', () async {
+    final catalog = NativeMusicCatalog(
+      clock: () => 1234,
+      initializeSessions: false,
+      transport: (request) async => {
+        'code': 200,
+        'result': {
+          'songCount': 4,
+          'songs': [
+            {
+              'id': 11,
+              'name': '数字封面',
+              'artists': [
+                {'name': 'Neko'},
+              ],
+              'album': {'name': '专辑', 'picId': 5639395138885805},
+            },
+            {
+              'id': 12,
+              'name': '旧接口封面',
+              'artists': [
+                {'name': 'Neko'},
+              ],
+              'al': {
+                'name': '旧专辑',
+                'picUrl': 'http://p3.music.126.net/abc/123.jpg',
+              },
+            },
+            {
+              'id': 13,
+              'name': '替代字段封面',
+              'artists': [
+                {'name': 'Neko'},
+              ],
+              'album': {'name': '专辑', 'pic': 109951163038292176},
+            },
+            {
+              'id': 14,
+              'name': '无封面',
+              'artists': [
+                {'name': 'Neko'},
+              ],
+              'album': {'name': '专辑', 'picId': 0},
+            },
+          ],
+        },
+      },
+    );
+    final result = await catalog.search(MusicProvider.netease, '封面', 1);
+    expect(
+      result.songs[0].artwork,
+      'https://p1.music.126.net/6y-UleORITEDbvrOLV0Q8A==/5639395138885805.jpg',
+    );
+    expect(result.songs[1].artwork, 'https://p3.music.126.net/abc/123.jpg');
+    expect(
+      result.songs[2].artwork,
+      'https://p1.music.126.net/yD9vbpuILH-tqNRIaP640g==/109951163038292176.jpg',
+    );
+    expect(result.songs[3].artwork, isEmpty);
+  });
+
   test(
     'Kugou signature matches native protocol and keeps hash identity',
     () async {

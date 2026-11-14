@@ -44,6 +44,7 @@ class NativeMusicCatalog
   final AccountStore accounts;
   late final BuiltinMusicPlugin plugin;
   final PluginSubscriptions? subscriptions;
+  static const _neteaseMagic = r'3go8&$8*3*3h0k(2)2';
   ScriptMusicCatalog get scripts => ScriptMusicCatalog(subscriptions!.runtime);
 
   String _lxPlatform(MusicPluginSource source, OnlineSong song) {
@@ -139,7 +140,7 @@ class NativeMusicCatalog
   Future<void> _registerNetease() async {
     try {
       final device = accounts.neteaseDevice;
-      const magic = r'3go8&$8*3*3h0k(2)2';
+      const magic = _neteaseMagic;
       final xor = [
         for (var index = 0; index < device.length; index++)
           device.codeUnitAt(index) ^ magic.codeUnitAt(index % magic.length),
@@ -1614,6 +1615,22 @@ class NativeMusicCatalog
     );
   }
 
+  // NetEase search reports only a picId for albums. The CDN path salt is
+  // derived from the picId with the same key used by the anonymous login.
+  static String _neteaseArtwork(Object? picId) {
+    final id = _text(picId);
+    if (id.isEmpty || (_number(id) ?? 0) == 0) return '';
+    final xor = [
+      for (var index = 0; index < id.length; index++)
+        id.codeUnitAt(index) ^
+            _neteaseMagic.codeUnitAt(index % _neteaseMagic.length),
+    ];
+    final salt = base64Encode(
+      md5.convert(xor).bytes,
+    ).replaceAll('/', '_').replaceAll('+', '-');
+    return 'https://p1.music.126.net/$salt/$id.jpg';
+  }
+
   SearchPage _neteasePage(Map<String, dynamic> body, int page) {
     if (body['code'] != 200) {
       throw MusicSearchException(tr('网易云暂未返回搜索结果，请稍后重试。'));
@@ -1622,13 +1639,20 @@ class NativeMusicCatalog
     final songs = _items(result['songs'])
         .map((song) {
           final artists = _items(song['artists'] ?? song['ar']);
+          final album = _object(song['album'] ?? song['al']);
+          final direct = _text(album['picUrl'] ?? album['blurPicUrl']);
+          final artwork = direct.isNotEmpty
+              ? (direct.startsWith('http://')
+                    ? 'https://${direct.substring(7)}'
+                    : direct)
+              : _neteaseArtwork(album['picId'] ?? album['pic']);
           return OnlineSong(
             provider: MusicProvider.netease,
             id: _text(song['id']),
             title: _text(song['name']),
             artist: artists.map((artist) => _text(artist['name'])).join(' / '),
-            album: _text(_object(song['album'] ?? song['al'])['name']),
-            artwork: _text(_object(song['album'] ?? song['al'])['picUrl']),
+            album: _text(album['name']),
+            artwork: artwork,
           );
         })
         .where((song) => song.id.isNotEmpty && song.title.isNotEmpty)

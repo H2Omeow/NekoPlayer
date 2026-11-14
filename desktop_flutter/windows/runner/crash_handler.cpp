@@ -14,6 +14,7 @@
 
 #include <atomic>
 #include <cstdlib>
+#include <cstring>
 #include <cwchar>
 #include <exception>
 #include <string>
@@ -200,6 +201,61 @@ LONG WINAPI UnhandledFilter(EXCEPTION_POINTERS* pointers) {
   return EXCEPTION_EXECUTE_HANDLER;
 }
 
+// Flutter 3.47.7 dereferences a null AXNode parent in
+// AccessibilityBridge::CreateRemoveReparentedNodesUpdate when an accessibility
+// client attaches (flutter/flutter#175041). The WM_GETOBJECT filter in
+// flutter_window.cpp normally prevents the bridge from being created, but a
+// request that arrives before the filter is installed still enables it. This
+// handler catches that exact fault and resumes at the loop's "skip this
+// child" path, matching the upstream fix (flutter/flutter#190903).
+// The instruction offsets are specific to the x64 engine binary.
+#if defined(_M_X64)
+constexpr ULONG_PTR kEngineFaultOffset = 0x3c1ca;
+constexpr ULONG_PTR kEngineCodeOffset = 0x3c1c6;
+constexpr ULONG_PTR kEngineContinueOffset = 0x3c2ac;
+
+constexpr BYTE kEngineCode[] = {
+    0x48, 0x8b, 0x40, 0x20, 0x8b, 0x40, 0x48, 0x3b,
+    0x46, 0x18, 0x0f, 0x84, 0xd6, 0x00, 0x00, 0x00,
+};
+constexpr BYTE kEngineContinue[] = {
+    0x49, 0x83, 0xc5, 0x04, 0x4d, 0x39, 0xe5,
+    0x0f, 0x85, 0xed, 0xfe, 0xff, 0xff,
+};
+
+LONG CALLBACK EngineAccessibilityHotfix(EXCEPTION_POINTERS* pointers) {
+  thread_local bool handling = false;
+  if (handling || pointers == nullptr || pointers->ExceptionRecord == nullptr ||
+      pointers->ContextRecord == nullptr) {
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+  EXCEPTION_RECORD* record = pointers->ExceptionRecord;
+  if (record->ExceptionCode != EXCEPTION_ACCESS_VIOLATION ||
+      record->NumberParameters < 2 || record->ExceptionInformation[0] != 0 ||
+      record->ExceptionInformation[1] != 0x48) {
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+  HMODULE engine = GetModuleHandleW(L"flutter_windows.dll");
+  if (engine == nullptr) return EXCEPTION_CONTINUE_SEARCH;
+  const ULONG_PTR base = reinterpret_cast<ULONG_PTR>(engine);
+  CONTEXT* context = pointers->ContextRecord;
+  if (context->Rip != base + kEngineFaultOffset ||
+      std::memcmp(reinterpret_cast<const void*>(base + kEngineCodeOffset),
+                  kEngineCode, sizeof(kEngineCode)) != 0 ||
+      std::memcmp(reinterpret_cast<const void*>(base + kEngineContinueOffset),
+                  kEngineContinue, sizeof(kEngineContinue)) != 0) {
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+  handling = true;
+  crash_handler::LogNative(
+      "hotfix: skipped Flutter accessibility node with null parent "
+      "(flutter/flutter#175041)");
+  context->Rip = static_cast<DWORD64>(base + kEngineContinueOffset);
+  handling = false;
+  return EXCEPTION_CONTINUE_EXECUTION;
+}
+#endif  // defined(_M_X64)
+
 void AbortSignal(int) {
   ReportSynthetic(L"abort() called (SIGABRT)", std::string());
   TerminateProcess(GetCurrentProcess(), 3);
@@ -270,6 +326,9 @@ void Install() {
   if (g_installed) return;
   g_installed = true;
   EnsureDirectories();
+#if defined(_M_X64)
+  AddVectoredExceptionHandler(1, EngineAccessibilityHotfix);
+#endif
   SetUnhandledExceptionFilter(UnhandledFilter);
   signal(SIGABRT, AbortSignal);
   _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
@@ -304,6 +363,19 @@ bool RedirectStandardStreams() {
   }
   setvbuf(stderr, nullptr, _IONBF, 0);
   return true;
+}
+
+void LogNative(const char* message) {
+  if (g_logs_dir.empty()) return;
+  const std::string line = std::string("[") + std::to_string(GetTickCount64()) +
+                           "] " + (message != nullptr ? message : "") + "\r\n";
+  const HANDLE file = CreateFileW((g_logs_dir + L"\\native.log").c_str(), FILE_APPEND_DATA,
+                                  FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS,
+                                  FILE_ATTRIBUTE_NORMAL, nullptr);
+  if (file == INVALID_HANDLE_VALUE) return;
+  DWORD written = 0;
+  WriteFile(file, line.data(), static_cast<DWORD>(line.size()), &written, nullptr);
+  CloseHandle(file);
 }
 
 void LogCaughtException(const char* where) {

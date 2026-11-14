@@ -147,8 +147,15 @@ void main() {
       final previous = calls.length;
       await desktop.configureTray(true);
       expect(calls.length, previous);
+      final beforeRecovery = calls.length;
       await send('trayChanged', {'available': true});
       expect(desktop.closeToTray, isFalse);
+      expect(
+        calls
+            .skip(beforeRecovery)
+            .where((call) => call.method == 'configureTray'),
+        isNotEmpty,
+      );
     },
   );
 
