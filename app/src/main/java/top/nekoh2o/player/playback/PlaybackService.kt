@@ -68,7 +68,7 @@ class PlaybackService : MediaSessionService() {
             }
 
         val httpFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent("NekoPlayer/1.0")
+            .setUserAgent(top.nekoh2o.player.data.plugins.GatewayPlaybackHeaders.browserUserAgent)
             .setAllowCrossProtocolRedirects(true)
 
         // 上游使用 DefaultDataSource，同时支持网络、file:// 与 content:// URI。
