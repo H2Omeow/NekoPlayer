@@ -37,13 +37,15 @@ class AnimemusicAdapter : PluginAdapter {
     override fun qualities(source: PluginSource, song: Song): List<AudioQuality> = source.plugin.descriptor.strings("qualities").map(::pluginQuality)
 
     override suspend fun resolve(source: PluginSource, song: Song, quality: AudioQuality): ResolvedAudio? {
-        val result = request(source, "music/url", mapOf("source" to song.providerSource.ifBlank { source.platform },
+        val platform = song.providerSource.ifBlank { source.platform }
+        val result = request(source, "music/url", mapOf("source" to platform,
             "musicId" to song.providerMediaId.ifBlank { song.hash }, "quality" to qualityKey(quality.id)))
         if (result.string("is_free_part").toIntOrNull()?.let { it > 0 } == true || result["freeTrialInfo"]?.let { it != JsonNull } == true) return null
         val url = result.string("url").takeIf(::validPluginUrl) ?: return null
         val actual = qualityKey(result.string("quality").ifBlank { quality.id })
         val available = qualities(source, song).firstOrNull { qualityKey(it.id) == actual } ?: return null
-        return ResolvedAudio(available.copy(size = result.string("size").toLongOrNull() ?: 0), url)
+        return ResolvedAudio(available.copy(size = result.string("size").toLongOrNull() ?: 0), url,
+            GatewayPlaybackHeaders.forPlatform(platform))
     }
 
     override suspend fun lyric(source: PluginSource, song: Song): List<LyricLine> {

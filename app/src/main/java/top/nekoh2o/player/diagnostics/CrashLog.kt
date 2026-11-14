@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import java.io.File
 import java.io.PrintWriter
+import java.io.StringWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -38,29 +39,27 @@ object CrashLog {
         }
     }
 
-    fun latest(): File? {
-        val files = directory?.listFiles() ?: return null
-        return files.filter { it.isFile && it.name.startsWith("crash-") }
-            .maxByOrNull { it.lastModified() }
-    }
+    fun latest(): File? = all().firstOrNull()
+
+    fun all(): List<File> = (directory?.listFiles() ?: emptyArray())
+        .filter { it.isFile && it.name.startsWith("crash-") }
+        .sortedByDescending { it.lastModified() }
 
     private fun write(thread: Thread, error: Throwable) {
         val dir = directory ?: return
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val file = File(dir, "crash-$stamp-${thread.id}.log")
+        val trace = StringWriter().also { error.printStackTrace(PrintWriter(it)) }.toString()
         file.bufferedWriter().use { writer ->
             writer.appendLine("time=${Date()}")
             writer.appendLine("thread=${thread.name} (${thread.id})")
             writer.appendLine("version=$version")
             writer.appendLine("device=${Build.MANUFACTURER} ${Build.MODEL} (API ${Build.VERSION.SDK_INT})")
             writer.appendLine()
-            PrintWriter(writer).use { error.printStackTrace(it) }
+            writer.append(AppLog.redact(trace))
         }
         Log.e(TAG, "crash log written to ${file.absolutePath}", error)
-        dir.listFiles()
-            ?.filter { it.isFile }
-            ?.sortedByDescending { it.lastModified() }
-            ?.drop(MAX_FILES)
-            ?.forEach { runCatching { it.delete() } }
+        AppLog.error("crash", "uncaught exception on ${thread.name} (${thread.id})", error)
+        all().drop(MAX_FILES).forEach { runCatching { it.delete() } }
     }
 }

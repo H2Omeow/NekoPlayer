@@ -3410,10 +3410,30 @@
       "ja": "音楽をインポート",
       "zh-TW": "匯入音樂"
     },
+    "导出失败：{reason}": {
+      "en": "Export failed: {reason}",
+      "ja": "エクスポートに失敗しました：{reason}",
+      "zh-TW": "匯出失敗：{reason}"
+    },
+    "导出应用数据": {
+      "en": "Export app data",
+      "ja": "アプリデータをエクスポート",
+      "zh-TW": "匯出應用程式資料"
+    },
+    "导出设置、收藏、歌单、音源与下载记录，不包含登录凭据和音频文件。": {
+      "en": "Export settings, favorites, playlists, sources and download records. Sign-in credentials and audio files are not included.",
+      "ja": "設定、お気に入り、プレイリスト、音源、ダウンロード記録をエクスポートします。ログイン情報と音声ファイルは含まれません。",
+      "zh-TW": "匯出設定、收藏、歌單、音源與下載記錄，不包含登入憑證和音訊檔案。"
+    },
     "导出诊断信息": {
       "en": "Export diagnostic info",
       "ja": "診断情報をエクスポート",
       "zh-TW": "匯出診斷資訊"
+    },
+    "导出诊断信息与应用数据": {
+      "en": "Export diagnostic info and app data",
+      "ja": "診断情報とアプリデータをエクスポート",
+      "zh-TW": "匯出診斷資訊與應用程式資料"
     },
     "封面": {
       "en": "Cover",
@@ -4024,6 +4044,21 @@
       "en": "When the app exits unexpectedly it records diagnostic information that you can copy and send to the developer.",
       "ja": "アプリが異常終了した際の診断情報を記録します。コピーして開発者に送信できます。",
       "zh-TW": "應用程式異常結束時會記錄診斷資訊，可複製後傳送給開發者。"
+    },
+    "应用数据": {
+      "en": "App data",
+      "ja": "アプリデータ",
+      "zh-TW": "應用程式資料"
+    },
+    "应用数据已导出": {
+      "en": "App data exported",
+      "ja": "アプリデータをエクスポートしました",
+      "zh-TW": "應用程式資料已匯出"
+    },
+    "应用数据已导出：{path}": {
+      "en": "App data exported to {path}",
+      "ja": "アプリデータを {path} にエクスポートしました",
+      "zh-TW": "應用程式資料已匯出：{path}"
     },
     "开启": {
       "en": "On",
@@ -5090,6 +5125,11 @@
       "ja": "エフェクト",
       "zh-TW": "效果"
     },
+    "数据与备份": {
+      "en": "Data and backup",
+      "ja": "データとバックアップ",
+      "zh-TW": "資料與備份"
+    },
     "数据与账号": {
       "en": "Data & account",
       "ja": "データとアカウント",
@@ -5284,6 +5324,11 @@
       "en": "Can't write",
       "ja": "書き込めません",
       "zh-TW": "無法寫入"
+    },
+    "无法写入文件": {
+      "en": "Could not write the file",
+      "ja": "ファイルに書き込めません",
+      "zh-TW": "無法寫入檔案"
     },
     "无法创建 WebKitGTK 视图": {
       "en": "Cannot create the WebKitGTK view.",
@@ -8769,6 +8814,11 @@
       "en": "Comments must be 1-2000 characters.",
       "ja": "コメントは 1〜2000 文字である必要があります。",
       "zh-TW": "留言需為 1–2000 個字元。"
+    },
+    "诊断信息已导出": {
+      "en": "Diagnostics exported",
+      "ja": "診断情報をエクスポートしました",
+      "zh-TW": "診斷資訊已匯出"
     },
     "诊断信息已导出：{path}": {
       "en": "Diagnostics exported to {path}",

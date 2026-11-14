@@ -45,6 +45,19 @@ class NativeMusicCatalog
   late final BuiltinMusicPlugin plugin;
   final PluginSubscriptions? subscriptions;
   static const _neteaseMagic = r'3go8&$8*3*3h0k(2)2';
+  // Bilibili's DASH audio proxy has been observed returning an HTML block page
+  // for plain GET requests without a Range header, while requests with Range
+  // succeed. Players such as FFmpeg send Range on their own, but ExoPlayer does
+  // not send one for the initial open, so Bilibili audio supplies it
+  // explicitly. The referer and a browser user agent keep the request
+  // compatible with the CDN.
+  static const _bilibiliPlaybackHeaders = {
+    'Referer': 'https://www.bilibili.com/',
+    'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Range': 'bytes=0-',
+  };
   ScriptMusicCatalog get scripts => ScriptMusicCatalog(subscriptions!.runtime);
 
   String _lxPlatform(MusicPluginSource source, OnlineSong song) {
@@ -1766,6 +1779,9 @@ class NativeMusicCatalog
         size: _number(body['size']) ?? 0,
         format: _text(body['format']),
         checksum: _text(body['md5']),
+        headers: song.provider.gateway == 'bilibili'
+            ? _bilibiliPlaybackHeaders
+            : const {},
       );
     }
     throw AudioUnavailableException(tr('音源服务未返回可用的完整音频。'));

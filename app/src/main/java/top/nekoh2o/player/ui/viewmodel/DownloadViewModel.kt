@@ -14,6 +14,7 @@ import top.nekoh2o.player.data.model.Song
 import top.nekoh2o.player.data.repo.DownloadIndex
 import top.nekoh2o.player.data.repo.Downloader
 import top.nekoh2o.player.data.repo.MusicRepository
+import top.nekoh2o.player.diagnostics.AppLog
 import top.nekoh2o.player.ui.manager.LyricManager
 
 /**
@@ -70,8 +71,9 @@ class DownloadViewModel(app: Application) : AndroidViewModel(app) {
         val dirUri = downloadDirUri?.ifBlank { null }
 
         val result = runCatching {
-            Downloader.download(getApplication(), song, url, audio.quality.id, lrcText, dirUri)
+            Downloader.download(getApplication(), song, url, audio.quality.id, lrcText, dirUri, audio.headers)
         }.getOrElse {
+            AppLog.warn("download", "下载失败 source=${song.source} id=${song.id}", it)
             onError(tr("下载失败：{reason}", "reason" to it.message))
             return
         }

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Folder
@@ -36,7 +37,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import top.nekoh2o.player.data.model.AppSettings
 import top.nekoh2o.player.data.model.BgSource
+import top.nekoh2o.player.diagnostics.AppDataExporter
 import top.nekoh2o.player.diagnostics.CrashLog
+import top.nekoh2o.player.diagnostics.DiagnosticsReporter
 import top.nekoh2o.player.i18n.NekoI18n
 import top.nekoh2o.player.i18n.NekoI18n.tr
 import top.nekoh2o.player.ui.PlayerViewModel
@@ -55,7 +58,13 @@ import top.nekoh2o.player.ui.components.SettingsTile
 import top.nekoh2o.player.ui.theme.CustomFont
 import top.nekoh2o.player.ui.theme.NekoDefaults
 import top.nekoh2o.player.ui.theme.NekoSpace
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /** 设置页的各个子页面。 */
 enum class SettingsDestination(private val rawTitle: String) {
@@ -66,6 +75,7 @@ enum class SettingsDestination(private val rawTitle: String) {
     CLOUD_SYNC("云端同步"),
     ACCOUNT("音乐平台 Cookie"),
     ADVANCED("后台播放"),
+    BACKUP("数据与备份"),
     CACHE("缓存管理"),
     DOWNLOADS("下载管理");
 
@@ -107,6 +117,7 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                     cookieProvider = provider
                 }
                 SettingsDestination.ADVANCED -> AdvancedSettings(vm, LocalContext.current)
+                SettingsDestination.BACKUP -> BackupSettings(LocalContext.current)
                 else -> Unit
             }
         }
@@ -162,6 +173,12 @@ fun SettingsHome(
                 subtitle = tr("手动管理网易云 / 酷狗登录"),
                 icon = Icons.Outlined.Key,
                 onClick = { onOpen(SettingsDestination.ACCOUNT) }
+            )
+            SettingsTile(
+                title = tr("数据与备份"),
+                subtitle = tr("导出诊断信息与应用数据"),
+                icon = Icons.Outlined.Archive,
+                onClick = { onOpen(SettingsDestination.BACKUP) }
             )
         }
         SettingsSection(title = tr("系统")) {
@@ -447,12 +464,65 @@ private fun AdvancedSettings(vm: PlayerViewModel, context: Context) {
     ) {
         SettingsTile(title = tr("申请电池优化豁免"), onClick = { vm.requestIgnoreBatteryOptimizations(context) })
     }
+    InlineNotice(
+        tr("MIUI、ColorOS、HarmonyOS 等系统需要手动允许自启动：系统设置 → 应用管理 → NekoPlayer → 自启动 / 后台限制。")
+    )
+}
+
+@Composable
+private fun BackupSettings(context: Context) {
+    val scope = rememberCoroutineScope()
     val crashLog = remember { CrashLog.latest() }
-    if (crashLog != null) {
-        SettingsSection(
-            title = tr("故障诊断"),
-            description = tr("应用异常退出时会记录诊断信息，可复制后发送给开发者。")
-        ) {
+    val diagnosticsExporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri: Uri? ->
+        if (uri != null) scope.launch {
+            val result = runCatching {
+                val report = withContext(Dispatchers.IO) {
+                    DiagnosticsReporter.build(context.applicationContext)
+                }
+                writeExportFile(context, uri, report)
+            }
+            Toast.makeText(
+                context,
+                result.fold(
+                    { tr("诊断信息已导出") },
+                    { tr("导出失败：{reason}", "reason" to (it.message ?: tr("操作失败"))) }
+                ),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+    val dataExporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri != null) scope.launch {
+            val result = runCatching {
+                val data = AppDataExporter.build(context.applicationContext)
+                writeExportFile(context, uri, data)
+            }
+            Toast.makeText(
+                context,
+                result.fold(
+                    { tr("应用数据已导出") },
+                    { tr("导出失败：{reason}", "reason" to (it.message ?: tr("操作失败"))) }
+                ),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    SettingsSection(
+        title = tr("崩溃日志与诊断"),
+        description = tr("查看或导出运行日志，反馈问题时附上")
+    ) {
+        SettingsTile(
+            title = tr("导出诊断信息"),
+            onClick = {
+                diagnosticsExporter.launch("nekoplayer-diagnostics-${exportStamp()}.txt")
+            }
+        )
+        if (crashLog != null) {
             SettingsTile(
                 title = tr("复制最近崩溃日志"),
                 onClick = {
@@ -468,10 +538,28 @@ private fun AdvancedSettings(vm: PlayerViewModel, context: Context) {
             )
         }
     }
-    InlineNotice(
-        tr("MIUI、ColorOS、HarmonyOS 等系统需要手动允许自启动：系统设置 → 应用管理 → NekoPlayer → 自启动 / 后台限制。")
-    )
+    SettingsSection(
+        title = tr("应用数据"),
+        description = tr("导出设置、收藏、歌单、音源与下载记录，不包含登录凭据和音频文件。")
+    ) {
+        SettingsTile(
+            title = tr("导出应用数据"),
+            onClick = {
+                dataExporter.launch("nekoplayer-data-${exportStamp()}.json")
+            }
+        )
+    }
 }
+
+private suspend fun writeExportFile(context: Context, uri: Uri, text: String) =
+    withContext(Dispatchers.IO) {
+        context.contentResolver.openOutputStream(uri)?.use { output ->
+            output.write(text.toByteArray(Charsets.UTF_8))
+        } ?: error(tr("无法写入文件"))
+    }
+
+private fun exportStamp(): String =
+    SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
 
 // ========== 缓存管理页面 ==========
 @Composable

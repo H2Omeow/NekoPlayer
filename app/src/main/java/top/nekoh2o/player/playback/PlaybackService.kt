@@ -34,6 +34,7 @@ import top.nekoh2o.player.data.model.AudioEffectSettings
 import top.nekoh2o.player.data.repo.DownloadIndex
 import top.nekoh2o.player.data.repo.MusicRepository
 import top.nekoh2o.player.data.store.SettingsStore
+import top.nekoh2o.player.diagnostics.AppLog
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -61,7 +62,10 @@ class PlaybackService : MediaSessionService() {
 
         // 缓存数据库损坏时必须继续提供播放能力，否则 MediaController 连接失败会导致应用启动闪退
         runCatching { MusicCache.init(this) }
-            .onFailure { Log.e(TAG, "音乐缓存初始化失败，本次启动不启用缓存", it) }
+            .onFailure {
+                Log.e(TAG, "音乐缓存初始化失败，本次启动不启用缓存", it)
+                AppLog.error("playback", "音乐缓存初始化失败，本次启动不启用缓存", it)
+            }
 
         val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent("NekoPlayer/1.0")
@@ -101,6 +105,7 @@ class PlaybackService : MediaSessionService() {
             val audio = try { runBlocking {
                 top.nekoh2o.player.data.repo.SongQualityRepository().resolvePlayback(song, CookieStore.level)
             } } catch (e: Exception) {
+                AppLog.error("playback", "解析播放地址失败 source=${song.source} id=${song.id}", e)
                 if (settingsStore.load().cacheEnabled) {
                     MusicCache.offlineKey(song, CookieStore.level)?.let { cached ->
                         return@Factory dataSpec.buildUpon().setKey(cached).build()
@@ -108,7 +113,10 @@ class PlaybackService : MediaSessionService() {
                 }
                 throw java.io.IOException(e.message ?: tr("歌曲音质查询失败"), e)
             }
-            if (audio == null) throw java.io.IOException(tr("当前账号没有该歌曲的可播放音质"))
+            if (audio == null) {
+                AppLog.warn("playback", "没有可播放音质 source=${song.source} id=${song.id}")
+                throw java.io.IOException(tr("当前账号没有该歌曲的可播放音质"))
+            }
             val qualityKey = key + ":quality:" + audio.quality.id
             dataSpec.buildUpon().setUri(Uri.parse(audio.url)).setKey(qualityKey)
                 .setHttpRequestHeaders(dataSpec.httpRequestHeaders + audio.headers).build()
@@ -157,6 +165,11 @@ class PlaybackService : MediaSessionService() {
             }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                AppLog.error(
+                    "playback",
+                    "播放器错误 code=${error.errorCodeName} ${error.message.orEmpty()}",
+                    error
+                )
                 pendingFadeIn = false
                 cancelFade(resetVolume = true)
             }
@@ -185,6 +198,7 @@ class PlaybackService : MediaSessionService() {
         val session = runCatching { MediaSession.Builder(this, fadingPlayer).build() }
             .onFailure { error ->
                 Log.e(TAG, "创建媒体会话失败", error)
+                AppLog.error("playback", "创建媒体会话失败", error)
                 runCatching { player.release() }
                 exoPlayer = null
             }

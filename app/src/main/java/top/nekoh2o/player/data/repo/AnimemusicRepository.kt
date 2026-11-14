@@ -51,7 +51,8 @@ class AnimemusicRepository(private val api: AnimemusicApi = ApiFactory.animemusi
             else -> returned
         }
         val format = qualities.firstOrNull { it.id == actual } ?: return null
-        return ResolvedAudio(format.copy(size = response.size), url)
+        return ResolvedAudio(format.copy(size = response.size), url,
+            top.nekoh2o.player.data.plugins.GatewayPlaybackHeaders.forPlatform(platform))
     }
 
     suspend fun lyric(song: Song): List<top.nekoh2o.player.data.model.LyricLine> {

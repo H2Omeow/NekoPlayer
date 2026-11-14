@@ -134,6 +134,42 @@ void main() {
     expect(result.songs[3].artwork, isEmpty);
   });
 
+  test('Bilibili gateway audio carries CDN playback headers', () async {
+    final catalog = NativeMusicCatalog(
+      initializeSessions: false,
+      transport: (request) async {
+        expect(request.uri.path, endsWith('/music/url'));
+        return {
+          'code': 200,
+          'url': 'https://example.com/audio.m4s',
+          'quality': '320k',
+          'size': 1234,
+        };
+      },
+    );
+    final bilibili = await catalog.resolve(
+      const OnlineSong(
+        provider: MusicProvider.gatewayBilibili,
+        id: 'BV1Ek4y1r7Rg',
+        title: '夜曲',
+        artist: '周杰伦',
+      ),
+    );
+    expect(bilibili.headers['Range'], 'bytes=0-');
+    expect(bilibili.headers['Referer'], 'https://www.bilibili.com/');
+    expect(bilibili.headers['User-Agent'], contains('Mozilla/5.0'));
+
+    final kugou = await catalog.resolve(
+      const OnlineSong(
+        provider: MusicProvider.gatewayKugou,
+        id: 'abcdef0123456789abcdef0123456789',
+        title: '夜曲',
+        artist: '周杰伦',
+      ),
+    );
+    expect(kugou.headers, isEmpty);
+  });
+
   test(
     'Kugou signature matches native protocol and keeps hash identity',
     () async {

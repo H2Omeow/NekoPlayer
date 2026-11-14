@@ -55,7 +55,8 @@ object Downloader {
         url: String,
         quality: String = "exhigh",
         lrcContent: String? = null,
-        dirUri: String? = null
+        dirUri: String? = null,
+        headers: Map<String, String> = emptyMap()
     ): DownloadedSong = withContext(Dispatchers.IO) {
 
         val task = DownloadTask(song = song, quality = quality, status = DownloadStatus.QUEUED)
@@ -72,16 +73,16 @@ object Downloader {
             // 流式写入音频（避免OOM）
             val audioUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 if (!dirUri.isNullOrEmpty()) {
-                    downloadStreamSafQ(context, dirUri, audioFileName, mime, url) { prog ->
+                    downloadStreamSafQ(context, dirUri, audioFileName, mime, url, headers) { prog ->
                         updateTask(song) { it.copy(status = DownloadStatus.DOWNLOADING, progress = prog) }
                     }
                 } else {
-                    downloadStreamMediaStore(context, audioFileName, mime, url) { prog ->
+                    downloadStreamMediaStore(context, audioFileName, mime, url, headers) { prog ->
                         updateTask(song) { it.copy(status = DownloadStatus.DOWNLOADING, progress = prog) }
                     }
                 }
             } else {
-                downloadStreamPublicDir(audioFileName, url) { prog ->
+                downloadStreamPublicDir(audioFileName, url, headers) { prog ->
                     updateTask(song) { it.copy(status = DownloadStatus.DOWNLOADING, progress = prog) }
                 }
             }
@@ -130,6 +131,7 @@ object Downloader {
         fileName: String,
         mime: String,
         url: String,
+        headers: Map<String, String>,
         onProgress: (Float) -> Unit
     ): String {
         val resolver = context.contentResolver
@@ -144,7 +146,7 @@ object Downloader {
 
         try {
             resolver.openOutputStream(uri)?.use { outputStream ->
-                downloadToStream(url, outputStream, onProgress)
+                downloadToStream(url, headers, outputStream, onProgress)
             } ?: error(tr("无法写入"))
 
             values.clear()
@@ -164,6 +166,7 @@ object Downloader {
         fileName: String,
         mime: String,
         url: String,
+        headers: Map<String, String>,
         onProgress: (Float) -> Unit
     ): String {
         val treeUri = Uri.parse(treeUriStr)
@@ -174,7 +177,7 @@ object Downloader {
 
         try {
             context.contentResolver.openOutputStream(file.uri)?.use { outputStream ->
-                downloadToStream(url, outputStream, onProgress)
+                downloadToStream(url, headers, outputStream, onProgress)
             } ?: error(tr("无法写入"))
             return file.uri.toString()
         } catch (e: Exception) {
@@ -187,6 +190,7 @@ object Downloader {
     private fun downloadStreamPublicDir(
         fileName: String,
         url: String,
+        headers: Map<String, String>,
         onProgress: (Float) -> Unit
     ): String {
         val dir = File(
@@ -197,7 +201,7 @@ object Downloader {
         val file = File(dir, fileName)
 
         FileOutputStream(file).use { outputStream ->
-            downloadToStream(url, outputStream, onProgress)
+            downloadToStream(url, headers, outputStream, onProgress)
         }
         return file.absolutePath
     }
@@ -205,10 +209,13 @@ object Downloader {
     // 通用流式下载方法（边下载边写入，不占用大量内存）
     private fun downloadToStream(
         url: String,
+        headers: Map<String, String>,
         outputStream: java.io.OutputStream,
         onProgress: (Float) -> Unit
     ) {
-        val req = Request.Builder().url(url).build()
+        val req = Request.Builder().url(url).apply {
+            headers.forEach { (name, value) -> header(name, value) }
+        }.build()
         ApiFactory.client().newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) error("HTTP ${resp.code}")
             val body = resp.body ?: error(tr("空响应"))
@@ -320,11 +327,15 @@ object Downloader {
     }.replace(Regex("[/\\\\:*?\"<>|]"), "_")
 
     private fun guessExtension(url: String): String {
-        val path = url.substringBefore('?').substringAfterLast('/')
+        // Bilibili audio is served through a proxy path; the real media URL is
+        // in the "u" query parameter and ends with .m4s (fragmented MP4 audio).
+        val decoded = runCatching { Uri.parse(url).getQueryParameter("u") }.getOrNull()
+        val path = (decoded ?: url).substringBefore('?').substringAfterLast('/')
         return when {
             path.endsWith(".flac", true) -> "flac"
             path.endsWith(".mp3", true)  -> "mp3"
             path.endsWith(".m4a", true) -> "m4a"
+            path.endsWith(".m4s", true) -> "m4a"
             path.endsWith(".mp4", true) -> "mp4"
             path.endsWith(".ogg", true) -> "ogg"
             path.endsWith(".wav", true) -> "wav"

@@ -54,6 +54,7 @@ import top.nekoh2o.player.data.sync.LocalSyncData
 import top.nekoh2o.player.data.sync.SyncEngine
 import top.nekoh2o.player.data.sync.SyncSection
 import top.nekoh2o.player.data.store.SettingsStore
+import top.nekoh2o.player.diagnostics.AppLog
 import top.nekoh2o.player.i18n.NekoI18n
 import top.nekoh2o.player.lyric.LyricParser
 import top.nekoh2o.player.playback.FloatingLyricService
@@ -250,6 +251,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 future.get()
             } catch (error: Exception) {
                 Log.e(TAG, "连接播放服务失败（第 ${controllerAttempts + 1} 次）", error)
+                AppLog.error(TAG, "连接播放服务失败（第 ${controllerAttempts + 1} 次）", error)
                 runCatching { MediaController.releaseFuture(future) }
                 if (controllerAttempts < MAX_CONTROLLER_ATTEMPTS) {
                     controllerAttempts++
@@ -589,7 +591,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 searching = false,
                 hasMore = result.hasMore
             )
-            result.error?.let(::toast)
+            result.error?.let {
+                AppLog.warn("search", "搜索失败 source=$source: $it")
+                toast(it)
+            }
         }
     }
 
@@ -608,7 +613,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 hasMore = result.hasMore
             )
             searchLoading = false
-            result.error?.let(::toast)
+            result.error?.let {
+                AppLog.warn("search", "加载更多失败 source=$source: $it")
+                toast(it)
+            }
         }
     }
 
@@ -1373,6 +1381,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             } catch (error: Exception) {
                 // 旧版本保存的队列可能缺字段或已损坏；清掉状态继续启动
                 android.util.Log.e("PlayerViewModel", "恢复播放状态失败，已清除保存的队列", error)
+                AppLog.error(TAG, "恢复播放状态失败，已清除保存的队列", error)
                 queue.clear()
                 runCatching { c.clearMediaItems() }
                 runCatching { settingsStore.clearPlaybackState() }

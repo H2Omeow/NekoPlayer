@@ -1,10 +1,12 @@
 import '../../i18n/tr.dart';
 import 'dart:async';
+import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../appearance_controller.dart';
+import '../../data/app_data_export.dart';
 import '../../data/native_music_catalog.dart';
 import '../../desktop_integration.dart';
 import '../../diagnostics/app_info.dart';
@@ -40,8 +42,9 @@ final qualities = [
 
 const rates = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
-String rateLabel(double rate) =>
-    rate == 1 ? tr('正常') : '${rate.toString().replaceAll(RegExp(r'\.0$'), '')}×';
+String rateLabel(double rate) => rate == 1
+    ? tr('正常')
+    : '${rate.toString().replaceAll(RegExp(r'\.0$'), '')}×';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -137,7 +140,7 @@ class SettingsPage extends StatelessWidget {
       return PanelPage(
         maxWidth: 760,
         children: [
-                PageHeader(title: tr('设置')),
+          PageHeader(title: tr('设置')),
           SettingsSection(
             title: tr('界面语言'),
             children: [
@@ -153,18 +156,13 @@ class SettingsPage extends StatelessWidget {
                   _ => tr('跟随系统'),
                 },
                 onTap: () async {
-                  final next = await choose<String>(
-                    context,
-                    tr('界面语言'),
-                    [
-                      ('system', tr('跟随系统')),
-                      ('zh-CN', tr('简体中文')),
-                      ('zh-TW', tr('繁體中文')),
-                      ('en', 'English'),
-                      ('ja', tr('日本語')),
-                    ],
-                    language.tag,
-                  );
+                  final next = await choose<String>(context, tr('界面语言'), [
+                    ('system', tr('跟随系统')),
+                    ('zh-CN', tr('简体中文')),
+                    ('zh-TW', tr('繁體中文')),
+                    ('en', 'English'),
+                    ('ja', tr('日本語')),
+                  ], language.tag);
                   if (next != null) await language.setTag(next);
                 },
               ),
@@ -257,24 +255,23 @@ class SettingsPage extends StatelessWidget {
                 title: tr('播放 / 暂停淡入淡出'),
                 subtitle: tr('播放或暂停时平滑调整音量，避免突然的响声'),
                 value: player.fadePlayback,
-                onChanged: (value) =>
-                    player.setFadePlayback(enabled: value),
+                onChanged: (value) => player.setFadePlayback(enabled: value),
               ),
               if (player.fadePlayback)
                 SettingsControlTile(
                   title: tr('淡入淡出时长'),
                   value: tr('{seconds} 秒', {
-                    'seconds': (player.fadeMilliseconds / 1000)
-                        .toStringAsFixed(1),
+                    'seconds': (player.fadeMilliseconds / 1000).toStringAsFixed(
+                      1,
+                    ),
                   }),
                   child: Slider(
                     min: 50,
                     max: 2000,
                     divisions: 39,
                     value: player.fadeMilliseconds.toDouble(),
-                    onChanged: (value) => player.setFadePlayback(
-                      milliseconds: value.round(),
-                    ),
+                    onChanged: (value) =>
+                        player.setFadePlayback(milliseconds: value.round()),
                   ),
                 ),
               SettingsSwitchTile(
@@ -305,8 +302,7 @@ class SettingsPage extends StatelessWidget {
                 icon: Icons.tune_rounded,
                 title: tr('性能与动态歌词'),
                 subtitle: tr('设备检测、界面动画与动态歌词画质'),
-                onTap: () =>
-                    push(context, const PerformanceSettingsPage()),
+                onTap: () => push(context, const PerformanceSettingsPage()),
               ),
             ],
           ),
@@ -422,6 +418,12 @@ class SettingsPage extends StatelessWidget {
                 onTap: () => unawaited(_shortcuts(context)),
               ),
               SettingsTile(
+                icon: Icons.archive_outlined,
+                title: tr('导出应用数据'),
+                subtitle: tr('导出设置、收藏、歌单、音源与下载记录，不包含登录凭据和音频文件。'),
+                onTap: () => unawaited(_exportData(context)),
+              ),
+              SettingsTile(
                 icon: Icons.bug_report_outlined,
                 title: tr('崩溃日志与诊断'),
                 subtitle: tr('查看或导出运行日志，反馈问题时附上'),
@@ -444,7 +446,7 @@ class SettingsPage extends StatelessWidget {
             ],
           ),
           if (!catalog.accounts.readable)
-                  Padding(
+            Padding(
               padding: EdgeInsets.only(bottom: NekoSpace.xl),
               child: InlineNotice(
                 tr('系统密钥环不可用，账号凭据暂时无法保存。Linux 请先解锁系统密钥环。'),
@@ -467,8 +469,36 @@ class SettingsPage extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(      SnackBar(content: Text(tr('目录选择未完成。'))));
+        ).showSnackBar(SnackBar(content: Text(tr('目录选择未完成。'))));
       }
+    }
+  }
+
+  Future<void> _exportData(BuildContext context) async {
+    final stamp = DateTime.now()
+        .toIso8601String()
+        .substring(0, 19)
+        .replaceAll(RegExp(r'[-:]'), '')
+        .replaceAll('T', '-');
+    try {
+      final location = await getSaveLocation(
+        suggestedName: 'nekoplayer-data-$stamp.json',
+        acceptedTypeGroups: [
+          XTypeGroup(label: 'JSON', extensions: ['json']),
+        ],
+      );
+      if (location == null) return;
+      final text = await AppDataExporter().build();
+      await File(location.path).writeAsString(text);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('应用数据已导出：{path}', {'path': location.path}))),
+      );
+    } catch (failure) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('导出失败：{reason}', {'reason': '$failure'}))),
+      );
     }
   }
 
@@ -486,7 +516,7 @@ class SettingsPage extends StatelessWidget {
         ),
       );
       return AlertDialog(
-        title:       Text(tr('键盘快捷键')),
+        title: Text(tr('键盘快捷键')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -502,7 +532,7 @@ class SettingsPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child:       Text(tr('知道了')),
+            child: Text(tr('知道了')),
           ),
         ],
       );
