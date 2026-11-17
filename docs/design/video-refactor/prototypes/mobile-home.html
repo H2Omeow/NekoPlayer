@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>移动端 · 视频首页</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="mobile">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.6"/><circle cx="16.5" cy="16" r="2.6"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10.5 9.2 4.8 2.8-4.8 2.8z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-5 4z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.4 7-5.4s6.2 1.8 7 5.4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5 19 12 8 18.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-cast" viewBox="0 0 24 24"><path d="M3 18V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v11z" transform="translate(0 -1)"/><path d="M3 20h.01M3 16a4 4 0 0 1 4 4"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9.4A4 4 0 0 1 12 8a4 4 0 0 1 7 2.6C19 15.6 12 20 12 20z"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 13.5h5"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 9.7l5.4-.8z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-danmaku" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="5" rx="2.5"/><rect x="3" y="14" width="11" height="4" rx="2"/></symbol>
+  <symbol id="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+</svg>
+
+<div class="phone">
+  <div class="statusbar">
+    <span>9:41</span>
+    <span class="right">
+      <span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:11px"></i></span>
+      <span class="battery"><i></i></span>
+    </span>
+  </div>
+
+  <div class="appbar">
+    <h1>视频</h1>
+    <div class="grow"></div>
+    <div class="iconbtn"><svg class="ic"><use href="#i-search"/></svg></div>
+    <div class="avatar" style="width:30px;height:30px;box-shadow:0 0 0 1.5px rgba(240,84,110,.6)"></div>
+  </div>
+
+  <div class="chips">
+    <div class="chip on">推荐</div>
+    <div class="chip">关注</div>
+    <div class="chip">热门</div>
+    <div class="chip">音乐现场</div>
+    <div class="chip">MV</div>
+    <div class="chip">知识</div>
+  </div>
+
+  <div class="scroll">
+    <div class="hero">
+      <div class="art a1 scene"><div class="sun"></div><div class="ring"></div></div>
+      <div class="shade"></div>
+      <div class="top">
+        <div class="tag warn">专题</div>
+        <div class="tag">4K</div>
+        <div class="tag">弹幕 3.2 万</div>
+      </div>
+      <div class="info">
+        <h3>东京街头 Live Session<br>Neko Sessions Vol.12</h3>
+        <div class="meta">
+          <span>月见制作组</span><span class="dot"></span><span>128.4 万播放</span>
+          <span class="dot"></span><span>32:16</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="head">
+        <h2>继续观看</h2>
+        <div class="more" style="display:flex;align-items:center;gap:2px">全部<svg class="ic xs"><use href="#i-back" style="transform:rotate(180deg)"/></svg></div>
+      </div>
+      <div class="rail">
+        <div class="vcard-s">
+          <div class="thumb">
+            <div class="art a2"></div>
+            <div class="progress"><i style="width:62%"></i></div>
+            <div class="badge dur">还剩 24:10</div>
+          </div>
+          <h4>「花に亡霊」吉他指弹 · 一次过</h4>
+        </div>
+        <div class="vcard-s">
+          <div class="thumb">
+            <div class="art a4"></div>
+            <div class="progress"><i style="width:23%"></i></div>
+            <div class="badge dur">还剩 51:02</div>
+          </div>
+          <h4>2026 年最值得听的 20 张专辑</h4>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="head">
+        <h2>为你推荐</h2>
+        <div class="more">刷新</div>
+      </div>
+      <div class="grid2">
+        <div class="vcard">
+          <div class="thumb"><div class="art a3 scene"><div class="beam"></div></div>
+            <div class="badge dur">08:42</div><div class="badge res">1080P</div></div>
+          <h4>深夜电台：把耳机音量调到 30%</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#8fcbc4,#2f6f8f)"></span>夜航电台
+            <span class="stats">▶ 42.1 万</span></div>
+        </div>
+        <div class="vcard">
+          <div class="thumb"><div class="art a5 scene"><div class="ring"></div></div>
+            <div class="badge dur">15:07</div></div>
+          <h4>【4K 修复】夏天该有的样子 · 动画混剪</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#f0546e,#7a4bc6)"></span>剪了三天
+            <span class="stats">▶ 96.3 万</span></div>
+        </div>
+        <div class="vcard">
+          <div class="thumb"><div class="art a6"></div><div class="badge dur">03:58</div>
+            <div class="badge hot">热门</div></div>
+          <h4>原创曲《猫的报恩》MV 正式版</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#ffd36e,#f0663f)"></span>NekoSound
+            <span class="stats">▶ 210.7 万</span></div>
+        </div>
+        <div class="vcard">
+          <div class="thumb"><div class="art a7 scene"><div class="sun"></div></div><div class="badge dur">26:31</div></div>
+          <h4>录音棚幕后：一首歌是怎么诞生的</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#9fd0ff,#3b6bb8)"></span>混音师老张
+            <span class="stats">▶ 18.9 万</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="minibar">
+    <div class="thumb"><div class="art a4"></div></div>
+    <div class="t">
+      <b>2026 年最值得听的 20 张专辑</b>
+      <span>播放中 · 弹幕已开启</span>
+    </div>
+    <svg class="ic" style="color:#fff"><use href="#i-pause"/></svg>
+    <svg class="ic sm" style="color:var(--text-3)"><use href="#i-more"/></svg>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab"><svg class="ic"><use href="#i-home"/></svg>主页</div>
+    <div class="tab"><svg class="ic"><use href="#i-music"/></svg>音乐</div>
+    <div class="tab on"><svg class="ic"><use href="#i-video"/></svg>视频</div>
+    <div class="tab"><svg class="ic"><use href="#i-chat"/></svg>社区</div>
+    <div class="tab"><svg class="ic"><use href="#i-user"/></svg>我的</div>
+    <div class="homebar"></div>
+  </div>
+</div>
+</body>
+</html>

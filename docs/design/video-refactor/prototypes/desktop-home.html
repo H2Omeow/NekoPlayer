@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>桌面端 · 视频首页</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="desktop">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10.5 9.2 4.8 2.8-4.8 2.8z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.6"/><circle cx="16.5" cy="16" r="2.6"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-5 4z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 9.7l5.4-.8z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-cast" viewBox="0 0 24 24"><path d="M3 17V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z"/><path d="M3 20h.01M3 16a4 4 0 0 1 4 4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5 19 12 8 18.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-pip" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 14 6-6 6 6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+</svg>
+
+<div class="desk">
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">N</div>
+      <b>NekoPlayer</b>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-item"><svg class="ic sm"><use href="#i-compass"/></svg>首页</div>
+      <div class="nav-item on"><svg class="ic sm"><use href="#i-video"/></svg>视频</div>
+      <div class="nav-item"><svg class="ic sm"><use href="#i-music"/></svg>音乐库</div>
+      <div class="nav-item"><svg class="ic sm"><use href="#i-chat"/></svg>社区</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="label">我的视频</div>
+      <div class="nav-item"><svg class="ic sm"><use href="#i-bell"/></svg>关注动态<span class="cnt">3</span></div>
+      <div class="nav-item"><svg class="ic sm"><use href="#i-clock"/></svg>观看历史</div>
+      <div class="nav-item"><svg class="ic sm"><use href="#i-star"/></svg>收藏夹</div>
+      <div class="nav-item"><svg class="ic sm"><use href="#i-play"/></svg>稍后再看<span class="cnt">12</span></div>
+    </div>
+
+    <div class="nav-group">
+      <div class="label">我的弹幕</div>
+      <div class="nav-item"><svg class="ic sm"><use href="#i-chat"/></svg>弹幕设置</div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="account">
+      <div class="avatar" style="width:30px;height:30px"></div>
+      <div class="n"><b>Neko_Studio</b><span>已登录 B 站 · Lv.6</span></div>
+      <svg class="ic xs" style="color:var(--text-3)"><use href="#i-arrow"/></svg>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:8px;padding:0 2px;color:var(--text-3)">
+      <div class="nav-item" style="height:32px;padding:0 8px;font-size:12px"><svg class="ic xs"><use href="#i-gear"/></svg>设置</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="searchbox" style="width:430px;height:36px">
+        <svg class="ic sm" style="color:var(--text-3)"><use href="#i-search"/></svg>
+        <span style="flex:1;font-size:12.5px;color:var(--text-3)">搜索视频、UP 主，或直接粘贴 BV 号</span>
+        <span style="font-size:10px;color:var(--text-3);border:1px solid var(--hairline-strong);border-radius:4px;padding:1px 5px">⌘K</span>
+      </div>
+      <div class="sp"></div>
+      <div class="iconbtn g"><svg class="ic sm"><use href="#i-cast"/></svg></div>
+      <div class="iconbtn g" style="position:relative"><svg class="ic sm"><use href="#i-bell"/></svg>
+        <span style="position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--accent)"></span>
+      </div>
+      <div class="avatar" style="width:30px;height:30px"></div>
+    </div>
+
+    <div class="content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h2 style="margin:0">为你推荐</h2>
+        <div style="display:flex;gap:8px">
+          <div class="chip on" style="height:30px;font-size:12.5px">推荐</div>
+          <div class="chip" style="height:30px;font-size:12.5px">热门</div>
+          <div class="chip" style="height:30px;font-size:12.5px">音乐现场</div>
+          <div class="chip" style="height:30px;font-size:12.5px">4K 修复</div>
+        </div>
+      </div>
+
+      <div class="banner">
+        <div class="art a3 scene"><div class="sun"></div><div class="ring"></div><div class="beam"></div></div>
+        <div class="shade"></div>
+        <div class="txt">
+          <div class="kicker">NEKO SESSIONS · VOL.12</div>
+          <h3>东京街头 Live Session</h3>
+          <p>一场在涩谷十字路口完成的即兴演出。4K 修复版，支持逐帧弹幕、实时高能进度条。</p>
+          <div class="cta">
+            <div class="btn-primary"><svg class="ic sm"><use href="#i-play"/></svg>立即播放</div>
+            <div class="btn-secondary"><svg class="ic sm"><use href="#i-plus"/></svg>稍后再看</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-h">
+        <h3>继续观看</h3>
+        <span>共 12 个未看完 · 清空</span>
+      </div>
+      <div class="rail-d">
+        <div class="vcard">
+          <div class="thumb"><div class="art a2 scene"><div class="ring"></div></div>
+            <div class="progress"><i style="width:62%"></i></div>
+            <div class="badge dur">还剩 24:10</div></div>
+          <h4>「花に亡霊」吉他指弹 · 一次过</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#8fcbc4,#2f6f8f)"></span>夜航电台
+            <span class="stats">42.1 万</span></div>
+        </div>
+        <div class="vcard">
+          <div class="thumb"><div class="art a4 scene"><div class="sun"></div></div>
+            <div class="progress"><i style="width:23%"></i></div>
+            <div class="badge dur">还剩 51:02</div></div>
+          <h4>2026 年最值得听的 20 张专辑</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#c9a7ff,#6d4bd6)"></span>混音师老张
+            <span class="stats">18.9 万</span></div>
+        </div>
+        <div class="vcard">
+          <div class="thumb"><div class="art a5 scene"><div class="beam"></div></div>
+            <div class="progress"><i style="width:88%"></i></div>
+            <div class="badge dur">还剩 03:41</div></div>
+          <h4>【4K 修复】夏天该有的样子 · 动画混剪</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#f0546e,#7a4bc6)"></span>剪了三天
+            <span class="stats">96.3 万</span></div>
+        </div>
+        <div class="vcard">
+          <div class="thumb"><div class="art a8 scene"><div class="sun"></div></div>
+            <div class="progress"><i style="width:34%"></i></div>
+            <div class="badge dur">还剩 16:28</div></div>
+          <h4>录音棚幕后：一首歌是怎么诞生的</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#ffd36e,#f0663f)"></span>月见制作组
+            <span class="stats">128.4 万</span></div>
+        </div>
+      </div>
+
+      <div class="sub-h">
+        <h3>接着看</h3>
+        <span>根据你的观看历史</span>
+      </div>
+      <div class="grid3" style="grid-template-columns:repeat(4,1fr)">
+        <div class="vcard">
+          <div class="thumb" style="height:151px"><div class="art a1 scene"><div class="sun"></div></div>
+            <div class="badge dur">06:12</div><div class="badge res">4K</div></div>
+          <h4>深夜电台：把耳机音量调到 30%</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#8fcbc4,#2f6f8f)"></span>夜航电台
+            <span class="stats">42.1 万</span></div>
+        </div>
+        <div class="vcard">
+          <div class="thumb" style="height:151px"><div class="art a6 scene"><div class="ring"></div></div>
+            <div class="badge dur">03:58</div></div>
+          <h4>原创曲《猫的报恩》MV 正式版</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#ff8fb1,#b5407a)"></span>NekoSound
+            <span class="stats">210.7 万</span></div>
+        </div>
+        <div class="vcard">
+          <div class="thumb" style="height:151px"><div class="art a7 scene"><div class="sun"></div></div>
+            <div class="badge dur">26:31</div></div>
+          <h4>为什么黑胶的音质听起来更「暖」？</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#9fd0ff,#3b6bb8)"></span>混音师老张
+            <span class="stats">31.2 万</span></div>
+        </div>
+        <div class="vcard">
+          <div class="thumb" style="height:151px"><div class="art a4 scene"><div class="beam"></div></div>
+            <div class="badge dur">12:04</div></div>
+          <h4>把 12 首动漫 OP 串成一首歌</h4>
+          <div class="up"><span class="av" style="background:linear-gradient(140deg,#c9a7ff,#6d4bd6)"></span>剪了三天
+            <span class="stats">188.6 万</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mini-float">
+      <div class="thumb" style="height:170px"><div class="art a1 scene"><div class="sun"></div></div>
+        <div class="controls" style="padding:8px 10px">
+          <div class="ctl-row" style="gap:10px">
+            <svg class="ic sm"><use href="#i-pause"/></svg>
+            <span class="time">12:26 / 32:16</span>
+            <span class="sp"></span>
+            <div class="pill-btn on" style="height:20px;font-size:10px">1440P</div>
+            <svg class="ic xs"><use href="#i-pip"/></svg>
+          </div>
+          <div class="seek" style="margin-top:6px"><i></i><b></b></div>
+        </div>
+      </div>
+      <div class="bar">
+        <div class="t"><b>东京街头 Live Session｜Neko Sessions Vol.12</b><span>月见制作组 · 弹幕已开启</span></div>
+        <div class="iconbtn" style="width:26px;height:26px;background:var(--surface-4)"><svg class="ic xs"><use href="#i-arrow"/></svg></div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

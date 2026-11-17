@@ -15,10 +15,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.OndemandVideo
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
@@ -48,6 +50,7 @@ import top.nekoh2o.player.ui.screens.HomeScreen
 import top.nekoh2o.player.ui.screens.LibraryTab
 import top.nekoh2o.player.ui.screens.MineScreen
 import top.nekoh2o.player.ui.screens.MusicScreen
+import top.nekoh2o.player.ui.screens.video.VideoScreen
 import top.nekoh2o.player.ui.social.SocialScreen
 import top.nekoh2o.player.ui.theme.NekoRadius
 import top.nekoh2o.player.ui.theme.NekoSpace
@@ -55,6 +58,7 @@ import top.nekoh2o.player.ui.theme.NekoSpace
 enum class Tab(private val rawLabel: String, val icon: ImageVector, val selectedIcon: ImageVector) {
     HOME("主页", Icons.Outlined.Home, Icons.Filled.Home),
     MUSIC("音乐", Icons.Outlined.LibraryMusic, Icons.Filled.LibraryMusic),
+    VIDEO("视频", Icons.Outlined.OndemandVideo, Icons.Filled.OndemandVideo),
     SOCIAL("社区", Icons.Outlined.ChatBubbleOutline, Icons.Filled.ChatBubble),
     MINE("我的", Icons.Outlined.Person, Icons.Filled.Person);
 
@@ -171,6 +175,7 @@ fun MainScaffold(
                     onOpenLibrary = { libraryTab = it; select(Tab.MINE) }
                 )
                 Tab.MUSIC -> MusicScreen(vm)
+                Tab.VIDEO -> VideoScreen()
                 Tab.SOCIAL -> SocialScreen(vm, onStartSsoLogin)
                 Tab.MINE -> MineScreen(
                     vm = vm,

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>移动端 · 弹幕设置</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="mobile" style="background:#000">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5 19 12 8 18.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-danmaku" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="5" rx="2.5"/><rect x="3" y="14" width="11" height="4" rx="2"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+</svg>
+
+<div class="player-shell">
+  <div class="stage">
+    <div class="art a1 scene"><div class="sun"></div><div class="ring"></div><div class="beam"></div></div>
+    <div class="dim"></div>
+    <div class="danmaku-layer" style="opacity:.55">
+      <div class="dm gold soft" style="top:74px;left:18px">前排！</div>
+      <div class="dm" style="top:74px;left:150px">这个转场也太丝滑了</div>
+      <div class="dm soft" style="top:100px;left:96px">4K 修复太强了</div>
+      <div class="dm teal" style="top:100px;left:266px">耳机党狂喜</div>
+      <div class="dm pink" style="top:126px;left:22px">循环了一整天</div>
+      <div class="dm soft" style="top:126px;left:216px">这段吉他 solo 绝了</div>
+    </div>
+    <div class="statusbar" style="position:absolute;top:0;left:0;right:0;color:#fff">
+      <span>9:41</span>
+      <span class="right">
+        <span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:11px"></i></span>
+        <span class="battery"><i></i></span>
+      </span>
+    </div>
+    <div class="stage-top">
+      <svg class="ic" style="width:22px;height:22px"><use href="#i-back"/></svg>
+      <div class="ttl">东京街头 Live Session｜Neko Sessions Vol.12</div>
+      <svg class="ic sm"><use href="#i-more"/></svg>
+    </div>
+    <div class="controls" style="opacity:.9">
+      <div class="ctl-row">
+        <svg class="ic" style="width:24px;height:24px"><use href="#i-play"/></svg>
+        <span class="time">12:26 / 32:16</span>
+        <span class="sp"></span>
+        <div class="pill-btn on"><svg class="ic xs"><use href="#i-danmaku"/></svg>弹</div>
+        <div class="pill-btn">1080P</div>
+        <svg class="ic sm"><use href="#i-full"/></svg>
+      </div>
+      <div class="seek"><i></i><b></b></div>
+    </div>
+  </div>
+
+  <div class="sheet-scrim"></div>
+
+  <div class="sheet" style="padding-bottom:26px">
+    <div class="grabber"></div>
+    <h3>弹幕设置 <a>恢复默认</a></h3>
+
+    <div class="row">
+      <div class="lab">显示弹幕</div>
+      <div class="switch"></div>
+    </div>
+
+    <div class="row">
+      <div class="lab">不透明度</div>
+      <div class="slider"><i style="width:78%"></i></div>
+      <div class="val" style="width:34px;text-align:right">78%</div>
+    </div>
+
+    <div class="row">
+      <div class="lab">字号</div>
+      <div class="seg"><i>小</i><i class="on">标准</i><i>大</i></div>
+    </div>
+
+    <div class="row">
+      <div class="lab">显示区域</div>
+      <div class="seg"><i>1/4</i><i>1/2</i><i class="on">3/4</i><i>全屏</i></div>
+    </div>
+
+    <div class="row">
+      <div class="lab">弹幕速度<span>滚动弹幕</span></div>
+      <div class="slider"><i style="width:46%"></i></div>
+      <div class="val" style="width:34px;text-align:right">标准</div>
+    </div>
+
+    <div class="row" style="display:block">
+      <div class="lab" style="margin-bottom:10px">弹幕类型</div>
+      <div style="display:flex;gap:8px">
+        <div class="chip on" style="height:28px;font-size:12px;background:var(--accent-soft);color:var(--accent)">滚动</div>
+        <div class="chip" style="height:28px;font-size:12px">顶部</div>
+        <div class="chip" style="height:28px;font-size:12px">底部</div>
+        <div class="chip" style="height:28px;font-size:12px">彩色</div>
+        <div class="chip" style="height:28px;font-size:12px">高级</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="lab">智能防挡<span>人像区域不显示弹幕</span></div>
+      <div class="switch off"></div>
+    </div>
+
+    <div class="row">
+      <div class="lab">屏蔽关键词</div>
+      <div class="val" style="display:flex;align-items:center;gap:2px;color:var(--text-2)">已屏蔽 12 个
+        <svg class="ic xs"><use href="#i-chev"/></svg></div>
+    </div>
+
+    <div class="row" style="border-bottom:0">
+      <div class="lab">弹幕密度</div>
+      <div class="slider"><i style="width:62%"></i></div>
+      <div class="val" style="width:34px;text-align:right">高</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

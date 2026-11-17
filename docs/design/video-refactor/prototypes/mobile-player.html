@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>移动端 · 视频播放页</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="mobile" style="background:#000">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-cast" viewBox="0 0 24 24"><path d="M3 17V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z"/><path d="M3 20h.01M3 16a4 4 0 0 1 4 4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5 19 12 8 18.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-danmaku" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="5" rx="2.5"/><rect x="3" y="14" width="11" height="4" rx="2"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9.4A4 4 0 0 1 12 8a4 4 0 0 1 7 2.6C19 15.6 12 20 12 20z"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 13.5h5"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 9.7l5.4-.8z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="m4 20 4.5-1 10-10a2.5 2.5 0 0 0-3.5-3.5l-10 10z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-5 4z"/></symbol>
+  <symbol id="i-sub" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M8 11h8M8 15h5"/></symbol>
+</svg>
+
+<div class="player-shell">
+  <div class="stage">
+    <div class="art a1 scene"><div class="sun"></div><div class="ring"></div><div class="beam"></div></div>
+    <div class="dim"></div>
+
+    <div class="danmaku-layer">
+      <div class="dm gold soft" style="top:74px;left:18px">前排！</div>
+      <div class="dm" style="top:74px;left:150px">这个转场也太丝滑了</div>
+      <div class="dm soft" style="top:100px;left:96px">4K 修复太强了</div>
+      <div class="dm teal" style="top:100px;left:266px">耳机党狂喜</div>
+      <div class="dm pink" style="top:126px;left:22px">循环了一整天</div>
+      <div class="dm soft" style="top:126px;left:216px">这段吉他 solo 绝了</div>
+    </div>
+
+    <div class="statusbar" style="position:absolute;top:0;left:0;right:0;color:#fff">
+      <span>9:41</span>
+      <span class="right">
+        <span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:11px"></i></span>
+        <span class="battery"><i></i></span>
+      </span>
+    </div>
+
+    <div class="stage-top">
+      <svg class="ic" style="width:22px;height:22px"><use href="#i-back"/></svg>
+      <div class="ttl">东京街头 Live Session｜Neko Sessions Vol.12</div>
+      <svg class="ic sm"><use href="#i-cast"/></svg>
+      <svg class="ic sm"><use href="#i-more"/></svg>
+    </div>
+
+    <div class="controls">
+      <div class="ctl-row">
+        <svg class="ic" style="width:24px;height:24px"><use href="#i-pause"/></svg>
+        <span class="time">12:26 / 32:16</span>
+        <span class="sp"></span>
+        <div class="pill-btn on"><svg class="ic xs"><use href="#i-danmaku"/></svg>弹</div>
+        <div class="pill-btn">1080P</div>
+        <svg class="ic sm"><use href="#i-full"/></svg>
+      </div>
+      <div class="seek"><i></i><b></b></div>
+      <div class="heat">
+        <i style="height:20%"></i><i style="height:34%"></i><i style="height:52%"></i><i style="height:38%"></i><i style="height:70%"></i>
+        <i style="height:96%"></i><i style="height:60%"></i><i style="height:44%"></i><i style="height:30%"></i><i style="height:24%"></i>
+        <i style="height:18%"></i><i style="height:28%"></i><i style="height:46%"></i><i style="height:34%"></i><i style="height:22%"></i>
+        <i style="height:16%"></i><i style="height:26%"></i><i style="height:40%"></i><i style="height:30%"></i><i style="height:20%"></i>
+        <i style="height:36%"></i><i style="height:24%"></i><i style="height:18%"></i><i style="height:28%"></i><i style="height:16%"></i>
+        <i style="height:22%"></i><i style="height:18%"></i><i style="height:14%"></i><i style="height:20%"></i><i style="height:16%"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="player-body">
+    <div class="ptitle">
+      <h2>【4K 修复】东京街头 Live Session｜Neko Sessions Vol.12</h2>
+      <div class="meta">
+        <span>128.4 万播放</span><span>·</span><span>3.2 万弹幕</span><span>·</span><span>2026-11-02</span>
+        <span>·</span><span style="color:var(--bili)">bilibili</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <div class="act on"><svg class="ic"><use href="#i-heart"/></svg>12.3 万</div>
+      <div class="act"><svg class="ic"><use href="#i-coin"/></svg>4.5 万</div>
+      <div class="act"><svg class="ic"><use href="#i-star"/></svg>8.1 万</div>
+      <div class="act"><svg class="ic"><use href="#i-share"/></svg>分享</div>
+    </div>
+
+    <div class="upcard">
+      <div class="avatar"></div>
+      <div class="n"><b>月见制作组</b><span>32.8 万粉丝 · 已关注</span></div>
+      <div class="btn-ghost"><svg class="ic xs"><use href="#i-chat"/></svg>私信</div>
+      <div class="btn-follow">已关注</div>
+    </div>
+
+    <div class="tabs2">
+      <div class="t on">简介</div>
+      <div class="t">评论 2.4 万</div>
+      <div class="t">相关推荐</div>
+    </div>
+
+    <div class="comment">
+      <div class="avatar" style="background:linear-gradient(140deg,#8fcbc4,#2f6f8f)"></div>
+      <div class="c">
+        <b>海边的卡夫卡</b>
+        <p>这个运镜和切点卡得太准了，贝斯一进来整个人都好了。已投币支持！</p>
+        <div class="cm"><span>♥ 1.2 万</span><span>回复 36</span><span>11-02</span></div>
+      </div>
+    </div>
+    <div class="comment">
+      <div class="avatar" style="background:linear-gradient(140deg,#ffd36e,#f0663f)"></div>
+      <div class="c">
+        <b>今天也在听歌</b>
+        <p>建议戴耳机听，第 8 分钟那段人声和吉他的空间感真的绝。</p>
+        <div class="cm"><span>♥ 6821</span><span>回复 12</span><span>11-03</span></div>
+      </div>
+    </div>
+    <div class="comment">
+      <div class="avatar" style="background:linear-gradient(140deg,#c9a7ff,#6d4bd6)"></div>
+      <div class="c">
+        <b>Neko_Studio</b>
+        <p>UP 主的 4K 修复流程能出一期教程吗？画质提升太明显了。</p>
+        <div class="cm"><span>♥ 3120</span><span>回复 8</span><span>11-04</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dmbar">
+    <div class="input">
+      <svg class="ic xs" style="color:var(--accent)"><use href="#i-pencil"/></svg>
+      发个友善的弹幕见证当下
+    </div>
+    <div class="iconbtn"><svg class="ic sm" style="color:var(--text-2)"><use href="#i-gear"/></svg></div>
+    <div class="iconbtn"><svg class="ic sm" style="color:var(--text-2)"><use href="#i-sub"/></svg></div>
+  </div>
+</div>
+</body>
+</html>

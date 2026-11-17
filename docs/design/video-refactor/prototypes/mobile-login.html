@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>移动端 · B 站扫码登录</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="mobile">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M8 3l4 3 4-3"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v4h-4"/></symbol>
+  <symbol id="i-dm" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="5" rx="2.5"/><rect x="3" y="14" width="11" height="4" rx="2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.2 3 7.4 7 9 4-1.6 7-4.8 7-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+</svg>
+
+<div class="phone">
+  <div class="statusbar">
+    <span>9:41</span>
+    <span class="right">
+      <span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:11px"></i></span>
+      <span class="battery"><i></i></span>
+    </span>
+  </div>
+
+  <div class="login-top" style="display:flex;justify-content:space-between;align-items:center">
+    <div class="iconbtn"><svg class="ic"><use href="#i-close"/></svg></div>
+    <span style="font-size:12.5px;color:var(--text-3)">遇到问题？</span>
+  </div>
+
+  <div class="login-hero">
+    <div class="orb"></div>
+    <h2>登录 B 站账号</h2>
+    <p>登录后可解锁 1080P / 4K 画质、发送弹幕，<br>并与 B 站同步收藏、关注与历史记录</p>
+  </div>
+
+  <div class="segmented" style="margin:0 24px 16px">
+    <span class="seg on">App 扫码</span>
+    <span class="seg">网页登录</span>
+    <span class="seg">Cookie 导入</span>
+  </div>
+
+  <div class="qr-card">
+    <div class="qr-grid" id="qr"></div>
+    <div class="cap"><svg class="ic xs" style="color:#00aeec"><use href="#i-sync"/></svg>118 秒后失效 · 点击刷新</div>
+  </div>
+
+  <div style="text-align:center;margin-top:14px;font-size:13px;color:var(--text-2)">
+    打开「哔哩哔哩」App → 扫一扫
+  </div>
+
+  <div class="perks">
+    <div class="perk">
+      <div class="ico"><svg class="ic sm"><use href="#i-tv"/></svg></div>
+      <div><b>1080P / 4K 原画</b>，登录后自动取最高可用清晰度</div>
+    </div>
+    <div class="perk">
+      <div class="ico"><svg class="ic sm"><use href="#i-dm"/></svg></div>
+      <div>发送与屏蔽<b>弹幕</b>，同步自己的弹幕偏好</div>
+    </div>
+    <div class="perk">
+      <div class="ico"><svg class="ic sm"><use href="#i-shield"/></svg></div>
+      <div>Cookie 仅保存在本机，可随时<b>退出并清除</b></div>
+    </div>
+  </div>
+
+  <div class="legal">
+    已有 Cookie？<span style="color:var(--bili)">手动导入</span><br>
+    登录即表示同意《用户协议》与《隐私政策》
+  </div>
+</div>
+
+<script>
+(function () {
+  const N = 25, cells = [];
+  let seed = 20261117;
+  const rand = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const grid = Array.from({ length: N }, () => Array(N).fill(0));
+  function finder(r, c) {
+    for (let i = -1; i < 8; i++) for (let j = -1; j < 8; j++) {
+      const y = r + i, x = c + j;
+      if (y < 0 || x < 0 || y >= N || x >= N) continue;
+      const ring = Math.max(Math.abs(i - 3), Math.abs(j - 3));
+      grid[y][x] = (i >= 0 && i <= 6 && j >= 0 && j <= 6 && (ring === 3 || ring <= 1)) ? 1 : 0;
+    }
+  }
+  finder(0, 0); finder(0, N - 7); finder(N - 7, 0);
+  for (let i = 8; i < N - 8; i++) { grid[6][i] = i % 2 === 0 ? 1 : 0; grid[i][6] = i % 2 === 0 ? 1 : 0; }
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const inFinder = (y < 8 && x < 8) || (y < 8 && x > N - 9) || (y > N - 9 && x < 8);
+    if (!inFinder && grid[y][x] === 0) grid[y][x] = rand() > 0.52 ? 1 : 0;
+  }
+  const frag = document.createDocumentFragment();
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const el = document.createElement('i');
+    if (!grid[y][x]) el.className = 'off';
+    frag.appendChild(el);
+  }
+  document.getElementById('qr').appendChild(frag);
+})();
+</script>
+</body>
+</html>

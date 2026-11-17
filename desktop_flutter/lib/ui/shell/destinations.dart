@@ -5,6 +5,7 @@ import '../../i18n/tr.dart';
 enum Section {
   home('首页', Icons.home_outlined, Icons.home_rounded),
   discover('发现', Icons.explore_outlined, Icons.explore_rounded),
+  video('视频', Icons.ondemand_video_outlined, Icons.ondemand_video_rounded),
   social('社区', Icons.forum_outlined, Icons.forum_rounded),
   library('音乐库', Icons.library_music_outlined, Icons.library_music_rounded),
   all('全部歌曲', Icons.music_note_outlined, Icons.music_note_rounded),

@@ -114,6 +114,7 @@ class Sidebar extends StatelessWidget {
               children: [
                 item(Section.home),
                 item(Section.discover),
+                item(Section.video),
                 item(
                   Section.social,
                   trailing: socialUnread <= 0 || collapsed

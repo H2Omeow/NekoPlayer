@@ -38,6 +38,7 @@ import 'library/home_page.dart';
 import 'library/library_actions.dart';
 import 'library/track_collection_page.dart';
 import 'music_videos_page.dart';
+import 'video/video_page.dart';
 import 'neko_theme.dart';
 import 'now_playing/now_playing_page.dart';
 import 'online_search_page.dart';
@@ -613,6 +614,7 @@ class _PlayerShellState extends State<PlayerShell> {
       onRecent: () => navigate(const Destination(Section.recent)),
     ),
     Section.discover => searchPage(),
+    Section.video => VideoPage(onPauseMusic: () => unawaited(controller.pause())),
     Section.social => SocialPage(
       site: site,
       social: social,
@@ -743,15 +745,17 @@ class _PlayerShellState extends State<PlayerShell> {
                 selectedIndex: switch (destination.section) {
                   Section.home => 0,
                   Section.discover => 1,
-                  Section.social => 2,
-                  Section.settings => 4,
-                  _ => 3,
+                  Section.video => 2,
+                  Section.social => 3,
+                  Section.settings => 5,
+                  _ => 4,
                 },
                 onDestinationSelected: (index) => navigate(
                   Destination(
                     [
                       Section.home,
                       Section.discover,
+                      Section.video,
                       Section.social,
                       Section.library,
                       Section.settings,
@@ -762,6 +766,7 @@ class _PlayerShellState extends State<PlayerShell> {
                   for (final section in [
                     Section.home,
                     Section.discover,
+                    Section.video,
                     Section.social,
                     Section.library,
                     Section.settings,

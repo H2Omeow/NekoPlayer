@@ -57,6 +57,7 @@ class PlayerApp : Application() {
         // 直接访问 ApiFactory 的 lateinit 客户端。若放到后台协程里，
         // 冷启动时可能与界面初始化竞争并抛 UninitializedPropertyAccessException。
         runCatching { ApiFactory.init(this) }
+        runCatching { top.nekoh2o.player.data.bilibili.BiliSession.init(this) }
             .onFailure {
                 Log.e(TAG, "网络层初始化失败", it)
                 AppLog.error(TAG, "网络层初始化失败", it)

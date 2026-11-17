@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>移动端 · 视频搜索</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="mobile">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9.4A4 4 0 0 1 12 8a4 4 0 0 1 7 2.6C19 15.6 12 20 12 20z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.6"/><circle cx="16.5" cy="16" r="2.6"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10.5 9.2 4.8 2.8-4.8 2.8z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-5 4z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.4 7-5.4s6.2 1.8 7 5.4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5 19 12 8 18.5z" fill="currentColor" stroke="none"/></symbol>
+</svg>
+
+<div class="phone">
+  <div class="statusbar">
+    <span>9:41</span>
+    <span class="right">
+      <span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:11px"></i></span>
+      <span class="battery"><i></i></span>
+    </span>
+  </div>
+
+  <div class="searchbar">
+    <div class="iconbtn" style="margin-left:-4px"><svg class="ic"><use href="#i-back"/></svg></div>
+    <div class="searchbox">
+      <svg class="ic sm" style="color:var(--text-3)"><use href="#i-search"/></svg>
+      <span class="q" style="flex:1">neko 翻唱</span>
+      <svg class="ic sm" style="color:var(--text-3)"><use href="#i-close"/></svg>
+    </div>
+  </div>
+
+  <div class="filterbar">
+    <div class="on">综合</div>
+    <div>视频</div>
+    <div>UP 主</div>
+    <div>专栏</div>
+    <div class="right">
+      <span style="color:var(--text-2);display:flex;align-items:center;gap:2px">最多播放<svg class="ic xs"><use href="#i-down"/></svg></span>
+      <svg class="ic sm"><use href="#i-filter"/></svg>
+    </div>
+  </div>
+
+  <div class="related">
+    <div class="chip outline">neko session</div>
+    <div class="chip outline">猫猫翻唱</div>
+    <div class="chip outline">夜に駆ける</div>
+    <div class="chip outline">日系翻唱</div>
+  </div>
+
+  <div class="scroll" style="padding-top:2px">
+    <div class="rcard">
+      <div class="thumb">
+        <div class="art a1 scene"><div class="sun"></div></div>
+        <div class="badge dur">04:12</div>
+        <div class="badge res">4K</div>
+      </div>
+      <div class="info">
+        <h4>【Neko 翻唱】夜に駆ける｜一口气唱了三个版本</h4>
+        <div class="up"><span class="av" style="width:16px;height:16px;border-radius:50%;background:linear-gradient(140deg,#f0546e,#7a4bc6)"></span>月见制作组</div>
+        <div class="st"><svg class="ic xs"><use href="#i-play"/></svg>142.8 万 · 弹幕 3.2 万</div>
+      </div>
+    </div>
+
+    <div class="rcard">
+      <div class="thumb">
+        <div class="art a4 scene"><div class="ring"></div></div>
+        <div class="badge dur">1:02:36</div>
+      </div>
+      <div class="info">
+        <h4>猫猫翻唱合集｜一口气听完 20 首（4K 修复）</h4>
+        <div class="up"><span class="av" style="width:16px;height:16px;border-radius:50%;background:linear-gradient(140deg,#c9a7ff,#6d4bd6)"></span>NekoSound 电台</div>
+        <div class="st"><svg class="ic xs"><use href="#i-play"/></svg>86.4 万 · 弹幕 1.1 万</div>
+      </div>
+    </div>
+
+    <div class="rcard">
+      <div class="thumb">
+        <div class="art a5 scene"><div class="sun"></div></div>
+        <div class="badge dur">28:04</div>
+      </div>
+      <div class="info">
+        <h4>Neko Sessions 全 12 期合辑｜录音棚现场</h4>
+        <div class="up"><span class="av" style="width:16px;height:16px;border-radius:50%;background:linear-gradient(140deg,#8fcbc4,#2f6f8f)"></span>夜航电台</div>
+        <div class="st"><svg class="ic xs"><use href="#i-play"/></svg>64.2 万 · 弹幕 8021</div>
+      </div>
+    </div>
+
+    <div class="rcard">
+      <div class="thumb">
+        <div class="art a3 scene"><div class="beam"></div></div>
+        <div class="badge dur">05:48</div>
+      </div>
+      <div class="info">
+        <h4>neko 翻唱《Lemon》吉他指弹版｜一镜到底</h4>
+        <div class="up"><span class="av" style="width:16px;height:16px;border-radius:50%;background:linear-gradient(140deg,#ffd36e,#f0663f)"></span>剪了三天</div>
+        <div class="st"><svg class="ic xs"><use href="#i-play"/></svg>31.7 万 · 弹幕 4402</div>
+      </div>
+    </div>
+
+    <div class="rcard">
+      <div class="thumb">
+        <div class="art a6"></div>
+        <div class="badge dur">07:21</div>
+      </div>
+      <div class="info">
+        <h4>用 8 种语言唱同一段副歌，最后一种我哭了</h4>
+        <div class="up"><span class="av" style="width:16px;height:16px;border-radius:50%;background:linear-gradient(140deg,#ff8fb1,#b5407a)"></span>多语言翻唱组</div>
+        <div class="st"><svg class="ic xs"><use href="#i-play"/></svg>210.3 万 · 弹幕 5.6 万</div>
+      </div>
+    </div>
+
+    <div style="text-align:center;font-size:11px;color:var(--text-3);padding:18px 0 8px">— 已经到底啦 · 试试更具体的歌手名 —</div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab"><svg class="ic"><use href="#i-home"/></svg>主页</div>
+    <div class="tab"><svg class="ic"><use href="#i-music"/></svg>音乐</div>
+    <div class="tab on"><svg class="ic"><use href="#i-video"/></svg>视频</div>
+    <div class="tab"><svg class="ic"><use href="#i-chat"/></svg>社区</div>
+    <div class="tab"><svg class="ic"><use href="#i-user"/></svg>我的</div>
+    <div class="homebar"></div>
+  </div>
+</div>
+</body>
+</html>
