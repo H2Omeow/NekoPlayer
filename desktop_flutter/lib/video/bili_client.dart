@@ -504,7 +504,7 @@ class BiliClient {
     );
   }
 
-  Future<String> _getJson(String url, {required bool signed}) async {
+  Future<Map<String, dynamic>> _getJson(String url, {required bool signed}) async {
     final uri = Uri.parse(url);
     final finalUri = signed ? await _signed(uri) : uri;
     final response = await _send(finalUri, signed: false);

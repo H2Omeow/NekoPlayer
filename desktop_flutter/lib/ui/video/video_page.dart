@@ -908,9 +908,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     );
   }
 
-  Future<void> _pickQuality(BuildContext context) async {
+  Future<void> _pickQuality(BuildContext ctx) async {
     final choice = await showDialog<int>(
-      context: context,
+      context: ctx,
       builder: (context) => SimpleDialog(
         title: Text(tr('选择清晰度')),
         children: [
@@ -935,6 +935,10 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           source.url,
           httpHeaders: const {
             'Referer': 'https://www.bilibili.com/',
+            'Origin': 'https://www.bilibili.com',
+            'Accept': '*/*',
+            // B 站 CDN（EdgeOne WAF）对无 Range 的请求会返回 403，必须带上。
+            'Range': 'bytes=0-',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36',
           },
         ),
@@ -942,8 +946,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       );
       await player.seek(position);
     } catch (failure) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(failure.toString())));
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(failure.toString())));
       }
     }
   }
@@ -1331,9 +1335,10 @@ class _BiliLoginDialogState extends State<BiliLoginDialog> {
                     if (raw.isEmpty) return;
                     // 只贴了 SESSDATA 的值时补上键名
                     if (!raw.contains('=')) raw = 'SESSDATA=$raw';
+                    final navigator = Navigator.of(context);
                     await BiliSession.instance.importCookie(raw);
                     await widget.client.refreshAccount();
-                    if (mounted) Navigator.of(context).pop();
+                    navigator.pop();
                   },
                   child: Text(tr('导入 Cookie')),
                 ),
