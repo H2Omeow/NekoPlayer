@@ -1,2 +1,2 @@
 // Keep in sync with `version:` in pubspec.yaml (checked by diagnostics tests).
-const appVersion = '1.3.0+27';
+const appVersion = '1.4.0+28';

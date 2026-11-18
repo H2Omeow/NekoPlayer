@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.Audiotrack
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
@@ -35,6 +36,7 @@ import top.nekoh2o.player.ui.UiState
 import top.nekoh2o.player.ui.a11y.clickableRow
 import top.nekoh2o.player.ui.components.Artwork
 import top.nekoh2o.player.ui.components.ChipRow
+import top.nekoh2o.player.ui.screens.cloud.CloudFilesScreen
 import top.nekoh2o.player.ui.components.DetailTopBar
 import top.nekoh2o.player.ui.components.EmptyState
 import top.nekoh2o.player.ui.components.ScreenHeader
@@ -63,12 +65,13 @@ class MineCallbacks(
     val onNetease: () -> Unit,
     val onKugou: () -> Unit,
     val onCloudSync: () -> Unit,
+    val onCloudFiles: () -> Unit,
     val onOpenPlaylist: (Int) -> Unit,
     val onCreatePlaylist: () -> Unit,
     val onDeletePlaylist: (Int) -> Unit
 )
 
-private enum class MinePage { HOME, SETTINGS, NETEASE, KUGOU, KUGOU_LOGIN, CLOUD_SYNC }
+private enum class MinePage { HOME, SETTINGS, NETEASE, KUGOU, KUGOU_LOGIN, CLOUD_SYNC, CLOUD_FILES }
 
 @Composable
 fun MineScreen(
@@ -95,6 +98,7 @@ fun MineScreen(
             onLogin = { page = MinePage.KUGOU_LOGIN }
         )
         page == MinePage.CLOUD_SYNC -> CloudSyncScreen(vm) { page = MinePage.HOME }
+        page == MinePage.CLOUD_FILES -> CloudFilesScreen { page = MinePage.HOME }
         openedPlaylist in state.playlists.indices -> PlaylistDetail(
             playlist = state.playlists[openedPlaylist],
             actions = actions,
@@ -123,6 +127,7 @@ fun MineScreen(
                     onNetease = { page = MinePage.NETEASE },
                     onKugou = { page = MinePage.KUGOU },
                     onCloudSync = { page = MinePage.CLOUD_SYNC },
+                    onCloudFiles = { page = MinePage.CLOUD_FILES },
                     onOpenPlaylist = { openedPlaylist = it },
                     onCreatePlaylist = { creating = true },
                     onDeletePlaylist = vm::deletePlaylist
@@ -186,6 +191,12 @@ fun MineContent(
                     icon = Icons.Outlined.Cloud,
                     value = syncSummary,
                     onClick = callbacks.onCloudSync
+                )
+                SettingsTile(
+                    title = tr("云存储"),
+                    icon = Icons.Outlined.CloudUpload,
+                    value = tr("文件、分享与额度"),
+                    onClick = callbacks.onCloudFiles
                 )
             }
         }

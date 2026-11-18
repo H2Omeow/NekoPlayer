@@ -26,6 +26,7 @@ import '../desktop_settings_page.dart';
 import '../diagnostics_page.dart';
 import '../downloads_page.dart';
 import '../legacy_import_page.dart';
+import '../cloud_files_page.dart';
 import '../neko_theme.dart';
 import '../performance_settings_page.dart';
 import '../plugin_subscriptions_page.dart';
@@ -183,6 +184,15 @@ class SettingsPage extends StatelessWidget {
                 onTap: () => push(
                   context,
                   CloudSyncPage(controller: cloudSync, site: site),
+                ),
+              ),
+              SettingsTile(
+                icon: Icons.cloud_outlined,
+                title: tr('云存储'),
+                subtitle: tr('上传文件、分享链接、查看额度与赞赏'),
+                onTap: () => push(
+                  context,
+                  CloudFilesPage(accounts: catalog.accounts),
                 ),
               ),
               SettingsTile(
