@@ -72,6 +72,12 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import top.nekoh2o.player.data.cloud.CloudApi
+import top.nekoh2o.player.data.social.SendMessageRequest
+import top.nekoh2o.player.data.social.SocialConversation
+import top.nekoh2o.player.data.social.SocialRepository
+import java.util.UUID
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.Person
 import top.nekoh2o.player.i18n.NekoI18n.tr
 import top.nekoh2o.player.ui.components.DetailTopBar
 import top.nekoh2o.player.ui.theme.NekoRadius
@@ -90,6 +96,7 @@ private enum class CloudTab(private val raw: String) {
 fun CloudFilesScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val social = remember { SocialRepository() }
     var tab by remember { mutableStateOf(CloudTab.FILES) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -104,6 +111,8 @@ fun CloudFilesScreen(onBack: () -> Unit) {
     var unread by remember { mutableStateOf(0) }
     var showNotices by remember { mutableStateOf(false) }
     var pendingShare by remember { mutableStateOf<String?>(null) }
+    var pendingName by remember { mutableStateOf("") }
+    var showFriendPicker by remember { mutableStateOf(false) }
 
     suspend fun reload() {
         loading = true
@@ -250,7 +259,10 @@ fun CloudFilesScreen(onBack: () -> Unit) {
             onShare = { mode, days ->
                 scope.launch {
                     runCatching { CloudApi.share(item["id"]!!.jsonPrimitive.content, mode, days) }
-                        .onSuccess { pendingShare = it["token"]?.jsonPrimitive?.content }
+                        .onSuccess {
+                            pendingShare = it["token"]?.jsonPrimitive?.content
+                            pendingName = item["name"]?.jsonPrimitive?.content ?: tr("文件")
+                        }
                     shareTarget = null
                     reload()
                 }
@@ -262,10 +274,97 @@ fun CloudFilesScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { pendingShare = null },
             title = { Text(tr("分享链接已生成")) },
-            text = { Text(base) },
-            confirmButton = { TextButton(onClick = { pendingShare = null }) { Text(tr("好")) } }
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(base)
+                    Text(
+                        tr("直链不需要登录即可下载，流量按分享者计算。"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = { showFriendPicker = true }) { Text(tr("发送给好友")) }
+                    TextButton(onClick = { pendingShare = null }) { Text(tr("完成")) }
+                }
+            }
         )
     }
+    if (showFriendPicker && pendingShare != null) {
+        FriendPickerDialog(
+            onDismiss = { showFriendPicker = false },
+            onPick = { peerId, peerName ->
+                val link = "https://player.nekoh2o.top/s/$pendingShare"
+                scope.launch {
+                    runCatching {
+                        social.sendMessage(
+                            SendMessageRequest(
+                                to = peerId,
+                                kind = "text",
+                                body = tr("分享了一个文件给你：") + pendingName + "\n" + link,
+                                clientId = UUID.randomUUID().toString()
+                            )
+                        )
+                    }.onSuccess {
+                        showFriendPicker = false
+                        pendingShare = null
+                        android.widget.Toast.makeText(
+                            context, tr("已发送给") + peerName, android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun FriendPickerDialog(
+    onDismiss: () -> Unit,
+    onPick: (peerId: String, peerName: String) -> Unit
+) {
+    val repo = remember { SocialRepository() }
+    var loading by remember { mutableStateOf(true) }
+    var conversations by remember { mutableStateOf<List<SocialConversation>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        runCatching { repo.conversations() }.onSuccess { conversations = it }
+        loading = false
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("发送给好友")) },
+        text = {
+            when {
+                loading -> Box(Modifier.fillMaxWidth().padding(NekoSpace.lg), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+                conversations.isEmpty() -> Text(tr("还没有可以发消息的好友，先去「社区」关注或搜索朋友。"))
+                else -> LazyColumn(Modifier.heightIn(max = 340.dp)) {
+                    items(conversations, key = { it.id }) { conversation ->
+                        val name = conversation.peer?.displayName ?: tr("用户")
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onPick(conversation.peerId, name) }
+                                .padding(horizontal = NekoSpace.xs, vertical = NekoSpace.sm),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Filled.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(NekoSpace.sm))
+                            Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("取消")) } }
+    )
 }
 
 @Composable
