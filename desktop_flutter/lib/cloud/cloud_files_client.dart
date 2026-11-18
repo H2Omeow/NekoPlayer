@@ -194,17 +194,17 @@ class CloudFilesClient {
   Future<List<CloudTier>> pricing() async {
     final body = await _json('GET', '/pricing', auth: false);
     final tiers = body['tiers'];
+    if (tiers is! Map<String, dynamic>) return const [];
     return [
-      if (tiers is List)
-        for (final item in tiers)
-          if (item is Map<String, dynamic>)
-            CloudTier(
-              id: '${item['id']}',
-              label: '${item['label'] ?? ''}',
-              price: (item['price'] as num?) ?? 0,
-              storageBytes: (item['storageBytes'] as num?)?.toInt() ?? 0,
-              trafficBytes: (item['trafficBytes'] as num?)?.toInt() ?? 0,
-            ),
+      for (final entry in tiers.entries)
+        if (entry.key != 'free' && entry.value is Map<String, dynamic>)
+          CloudTier(
+            id: entry.key,
+            label: '${(entry.value as Map<String, dynamic>)['label'] ?? entry.key}',
+            price: ((entry.value as Map<String, dynamic>)['price'] as num?) ?? 0,
+            storageBytes: ((entry.value as Map<String, dynamic>)['storageBytes'] as num?)?.toInt() ?? 0,
+            trafficBytes: ((entry.value as Map<String, dynamic>)['trafficBytes'] as num?)?.toInt() ?? 0,
+          ),
     ];
   }
 

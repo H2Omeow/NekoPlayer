@@ -400,13 +400,19 @@ private fun QuotaTab(quota: JsonObject?, usage: JsonObject?) {
 
 @Composable
 private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onChanged: () -> Unit) {
-    var pricing by remember { mutableStateOf<JsonArray?>(null) }
+    var tiers by remember { mutableStateOf<List<Pair<String, JsonObject>>>(emptyList()) }
     var orders by remember { mutableStateOf<JsonArray?>(null) }
     val context = LocalContext.current
     var receiptFor by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        runCatching { CloudApi.pricing() }.onSuccess { pricing = it["tiers"] as? JsonArray }
+        runCatching { CloudApi.pricing() }.onSuccess { body ->
+            val map = body["tiers"] as? JsonObject
+            tiers = map?.entries
+                ?.filter { it.key != "free" }
+                ?.mapNotNull { (key, value) -> (value as? JsonObject)?.let { key to it } }
+                ?: emptyList()
+        }
         runCatching { CloudApi.myOrders() }.onSuccess { orders = it["data"] as? JsonArray ?: (it["orders"] as? JsonArray) }
     }
 
@@ -436,9 +442,7 @@ private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onChanged: () -
             )
             Spacer(Modifier.height(NekoSpace.lg))
         }
-        items((pricing ?: JsonArray(emptyList())).toList()) { el ->
-            val tier = el as JsonObject
-            val id = tier["id"]?.jsonPrimitive?.content ?: ""
+        items(tiers) { (id, tier) ->
             val label = tier["label"]?.jsonPrimitive?.content ?: ""
             val price = tier["price"]?.jsonPrimitive?.content ?: ""
             Card(
