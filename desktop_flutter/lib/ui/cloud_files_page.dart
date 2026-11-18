@@ -9,6 +9,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../cloud/cloud_files_client.dart';
 import '../data/account_store.dart';
 import '../domain/social.dart';
+import '../social_controller.dart';
 import '../i18n/tr.dart';
 import 'neko_theme.dart';
 import 'widgets/page_layout.dart';
