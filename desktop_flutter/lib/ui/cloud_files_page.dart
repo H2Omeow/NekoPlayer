@@ -185,7 +185,7 @@ class _CloudFilesPageState extends State<CloudFilesPage> with SingleTickerProvid
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(tr('上传中') + ' ${(_progress! * 100).toStringAsFixed(0)}%'),
+                Text('${tr('上传中')} ${(_progress! * 100).toStringAsFixed(0)}%'),
                 const SizedBox(height: 6),
                 LinearProgressIndicator(value: _progress),
                 const SizedBox(height: NekoSpace.lg),
@@ -407,7 +407,7 @@ class _QuotaCard extends StatelessWidget {
           const SizedBox(height: NekoSpace.md),
           _bar(tr('本月流量'), trafficUsed, trafficTotal),
           const SizedBox(height: NekoSpace.sm),
-          Text(tr('文件数') + ' ${usage?.filesCount ?? 0}', style: TextStyle(color: colors.onSurfaceVariant)),
+          Text('${tr('文件数')} ${usage?.filesCount ?? 0}', style: TextStyle(color: colors.onSurfaceVariant)),
         ],
       ),
     );
@@ -450,7 +450,7 @@ class _ShareDialogState extends State<_ShareDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(tr('分享') + ' ' + widget.file.name),
+      title: Text('${tr('分享')} ${widget.file.name}'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
