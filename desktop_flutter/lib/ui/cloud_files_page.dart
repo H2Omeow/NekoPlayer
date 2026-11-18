@@ -157,7 +157,7 @@ class _CloudFilesPageState extends State<CloudFilesPage> with SingleTickerProvid
     );
     if (peer == null || peer.isEmpty || !mounted) return;
     try {
-      await social.sendMessage(
+      await social.repository.sendMessage(
         to: peer,
         kind: 'text',
         text: '${tr('分享了一个文件给你：')}$name\n$link',
