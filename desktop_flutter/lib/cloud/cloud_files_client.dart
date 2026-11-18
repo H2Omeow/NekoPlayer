@@ -236,7 +236,7 @@ class CloudFilesClient {
     try {
       final request = await client.postUrl(Uri.parse('$_base/orders/$orderId/receipt'));
       request.headers.set(HttpHeaders.authorizationHeader, 'Bearer ${_token()}');
-      request.headers.contentType = MediaType('image', mime.split('/').last);
+      request.headers.contentType = ContentType('image', mime.split('/').last);
       request.contentLength = bytes.length;
       request.add(bytes);
       final response = await request.close();
