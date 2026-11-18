@@ -6,6 +6,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../appearance_controller.dart';
+import '../../social_controller.dart';
 import '../../data/app_data_export.dart';
 import '../../data/native_music_catalog.dart';
 import '../../desktop_integration.dart';
@@ -56,9 +57,11 @@ class SettingsPage extends StatelessWidget {
     required this.cloudSync,
     required this.integration,
     required this.language,
+    this.social,
   });
 
   final PlayerController player;
+  final SocialController? social;
   final NativeMusicCatalog catalog;
   final SiteController site;
   final CloudSyncController cloudSync;

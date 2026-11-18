@@ -635,6 +635,7 @@ class _PlayerShellState extends State<PlayerShell> {
       cloudSync: cloudSync,
       integration: integration,
       language: widget.language,
+      social: social,
     ),
     _ => collectionPage(destination),
   };

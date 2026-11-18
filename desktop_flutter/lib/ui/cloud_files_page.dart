@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../cloud/cloud_files_client.dart';
 import '../data/account_store.dart';
+import '../domain/social.dart';
 import '../i18n/tr.dart';
 import 'neko_theme.dart';
 import 'widgets/page_layout.dart';
@@ -15,8 +16,9 @@ import 'widgets/settings_list.dart';
 
 /// 云存储：文件、额度与赞赏。与 Android 端共用 player.nekoh2o.top 的接口。
 class CloudFilesPage extends StatefulWidget {
-  const CloudFilesPage({super.key, required this.accounts});
+  const CloudFilesPage({super.key, required this.accounts, this.social});
   final AccountStore accounts;
+  final SocialController? social;
 
   @override
   State<CloudFilesPage> createState() => _CloudFilesPageState();
@@ -128,10 +130,43 @@ class _CloudFilesPageState extends State<CloudFilesPage> with SingleTickerProvid
       final link = 'https://player.nekoh2o.top/s/$token';
       await Clipboard.setData(ClipboardData(text: link));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('分享链接已复制：{link}', {'link': link}))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(tr('分享链接已复制：{link}', {'link': link})),
+          action: widget.social == null
+              ? null
+              : SnackBarAction(
+                  label: tr('发送给好友'),
+                  onPressed: () => _sendToFriend(link, file.name),
+                ),
+        ),
+      );
     } on CloudException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _sendToFriend(String link, String name) async {
+    final social = widget.social;
+    if (social == null) return;
+    final peer = await showDialog<String>(
+      context: context,
+      builder: (context) => _FriendPickerDialog(social: social),
+    );
+    if (peer == null || peer.isEmpty || !mounted) return;
+    try {
+      await social.sendMessage(
+        to: peer,
+        kind: 'text',
+        text: '${tr('分享了一个文件给你：')}$name\n$link',
+        clientId: 'cloud-${DateTime.now().microsecondsSinceEpoch}',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('已发送给好友'))));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
     }
   }
 
@@ -433,6 +468,59 @@ class _QuotaCard extends StatelessWidget {
       ],
     );
   }
+}
+
+class _FriendPickerDialog extends StatefulWidget {
+  const _FriendPickerDialog({required this.social});
+  final SocialController social;
+
+  @override
+  State<_FriendPickerDialog> createState() => _FriendPickerDialogState();
+}
+
+class _FriendPickerDialogState extends State<_FriendPickerDialog> {
+  late Future<List<SocialConversation>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.social.repository.conversations();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(tr('发送给好友')),
+    content: SizedBox(
+      width: 360,
+      height: 320,
+      child: FutureBuilder<List<SocialConversation>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final rows = snapshot.data ?? const <SocialConversation>[];
+          if (rows.isEmpty) {
+            return Center(child: Text(tr('还没有可以发消息的好友。')));
+          }
+          return ListView.builder(
+            itemCount: rows.length,
+            itemBuilder: (context, index) {
+              final row = rows[index];
+              return ListTile(
+                leading: const Icon(Icons.person_outline_rounded),
+                title: Text(row.peer?.displayName ?? tr('用户')),
+                onTap: () => Navigator.of(context).pop(row.peerId),
+              );
+            },
+          );
+        },
+      ),
+    ),
+    actions: [
+      TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr('取消'))),
+    ],
+  );
 }
 
 class _ShareDialog extends StatefulWidget {
