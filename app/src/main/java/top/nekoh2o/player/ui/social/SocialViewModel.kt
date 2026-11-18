@@ -48,6 +48,7 @@ data class SocialUiState(
     val shareResult: SocialShare? = null,
     val shareError: String? = null,
     val sseConnected: Boolean = false,
+    val online: Set<String> = emptySet(),
     val toast: String? = null
 )
 
@@ -94,6 +95,14 @@ class SocialViewModel(
         _state.value = _state.value.copy(toast = text)
     }
 
+    fun refreshPresence(ids: List<String>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            runCatching { repo.presence(ids) }
+                .onSuccess { online -> _state.value = _state.value.copy(online = online) }
+        }
+    }
+
     // ==================== 会话 ====================
     fun refreshConversations(silent: Boolean = false) {
         viewModelScope.launch {
@@ -107,6 +116,7 @@ class SocialViewModel(
                         loadingConversations = false,
                         active = list.firstOrNull { it.id == activeId } ?: _state.value.active
                     )
+                    refreshPresence(list.mapNotNull { it.peerId }.filter { it.isNotBlank() })
                 }
                 .onFailure {
                     _state.value = _state.value.copy(loadingConversations = false)

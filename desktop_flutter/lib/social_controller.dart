@@ -46,6 +46,7 @@ class SocialController extends ChangeNotifier {
   bool searching = false;
   bool loadingMessages = false;
   bool sseConnected = false;
+  Set<String> online = <String>{};
   String? error;
 
   bool _started = false;
@@ -114,6 +115,15 @@ class SocialController extends ChangeNotifier {
       if (updated != null) active = updated;
     }
     if (!silent) error = null;
+    _notify();
+    await refreshPresence(result.map((item) => item.peerId).toList());
+  }
+
+  Future<void> refreshPresence(List<String> ids) async {
+    if (!_started || ids.isEmpty) return;
+    final result = await _guard(() => repository.presence(ids));
+    if (result == null || _disposed) return;
+    online = result;
     _notify();
   }
 

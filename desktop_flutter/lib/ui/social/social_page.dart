@@ -161,7 +161,11 @@ class _SocialPageState extends State<SocialPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(NekoRadius.control),
           ),
-          leading: _Avatar(profile: conversation.peer, size: 44),
+          leading: _Avatar(
+            profile: conversation.peer,
+            size: 44,
+            online: social.online.contains(conversation.peerId),
+          ),
           title: Text(conversation.peer?.displayName ?? tr('用户')),
           subtitle: Text(
             _preview(conversation.lastMessage),
@@ -508,29 +512,55 @@ class _TabChip extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.profile, required this.size});
+  const _Avatar({required this.profile, required this.size, this.online = false});
   final SocialProfile? profile;
   final double size;
+  final bool online;
 
   @override
   Widget build(BuildContext context) {
     final url = profile?.avatar ?? '';
-    if (url.isEmpty) {
-      return CircleAvatar(
-        radius: size / 2,
-        child: Icon(Icons.person_outline_rounded, size: size * .55),
-      );
-    }
-    return ClipOval(
-      child: Image.network(
-        url,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => CircleAvatar(
-          radius: size / 2,
-          child: const Icon(Icons.person_outline_rounded),
-        ),
+    final child = url.isEmpty
+        ? CircleAvatar(
+            radius: size / 2,
+            child: Icon(Icons.person_outline_rounded, size: size * .55),
+          )
+        : ClipOval(
+            child: Image.network(
+              url,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => CircleAvatar(
+                radius: size / 2,
+                child: const Icon(Icons.person_outline_rounded),
+              ),
+            ),
+          );
+    if (!online) return child;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        children: [
+          child,
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: size * .28,
+              height: size * .28,
+              decoration: BoxDecoration(
+                color: const Color(0xFF4ADE80),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.surface,
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ import top.nekoh2o.player.i18n.NekoI18n.tr
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +26,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -73,7 +75,7 @@ fun SocialScreen(vm: PlayerViewModel, onLogin: () -> Unit) {
 
     val active = state.active
     if (active != null) {
-        ChatScreen(vm, active, state.messages, state.messagesLoading)
+        ChatScreen(vm, active, state.messages, state.messagesLoading, active.peerId in state.online)
     } else {
         Column(Modifier.fillMaxSize()) {
             PrimaryTabRow(selectedTabIndex = tab) {
@@ -138,7 +140,7 @@ private fun MessagesTab(vm: PlayerViewModel, state: SocialUiState) {
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = NekoSpace.xl)) {
         items(state.conversations, key = { it.id }) { conversation ->
-            ConversationRow(conversation) {
+            ConversationRow(conversation, online = conversation.peerId in state.online) {
                 vm.socialVm.openChat(conversation.peerId, conversation)
             }
         }
@@ -146,14 +148,30 @@ private fun MessagesTab(vm: PlayerViewModel, state: SocialUiState) {
 }
 
 @Composable
-private fun ConversationRow(conversation: SocialConversation, onClick: () -> Unit) {
+private fun ConversationRow(
+    conversation: SocialConversation,
+    online: Boolean = false,
+    onClick: () -> Unit
+) {
     val peer = conversation.peer
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick)
             .padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Avatar(peer, 48.dp)
+        Box {
+            Avatar(peer, 48.dp)
+            if (online) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF4ADE80))
+                        .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
+                )
+            }
+        }
         Spacer(Modifier.width(NekoSpace.md))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -194,7 +212,8 @@ private fun ChatScreen(
     vm: PlayerViewModel,
     conversation: SocialConversation,
     messages: List<SocialMessage>,
-    loading: Boolean
+    loading: Boolean,
+    online: Boolean = false
 ) {
     var text by rememberSaveable(conversation.id) { mutableStateOf("") }
     val player by vm.ui.collectAsState()
@@ -218,12 +237,21 @@ private fun ChatScreen(
             ) {
                 Avatar(conversation.peer, 38.dp)
                 Spacer(Modifier.width(NekoSpace.sm))
-                Text(
-                    conversation.peer?.displayName ?: tr("用户"),
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        conversation.peer?.displayName ?: tr("用户"),
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (online) {
+                        Text(
+                            tr("在线"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF4ADE80)
+                        )
+                    }
+                }
             }
         }
         HorizontalDivider()

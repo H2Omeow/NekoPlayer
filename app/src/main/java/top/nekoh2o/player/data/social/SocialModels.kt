@@ -185,6 +185,13 @@ data class SocialPreferences(val dmPolicy: String = "everyone")
 
 // ==================== 响应包装 ====================
 @Serializable
+data class SocialPresenceResp(
+    val code: Int = -1,
+    val msg: String = "",
+    val online: Map<String, Boolean> = emptyMap()
+)
+
+@Serializable
 data class SocialConversationsResp(
     val code: Int = -1,
     val msg: String = "",

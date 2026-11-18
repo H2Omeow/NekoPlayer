@@ -28,6 +28,18 @@ class SocialRepository {
     allowAnonymous: anonymous,
   );
 
+  Future<Set<String>> presence(List<String> ids) async {
+    final unique = ids.where((id) => id.isNotEmpty).toSet().take(100).toList();
+    if (unique.isEmpty) return <String>{};
+    final body = await _call('social/presence', query: {'ids': unique.join(',')});
+    final online = body['online'];
+    if (online is! Map) return <String>{};
+    return {
+      for (final entry in online.entries)
+        if (entry.value == true) entry.key.toString(),
+    };
+  }
+
   Future<List<SocialConversation>> conversations() async {
     final body = await _call('social/conversations');
     return [

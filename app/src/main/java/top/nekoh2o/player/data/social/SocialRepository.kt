@@ -19,6 +19,15 @@ class SocialRepository {
     private val api = ApiFactory.social
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
+    suspend fun presence(ids: List<String>): Set<String> {
+        if (ids.isEmpty()) return emptySet()
+        return call {
+            api.presence(ids.take(100).joinToString(",")).also { check(it.code) }.online
+                .filterValues { it }
+                .keys
+        }
+    }
+
     suspend fun conversations(): List<SocialConversation> = call { api.conversations().also { check(it.code) }.conversations }
 
     suspend fun conversationWith(peerId: String): SocialConversation? =

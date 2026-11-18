@@ -34,6 +34,9 @@ interface SocialApi {
     @DELETE("social/messages/{id}")
     suspend fun deleteMessage(@Path("id") id: String): SocialSendResp
 
+    @GET("social/presence")
+    suspend fun presence(@Query("ids") ids: String): SocialPresenceResp
+
     @GET("social/users/search")
     suspend fun searchUsers(@Query("q") query: String): SocialSearchResp
 
