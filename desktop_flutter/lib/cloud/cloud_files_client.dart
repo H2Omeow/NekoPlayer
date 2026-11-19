@@ -364,9 +364,13 @@ String formatCloudBytes(int bytes) {
     value /= 1024;
     index++;
   }
-  return index == 0
-      ? '${value.toStringAsFixed(0)}${units[index]}'
-      : '${value.toStringAsFixed(value >= 100 ? 0 : 1)}${units[index]}';
+  if (index == 0 || value >= 100) {
+    return '${value.toStringAsFixed(0)}${units[index]}';
+  }
+  final text = value
+      .toStringAsFixed(2)
+      .replaceFirst(RegExp(r'\.?0+$'), '');
+  return '$text${units[index]}';
 }
 
 String cloudDateLabel(int ms) {

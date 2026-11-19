@@ -927,8 +927,9 @@ fun formatBytes(bytes: Long): String {
         value /= 1024
         index++
     }
-    return if (value >= 100 || index == 0) String.format("%.0f%s", value, units[index])
-    else String.format("%.1f%s", value, units[index])
+    if (index == 0 || value >= 100) return String.format("%.0f%s", value, units[index])
+    val text = String.format("%.2f", value).trimEnd('0').trimEnd('.')
+    return "$text${units[index]}"
 }
 
 private fun formatDate(ms: Long): String {
