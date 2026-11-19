@@ -254,6 +254,30 @@ class CloudFilesClient {
     return SklandTicket('${body['sid']}', '${body['url']}');
   }
 
+  Future<void> sklandSmsSend(String phone) async {
+    await _json('POST', '/auth/skland/sms/send', body: {'phone': phone}, base: _account);
+  }
+
+  Future<String> sklandSmsVerify(String phone, String code) async {
+    final body = await _json(
+      'POST',
+      '/auth/skland/sms/verify',
+      body: {'phone': phone, 'code': code},
+      base: _account,
+    );
+    return '${body['state']}';
+  }
+
+  Future<String> sklandPasswordVerify(String phone, String password) async {
+    final body = await _json(
+      'POST',
+      '/auth/skland/password/verify',
+      body: {'phone': phone, 'password': password},
+      base: _account,
+    );
+    return '${body['state']}';
+  }
+
   Future<String> sklandPoll(String sid) async {
     final body = await _json('GET', '/auth/skland/poll?sid=$sid', base: _account);
     return '${body['state']}';

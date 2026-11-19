@@ -9,6 +9,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
@@ -40,7 +41,8 @@ object CloudApi {
             .addInterceptor { chain ->
                 val req = chain.request()
                 val token = CookieStore.appTokenValue()
-                if (req.url.host == PLAYER_HOST && token.isNotEmpty()) {
+                val authorized = req.url.host == PLAYER_HOST || req.url.host == "account.nekoh2o.top"
+                if (authorized && token.isNotEmpty()) {
                     chain.proceed(req.newBuilder().header("Authorization", "Bearer $token").build())
                 } else {
                     chain.proceed(req)
@@ -146,6 +148,32 @@ object CloudApi {
 
     suspend fun sklandPoll(sid: String): JsonObject =
         execute(Request.Builder().url("$ACCOUNT/auth/skland/poll?sid=$sid").get().build())
+
+    suspend fun sklandSmsSend(phone: String): JsonObject = execute(
+        Request.Builder().url("$ACCOUNT/auth/skland/sms/send")
+            .post(JsonObject(mapOf("phone" to JsonPrimitive(phone))).toString().toRequestBody("application/json".toMediaType()))
+            .build()
+    )
+
+    suspend fun sklandSmsVerify(phone: String, code: String): JsonObject = execute(
+        Request.Builder().url("$ACCOUNT/auth/skland/sms/verify")
+            .post(
+                JsonObject(
+                    mapOf("phone" to JsonPrimitive(phone), "code" to JsonPrimitive(code))
+                ).toString().toRequestBody("application/json".toMediaType())
+            )
+            .build()
+    )
+
+    suspend fun sklandPasswordVerify(phone: String, password: String): JsonObject = execute(
+        Request.Builder().url("$ACCOUNT/auth/skland/password/verify")
+            .post(
+                JsonObject(
+                    mapOf("phone" to JsonPrimitive(phone), "password" to JsonPrimitive(password))
+                ).toString().toRequestBody("application/json".toMediaType())
+            )
+            .build()
+    )
 
     // ---------- 上传实现 ----------
     private const val PART_SIZE = 5 * 1024 * 1024

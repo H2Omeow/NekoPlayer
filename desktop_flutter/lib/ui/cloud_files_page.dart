@@ -666,11 +666,19 @@ class _SklandBindDialog extends StatefulWidget {
   State<_SklandBindDialog> createState() => _SklandBindDialogState();
 }
 
+enum _SklandMode { scan, sms, password }
+
 class _SklandBindDialogState extends State<_SklandBindDialog> {
   SklandTicket? ticket;
   String state = 'loading';
   String message = '';
   Timer? timer;
+  _SklandMode mode = _SklandMode.scan;
+  final phone = TextEditingController();
+  final code = TextEditingController();
+  final password = TextEditingController();
+  bool busy = false;
+  int countdown = 0;
 
   @override
   void initState() {
@@ -681,6 +689,9 @@ class _SklandBindDialogState extends State<_SklandBindDialog> {
   @override
   void dispose() {
     timer?.cancel();
+    phone.dispose();
+    code.dispose();
+    password.dispose();
     super.dispose();
   }
 
@@ -692,6 +703,7 @@ class _SklandBindDialogState extends State<_SklandBindDialog> {
         ticket = value;
         state = 'waiting';
       });
+      timer?.cancel();
       timer = Timer.periodic(const Duration(seconds: 2), (_) => _poll());
     } on CloudException catch (error) {
       if (!mounted) return;
@@ -722,11 +734,58 @@ class _SklandBindDialogState extends State<_SklandBindDialog> {
     }
   }
 
+  Future<void> _sendCode() async {
+    setState(() {
+      busy = true;
+      message = '';
+    });
+    try {
+      await widget.client.sklandSmsSend(phone.text.trim());
+      if (!mounted) return;
+      setState(() {
+        countdown = 60;
+        message = tr('验证码已发送');
+      });
+      Timer.periodic(const Duration(seconds: 1), (t) {
+        if (!mounted || countdown <= 0) {
+          t.cancel();
+          return;
+        }
+        setState(() => countdown -= 1);
+      });
+    } on CloudException catch (error) {
+      if (mounted) setState(() => message = error.message);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      busy = true;
+      message = '';
+    });
+    try {
+      final result = mode == _SklandMode.password
+          ? await widget.client.sklandPasswordVerify(phone.text.trim(), password.text)
+          : await widget.client.sklandSmsVerify(phone.text.trim(), code.text.trim());
+      if (!mounted) return;
+      if (result == 'ok') {
+        await widget.onBound();
+        if (mounted) Navigator.pop(context);
+      }
+    } on CloudException catch (error) {
+      if (mounted) setState(() => message = error.message);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final label = switch (state) {
+    final scanLabel = switch (state) {
       'scanned' => tr('已扫码，请在手机上确认'),
-      'expired' => tr('二维码已失效，请重新打开'),
+      'expired' => tr('二维码已失效，点击重新生成'),
       'login_required' => tr('请先登录 NekoPlayer 账号'),
       'ok' => tr('绑定成功'),
       'error' => message.isEmpty ? tr('森空岛暂时不可用') : message,
@@ -734,18 +793,89 @@ class _SklandBindDialogState extends State<_SklandBindDialog> {
     };
     return AlertDialog(
       title: Text(tr('绑定森空岛')),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (ticket != null)
-            QrImageView(data: ticket!.url, size: 200, backgroundColor: Colors.white)
-          else
-            const SizedBox(width: 200, height: 200, child: Center(child: CircularProgressIndicator())),
-          const SizedBox(height: NekoSpace.md),
-          Text(label, textAlign: TextAlign.center),
-        ],
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SegmentedButton<_SklandMode>(
+              segments: [
+                ButtonSegment(value: _SklandMode.scan, label: Text(tr('扫码'))),
+                ButtonSegment(value: _SklandMode.sms, label: Text(tr('验证码'))),
+                ButtonSegment(value: _SklandMode.password, label: Text(tr('密码'))),
+              ],
+              selected: {mode},
+              onSelectionChanged: (value) {
+                final next = value.first;
+                if (next == mode) return;
+                timer?.cancel();
+                setState(() {
+                  mode = next;
+                  message = '';
+                  state = next == _SklandMode.scan ? 'loading' : 'waiting';
+                });
+                if (next == _SklandMode.scan) _start();
+              },
+            ),
+            const SizedBox(height: NekoSpace.md),
+            if (mode == _SklandMode.scan) ...[
+              Center(
+                child: ticket != null
+                    ? QrImageView(data: ticket!.url, size: 200, backgroundColor: Colors.white)
+                    : const SizedBox(width: 200, height: 200, child: Center(child: CircularProgressIndicator())),
+              ),
+              const SizedBox(height: NekoSpace.md),
+              Text(scanLabel, textAlign: TextAlign.center),
+            ] else ...[
+              TextField(
+                controller: phone,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(labelText: tr('手机号')),
+              ),
+              const SizedBox(height: NekoSpace.sm),
+              if (mode == _SklandMode.sms)
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: code,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(labelText: tr('验证码')),
+                      ),
+                    ),
+                    const SizedBox(width: NekoSpace.sm),
+                    TextButton(
+                      onPressed: busy || countdown > 0 ? null : _sendCode,
+                      child: Text(countdown > 0 ? '$countdown s' : tr('发送验证码')),
+                    ),
+                  ],
+                )
+              else
+                TextField(
+                  controller: password,
+                  obscureText: true,
+                  decoration: InputDecoration(labelText: tr('密码')),
+                ),
+              const SizedBox(height: NekoSpace.sm),
+              Text(
+                mode == _SklandMode.password
+                    ? tr('密码只在内存中使用一次以换取凭证，服务器不会保存。')
+                    : (message.isEmpty ? tr('验证码会发送到该手机号，只用于换取森空岛凭证。') : message),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: NekoSpace.md),
+              FilledButton(
+                onPressed: busy ? null : _submit,
+                child: Text(tr('绑定')),
+              ),
+            ],
+          ],
+        ),
       ),
       actions: [
+        if (mode == _SklandMode.scan && state == 'expired')
+          TextButton(onPressed: _start, child: Text(tr('重新生成'))),
         TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('关闭'))),
       ],
     );

@@ -49,6 +49,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
@@ -620,15 +622,43 @@ private fun SklandGate(onBind: () -> Unit, modifier: Modifier = Modifier) {
 
 @Composable
 private fun SklandBindDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
+    var mode by remember { mutableStateOf("scan") }
     var sid by remember { mutableStateOf<String?>(null) }
     var url by remember { mutableStateOf<String?>(null) }
     var state by remember { mutableStateOf("loading") }
     var message by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        runCatching { CloudApi.sklandStart() }
-            .onSuccess { sid = it["sid"]?.jsonPrimitive?.content; url = it["url"]?.jsonPrimitive?.content; state = "waiting" }
-            .onFailure { state = "error"; message = it.message ?: "" }
+    var phone by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var sending by remember { mutableStateOf(false) }
+    var countdown by remember { mutableStateOf(0) }
+    var smsMessage by remember { mutableStateOf("") }
+    var smsError by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    fun startScan() {
+        state = "loading"
+        sid = null
+        url = null
+        scope.launch {
+            runCatching { CloudApi.sklandStart() }
+                .onSuccess {
+                    sid = it["sid"]?.jsonPrimitive?.content
+                    url = it["url"]?.jsonPrimitive?.content
+                    state = "waiting"
+                }
+                .onFailure { state = "error"; message = it.message ?: "" }
+        }
+    }
+
+    LaunchedEffect(mode) { if (mode == "scan" && sid == null) startScan() }
+
+    LaunchedEffect(countdown) {
+        if (countdown > 0) {
+            delay(1000)
+            countdown -= 1
+        }
     }
 
     LaunchedEffect(sid) {
@@ -651,27 +681,150 @@ private fun SklandBindDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
         title = { Text(tr("绑定森空岛")) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                val bitmap = remember(url) { url?.let { qrBitmap(it) } }
-                if (bitmap != null) {
-                    Image(bitmap.asImageBitmap(), contentDescription = tr("二维码"), modifier = Modifier.size(200.dp), contentScale = ContentScale.Fit)
-                } else {
-                    CircularProgressIndicator(Modifier.size(40.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChipLike(selected = mode == "scan", label = tr("App 扫码")) { mode = "scan" }
+                    FilterChipLike(selected = mode == "sms", label = tr("手机验证码")) { mode = "sms" }
+                    FilterChipLike(selected = mode == "password", label = tr("手机密码")) { mode = "password" }
                 }
                 Spacer(Modifier.height(NekoSpace.md))
-                Text(
-                    when (state) {
-                        "scanned" -> tr("已扫码，请在手机上确认")
-                        "expired" -> tr("二维码已失效，请重新打开")
-                        "login_required" -> tr("请先在账户中心登录")
-                        "error" -> message.ifBlank { tr("森空岛暂时不可用") }
-                        else -> tr("打开森空岛 App 扫码")
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (mode == "scan") {
+                    val bitmap = remember(url) { url?.let { qrBitmap(it) } }
+                    if (bitmap != null) {
+                        Image(
+                            bitmap.asImageBitmap(),
+                            contentDescription = tr("二维码"),
+                            modifier = Modifier.size(200.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        CircularProgressIndicator(Modifier.size(40.dp))
+                    }
+                    Spacer(Modifier.height(NekoSpace.md))
+                    Text(
+                        when (state) {
+                            "scanned" -> tr("已扫码，请在手机上确认")
+                            "expired" -> tr("二维码已失效，点击下方重新生成")
+                            "login_required" -> tr("请先在账户中心登录")
+                            "error" -> message.ifBlank { tr("森空岛暂时不可用") }
+                            else -> tr("打开森空岛 App 扫码")
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else if (mode == "password") {
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it.filter { ch -> ch.isDigit() }.take(11) },
+                        label = { Text(tr("手机号")) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text(tr("密码")) },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(NekoSpace.sm))
+                    Text(
+                        smsMessage.ifBlank { tr("密码只在内存中使用一次以换取凭证，服务器不会保存。") },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (smsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(NekoSpace.md))
+                    Button(
+                        enabled = phone.length == 11 && password.length >= 6 && !sending,
+                        onClick = {
+                            sending = true
+                            smsError = false
+                            smsMessage = ""
+                            scope.launch {
+                                runCatching { CloudApi.sklandPasswordVerify(phone, password) }
+                                    .onSuccess { state = "ok"; onBound() }
+                                    .onFailure {
+                                        smsError = true
+                                        smsMessage = it.message ?: tr("绑定失败")
+                                    }
+                                sending = false
+                            }
+                        }
+                    ) { Text(tr("绑定")) }
+                } else {
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it.filter { ch -> ch.isDigit() }.take(11) },
+                        label = { Text(tr("手机号")) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = code,
+                            onValueChange = { code = it.filter { ch -> ch.isDigit() }.take(6) },
+                            label = { Text(tr("验证码")) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        TextButton(
+                            enabled = !sending && countdown == 0 && phone.length == 11,
+                            onClick = {
+                                sending = true
+                                smsError = false
+                                smsMessage = ""
+                                scope.launch {
+                                    runCatching { CloudApi.sklandSmsSend(phone) }
+                                        .onSuccess {
+                                            smsMessage = tr("验证码已发送")
+                                            countdown = 60
+                                        }
+                                        .onFailure {
+                                            smsError = true
+                                            smsMessage = it.message ?: tr("发送失败")
+                                        }
+                                    sending = false
+                                }
+                            }
+                        ) { Text(if (countdown > 0) "$countdown s" else tr("发送验证码")) }
+                    }
+                    Spacer(Modifier.height(NekoSpace.sm))
+                    Text(
+                        smsMessage.ifBlank { tr("验证码会发送到该手机号，只用于换取森空岛凭证，不会保存密码。") },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (smsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(NekoSpace.md))
+                    Button(
+                        enabled = phone.length == 11 && code.length >= 4,
+                        onClick = {
+                            sending = true
+                            smsError = false
+                            scope.launch {
+                                runCatching { CloudApi.sklandSmsVerify(phone, code) }
+                                    .onSuccess { state = "ok"; onBound() }
+                                    .onFailure {
+                                        smsError = true
+                                        smsMessage = it.message ?: tr("绑定失败")
+                                    }
+                                sending = false
+                            }
+                        }
+                    ) { Text(tr("绑定")) }
+                }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("关闭")) } }
+        confirmButton = {
+            Row {
+                if (mode == "scan" && state == "expired") {
+                    TextButton(onClick = { startScan() }) { Text(tr("重新生成")) }
+                }
+                TextButton(onClick = onDismiss) { Text(tr("关闭")) }
+            }
+        }
     )
 }
 
