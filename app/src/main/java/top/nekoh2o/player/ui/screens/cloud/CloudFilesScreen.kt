@@ -111,6 +111,7 @@ fun CloudFilesScreen(onBack: () -> Unit) {
     var uploadProgress by remember { mutableStateOf<Float?>(null) }
     var showSkland by remember { mutableStateOf(false) }
     var shareTarget by remember { mutableStateOf<JsonObject?>(null) }
+    var memeKind by remember { mutableStateOf<String?>(null) }
     var notifications by remember { mutableStateOf(JsonArray(emptyList())) }
     var unread by remember { mutableStateOf(0) }
     var showNotices by remember { mutableStateOf(false) }
@@ -206,10 +207,11 @@ fun CloudFilesScreen(onBack: () -> Unit) {
                     uploadProgress = uploadProgress,
                     onUpload = { picker.launch(arrayOf("*/*")) },
                     onDelete = { id -> scope.launch { runCatching { CloudApi.delete(id) }; reload() } },
-                    onShare = { item -> shareTarget = item }
+                    onShare = { item -> shareTarget = item },
+                    onMeme = { memeKind = it }
                 )
-                CloudTab.QUOTA -> QuotaTab(quota, usage)
-                CloudTab.SPONSOR -> SponsorTab(scope, onChanged = { scope.launch { reload() } })
+                CloudTab.QUOTA -> QuotaTab(quota, usage) { memeKind = it }
+                CloudTab.SPONSOR -> SponsorTab(scope, onMeme = { memeKind = it }, onChanged = { scope.launch { reload() } })
             }
         }
     }
@@ -379,10 +381,11 @@ private fun FilesTab(
     uploadProgress: Float?,
     onUpload: () -> Unit,
     onDelete: (String) -> Unit,
-    onShare: (JsonObject) -> Unit
+    onShare: (JsonObject) -> Unit,
+    onMeme: (String) -> Unit
 ) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(NekoSpace.lg)) {
-        item { QuotaHeader(quota, usage) }
+        item { QuotaHeader(quota, usage, onMeme) }
         if (uploadProgress != null) {
             item {
                 Column(Modifier.padding(top = NekoSpace.md)) {
@@ -434,7 +437,7 @@ private fun FileRow(item: JsonObject, onDelete: () -> Unit, onShare: () -> Unit)
 }
 
 @Composable
-private fun QuotaHeader(quota: JsonObject?, usage: JsonObject?) {
+private fun QuotaHeader(quota: JsonObject?, usage: JsonObject?, onMeme: (String) -> Unit) {
     val storageTotal = quota?.get("storageBytes")?.jsonPrimitive?.content?.toLongOrNull() ?: 0L
     val trafficTotal = quota?.get("trafficBytes")?.jsonPrimitive?.content?.toLongOrNull() ?: 0L
     val storageUsed = usage?.get("storage_bytes")?.jsonPrimitive?.content?.toLongOrNull() ?: 0L
@@ -445,7 +448,13 @@ private fun QuotaHeader(quota: JsonObject?, usage: JsonObject?) {
         Column(Modifier.padding(NekoSpace.md)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(tr("存储"), style = MaterialTheme.typography.labelMedium)
-                Text("${formatBytes(storageUsed)} / ${if (storageTotal > 0) formatBytes(storageTotal) else "∞"}")
+                val storageText = "${formatBytes(storageUsed)} / ${if (storageTotal > 0) formatBytes(storageTotal) else "∞"}"
+                val storageKind = if (storageTotal == 3489660928L) "325" else null
+                if (storageKind != null) {
+                    MemeText(storageText, storageKind, MaterialTheme.typography.bodyMedium, onTrigger = onMeme)
+                } else {
+                    Text(storageText)
+                }
             }
             LinearProgressIndicator(
                 progress = { if (storageTotal > 0) (storageUsed.toFloat() / storageTotal).coerceIn(0f, 1f) else 0f },
@@ -467,7 +476,7 @@ private fun QuotaHeader(quota: JsonObject?, usage: JsonObject?) {
 }
 
 @Composable
-private fun QuotaTab(quota: JsonObject?, usage: JsonObject?) {
+private fun QuotaTab(quota: JsonObject?, usage: JsonObject?, onMeme: (String) -> Unit) {
     val rows = listOf(
         tr("总存储") to (quota?.get("storageBytes")?.jsonPrimitive?.content?.toLongOrNull()?.let(::formatBytes) ?: "∞"),
         tr("月流量") to (quota?.get("trafficBytes")?.jsonPrimitive?.content?.toLongOrNull()?.let(::formatBytes) ?: "∞"),
@@ -478,7 +487,7 @@ private fun QuotaTab(quota: JsonObject?, usage: JsonObject?) {
         tr("自定义上限") to (quota?.get("maxCustom")?.jsonPrimitive?.content?.toLongOrNull()?.let(::formatBytes) ?: tr("不限"))
     )
     LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(NekoSpace.lg)) {
-        item { QuotaHeader(quota, usage) }
+        item { QuotaHeader(quota, usage, onMeme) }
         item {
             Spacer(Modifier.height(NekoSpace.lg))
             Text(tr("额度规则"), style = MaterialTheme.typography.titleMedium)
@@ -502,7 +511,7 @@ private fun QuotaTab(quota: JsonObject?, usage: JsonObject?) {
 }
 
 @Composable
-private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onChanged: () -> Unit) {
+private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onMeme: (String) -> Unit, onChanged: () -> Unit) {
     var tiers by remember { mutableStateOf<List<Pair<String, JsonObject>>>(emptyList()) }
     var orders by remember { mutableStateOf<JsonArray?>(null) }
     val context = LocalContext.current
@@ -555,7 +564,20 @@ private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onChanged: () -
                 Row(Modifier.padding(NekoSpace.md), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(label, fontWeight = FontWeight.SemiBold)
-                        Text("¥$price / " + tr("月"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (price == "7.99") {
+                            MemeText(
+                                "¥$price / " + tr("月"),
+                                "799",
+                                MaterialTheme.typography.bodySmall,
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            ) { onMeme(it) }
+                        } else {
+                            Text(
+                                "¥$price / " + tr("月"),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     Button(onClick = {
                         scope.launch {
