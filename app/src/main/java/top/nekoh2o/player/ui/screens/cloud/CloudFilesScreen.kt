@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -60,6 +61,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -629,12 +631,12 @@ private fun SklandBindDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
     var message by remember { mutableStateOf("") }
 
     var phone by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
-    var sending by remember { mutableStateOf(false) }
+    var password by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
     var countdown by remember { mutableStateOf(0) }
-    var smsMessage by remember { mutableStateOf("") }
-    var smsError by remember { mutableStateOf(false) }
+    var hint by remember { mutableStateOf("") }
+    var failed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun startScan() {
@@ -676,144 +678,151 @@ private fun SklandBindDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
         }
     }
 
+    fun requirePhone(): Boolean {
+        if (phone.length != 11) {
+            failed = true
+            hint = tr("请输入 11 位手机号")
+            return false
+        }
+        return true
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = { Text(tr("绑定森空岛")) },
         text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChipLike(selected = mode == "scan", label = tr("App 扫码")) { mode = "scan" }
-                    FilterChipLike(selected = mode == "sms", label = tr("手机验证码")) { mode = "sms" }
-                    FilterChipLike(selected = mode == "password", label = tr("手机密码")) { mode = "password" }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    FilterChipLike(selected = mode == "scan", label = tr("扫码"), modifier = Modifier.weight(1f)) { mode = "scan" }
+                    FilterChipLike(selected = mode == "sms", label = tr("验证码"), modifier = Modifier.weight(1f)) { mode = "sms" }
+                    FilterChipLike(selected = mode == "password", label = tr("密码"), modifier = Modifier.weight(1f)) { mode = "password" }
                 }
-                Spacer(Modifier.height(NekoSpace.md))
-                if (mode == "scan") {
-                    val bitmap = remember(url) { url?.let { qrBitmap(it) } }
-                    if (bitmap != null) {
-                        Image(
-                            bitmap.asImageBitmap(),
-                            contentDescription = tr("二维码"),
-                            modifier = Modifier.size(200.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        CircularProgressIndicator(Modifier.size(40.dp))
-                    }
-                    Spacer(Modifier.height(NekoSpace.md))
-                    Text(
-                        when (state) {
-                            "scanned" -> tr("已扫码，请在手机上确认")
-                            "expired" -> tr("二维码已失效，点击下方重新生成")
-                            "login_required" -> tr("请先在账户中心登录")
-                            "error" -> message.ifBlank { tr("森空岛暂时不可用") }
-                            else -> tr("打开森空岛 App 扫码")
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else if (mode == "password") {
-                    OutlinedTextField(
-                        value = phone,
-                        onValueChange = { phone = it.filter { ch -> ch.isDigit() }.take(11) },
-                        label = { Text(tr("手机号")) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text(tr("密码")) },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(NekoSpace.sm))
-                    Text(
-                        smsMessage.ifBlank { tr("密码只在内存中使用一次以换取凭证，服务器不会保存。") },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (smsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(NekoSpace.md))
-                    Button(
-                        enabled = phone.length == 11 && password.length >= 6 && !sending,
-                        onClick = {
-                            sending = true
-                            smsError = false
-                            smsMessage = ""
-                            scope.launch {
-                                runCatching { CloudApi.sklandPasswordVerify(phone, password) }
-                                    .onSuccess { state = "ok"; onBound() }
-                                    .onFailure {
-                                        smsError = true
-                                        smsMessage = it.message ?: tr("绑定失败")
-                                    }
-                                sending = false
+
+                when (mode) {
+                    "scan" -> {
+                        val bitmap = remember(url) { url?.let { qrBitmap(it) } }
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            if (bitmap != null) {
+                                Image(
+                                    bitmap.asImageBitmap(),
+                                    contentDescription = tr("二维码"),
+                                    modifier = Modifier.size(190.dp),
+                                    contentScale = ContentScale.Fit
+                                )
+                            } else {
+                                CircularProgressIndicator(Modifier.size(36.dp))
                             }
                         }
-                    ) { Text(tr("绑定")) }
-                } else {
-                    OutlinedTextField(
-                        value = phone,
-                        onValueChange = { phone = it.filter { ch -> ch.isDigit() }.take(11) },
-                        label = { Text(tr("手机号")) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            when (state) {
+                                "scanned" -> tr("已扫码，请在手机上确认")
+                                "expired" -> tr("二维码已失效，点击重新生成")
+                                "login_required" -> tr("请先在账户中心登录")
+                                "error" -> message.ifBlank { tr("森空岛暂时不可用") }
+                                else -> tr("打开森空岛 App 扫码")
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    else -> {
                         OutlinedTextField(
-                            value = code,
-                            onValueChange = { code = it.filter { ch -> ch.isDigit() }.take(6) },
-                            label = { Text(tr("验证码")) },
+                            value = phone,
+                            onValueChange = { phone = it.filter { ch -> ch.isDigit() }.take(11) },
+                            label = { Text(tr("手机号")) },
                             singleLine = true,
-                            modifier = Modifier.weight(1f)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        Spacer(Modifier.width(8.dp))
-                        TextButton(
-                            enabled = !sending && countdown == 0 && phone.length == 11,
-                            onClick = {
-                                sending = true
-                                smsError = false
-                                smsMessage = ""
-                                scope.launch {
-                                    runCatching { CloudApi.sklandSmsSend(phone) }
-                                        .onSuccess {
-                                            smsMessage = tr("验证码已发送")
-                                            countdown = 60
+                        if (mode == "sms") {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = code,
+                                    onValueChange = { code = it.filter { ch -> ch.isDigit() }.take(6) },
+                                    label = { Text(tr("验证码")) },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(
+                                    enabled = !busy && countdown == 0,
+                                    onClick = {
+                                        if (!requirePhone()) return@TextButton
+                                        busy = true
+                                        failed = false
+                                        scope.launch {
+                                            runCatching { CloudApi.sklandSmsSend(phone) }
+                                                .onSuccess {
+                                                    hint = tr("验证码已发送")
+                                                    countdown = 60
+                                                }
+                                                .onFailure {
+                                                    failed = true
+                                                    hint = it.message ?: tr("发送失败")
+                                                }
+                                            busy = false
                                         }
-                                        .onFailure {
-                                            smsError = true
-                                            smsMessage = it.message ?: tr("发送失败")
-                                        }
-                                    sending = false
-                                }
-                            }
-                        ) { Text(if (countdown > 0) "$countdown s" else tr("发送验证码")) }
-                    }
-                    Spacer(Modifier.height(NekoSpace.sm))
-                    Text(
-                        smsMessage.ifBlank { tr("验证码会发送到该手机号，只用于换取森空岛凭证，不会保存密码。") },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (smsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(NekoSpace.md))
-                    Button(
-                        enabled = phone.length == 11 && code.length >= 4,
-                        onClick = {
-                            sending = true
-                            smsError = false
-                            scope.launch {
-                                runCatching { CloudApi.sklandSmsVerify(phone, code) }
-                                    .onSuccess { state = "ok"; onBound() }
-                                    .onFailure {
-                                        smsError = true
-                                        smsMessage = it.message ?: tr("绑定失败")
                                     }
-                                sending = false
+                                ) { Text(if (countdown > 0) "$countdown s" else tr("发送")) }
                             }
+                        } else {
+                            OutlinedTextField(
+                                value = password,
+                                onValueChange = { password = it },
+                                label = { Text(tr("密码")) },
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
-                    ) { Text(tr("绑定")) }
+                        Text(
+                            hint.ifBlank {
+                                if (mode == "sms") tr("验证码会发送到该手机号，只用于换取凭证。")
+                                else tr("密码只在内存中使用一次，服务器不会保存。")
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Button(
+                            enabled = !busy,
+                            onClick = {
+                                if (!requirePhone()) return@Button
+                                busy = true
+                                failed = false
+                                scope.launch {
+                                    val result = if (mode == "password") {
+                                        runCatching { CloudApi.sklandPasswordVerify(phone, password) }
+                                    } else {
+                                        if (code.length < 4) {
+                                            failed = true
+                                            hint = tr("请输入验证码")
+                                            busy = false
+                                            return@launch
+                                        }
+                                        runCatching { CloudApi.sklandSmsVerify(phone, code) }
+                                    }
+                                    result.onSuccess { state = "ok"; onBound() }
+                                        .onFailure {
+                                            failed = true
+                                            hint = it.message ?: tr("绑定失败")
+                                        }
+                                    busy = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(tr("绑定")) }
+                    }
                 }
             }
         },
@@ -856,9 +865,15 @@ private fun ShareDialog(item: JsonObject, onDismiss: () -> Unit, onShare: (Strin
 }
 
 @Composable
-private fun FilterChipLike(selected: Boolean, label: String, onClick: () -> Unit) {
+private fun FilterChipLike(
+    selected: Boolean,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     FilledTonalButton(
         onClick = onClick,
+        modifier = modifier,
         colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
         )
