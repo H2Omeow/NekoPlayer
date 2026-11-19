@@ -52,7 +52,7 @@ data class MemeCopy(val title: String, val body: String)
 
 fun memeCopy(kind: String): MemeCopy = when (kind) {
     "325" -> MemeCopy(
-        "325 是什么梗",
+        "已完成今日325大学习",
         "所以325是什么意思🤔，难道是出自明日方舟up主魔法ZC目录2024年3月11日的直播，" +
             "彼时由龙哥哥今天又鸽了主办的明日方舟集成战略民间赛事仙术杯第五届正在如火如荼地展开中，" +
             "本届仙术杯采取团队赛的形式，ZC 代表冠军厨小队的第二位出战，" +

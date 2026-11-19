@@ -636,6 +636,8 @@ private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onMeme: (String
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(NekoSpace.lg))
+            RewardCodes()
+            Spacer(Modifier.height(NekoSpace.lg))
         }
         items(tiers) { (id, tier) ->
             val label = tier["label"]?.jsonPrimitive?.content ?: ""
@@ -726,6 +728,40 @@ private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onMeme: (String
             },
             onDismiss = { payFor = null }
         )
+    }
+}
+
+@Composable
+private fun RewardCodes() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        Column(Modifier.padding(NekoSpace.md)) {
+            Text(tr("扫码支付"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(NekoSpace.sm))
+            Row(horizontalArrangement = Arrangement.spacedBy(NekoSpace.sm)) {
+                listOf("wechat" to tr("微信"), "alipay" to tr("支付宝")).forEach { (kind, label) ->
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        AsyncImage(
+                            model = "https://player.nekoh2o.top/reward/" + kind,
+                            contentDescription = label,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxWidth().height(150.dp)
+                                .clip(RoundedCornerShape(NekoRadius.control))
+                        )
+                        Spacer(Modifier.height(NekoSpace.xs))
+                        Text(label, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+            Spacer(Modifier.height(NekoSpace.xs))
+            Text(
+                tr("微信或支付宝扫码支付，付款后点「去赞赏」下单并上传截图。"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
