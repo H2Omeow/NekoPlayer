@@ -4,6 +4,9 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -326,6 +329,24 @@ class BiliClient(
     suspend fun favorite(aid: Long): Boolean =
         action("https://api.bilibili.com/x/v3/fav/resource/deal", mapOf(
             "rid" to aid.toString(), "type" to "2", "add_media_ids" to "0"
+        ))
+
+    /** 是否已关注该 UP（0 未关注，2/6 已关注）。 */
+    suspend fun isFollowing(mid: Long): Boolean {
+        if (!BiliSession.isLogin()) return false
+        val (text, _) = getJsonWithCookies("https://api.bilibili.com/x/relation?fid=$mid")
+        val obj = json.parseToJsonElement(text).jsonObject
+        if (obj["code"]?.jsonPrimitive?.intOrNull != 0) return false
+        val attr = obj["data"]?.jsonObject?.get("attribute")?.jsonPrimitive?.intOrNull ?: 0
+        return attr == 2 || attr == 6
+    }
+
+    /** 关注 / 取关。 */
+    suspend fun follow(mid: Long, follow: Boolean): Boolean =
+        action("https://api.bilibili.com/x/relation/modify", mapOf(
+            "fid" to mid.toString(),
+            "act" to if (follow) "1" else "2",
+            "re_src" to "11"
         ))
 
     private suspend fun action(url: String, extra: Map<String, String>): Boolean {

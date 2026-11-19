@@ -33,6 +33,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.nekoh2o.player.data.bilibili.BiliAccount
@@ -47,6 +48,12 @@ import top.nekoh2o.player.data.store.WatchEntry
 import top.nekoh2o.player.data.store.VideoSettings
 import top.nekoh2o.player.ui.theme.NekoRadius
 import top.nekoh2o.player.ui.theme.NekoSpace
+
+private fun qualityFor(base: Int, step: Int): Int {
+    val order = intArrayOf(80, 64, 32, 16)
+    val start = order.indexOf(base).coerceAtLeast(0)
+    return order[(start + step).coerceAtMost(order.size - 1)]
+}
 
 @Composable
 fun VideoDetailScreen(
@@ -77,6 +84,8 @@ fun VideoDetailScreen(
     var fullscreen by remember { mutableStateOf(false) }
     var positionMs by remember { mutableLongStateOf(startMs) }
     var tab by remember { mutableIntStateOf(0) }
+    var retryKey by remember { mutableIntStateOf(0) }
+    var qualityStep by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(bvid) {
         loading = true
@@ -85,7 +94,7 @@ fun VideoDetailScreen(
             .onSuccess { d ->
                 detail = d
                 runCatching { repo.related(bvid) }.onSuccess { related = it }
-                runCatching { repo.play(bvid, d.cid, settings.player.defaultQuality) }
+                runCatching { repo.play(bvid, d.cid, qualityFor(settings.player.defaultQuality, qualityStep)) }
                     .onSuccess { source = it }
                     .onFailure { error = "无法获取播放地址：${it.message}" }
                 runCatching { repo.danmaku(d.cid, d.item.aid, d.item.durationSec) }
@@ -95,6 +104,16 @@ fun VideoDetailScreen(
             }
             .onFailure { error = it.message ?: "加载失败" }
         loading = false
+    }
+
+    // 播放失败时换一次新直链，再失败就逐级降清晰度
+    LaunchedEffect(retryKey) {
+        if (retryKey == 0) return@LaunchedEffect
+        val d = detail ?: return@LaunchedEffect
+        if (retryKey % 2 == 1) source = null
+        runCatching { repo.play(bvid, d.cid, qualityFor(settings.player.defaultQuality, qualityStep)) }
+            .onSuccess { source = it }
+            .onFailure { error = "无法获取播放地址：${it.message}" }
     }
 
     // 播放进度落盘
@@ -163,7 +182,7 @@ fun VideoDetailScreen(
                     .fillMaxSize()
                     .then(if (fullscreen) Modifier else Modifier.imePadding()),
                 contentPadding = if (fullscreen) PaddingValues(0.dp)
-                else PaddingValues(bottom = 72.dp)
+                else PaddingValues(bottom = 148.dp)
             ) {
                 item {
                     Box(
@@ -183,6 +202,12 @@ fun VideoDetailScreen(
                             onBack = { if (fullscreen) fullscreen = false else onBack() },
                             onEnded = {},
                             onProgress = { pos, _ -> positionMs = pos; onProgress(pos, d.item.durationSec * 1000L) },
+                            onFatalError = {
+                                if (qualityStep < 2) {
+                                    qualityStep += 1
+                                    retryKey += 1
+                                }
+                            },
                             onOpenDanmakuSettings = onOpenDanmakuSettings,
                             onOpenPlayerSettings = onOpenPlayerSettings,
                             modifier = Modifier.fillMaxSize()
@@ -203,7 +228,7 @@ fun VideoDetailScreen(
                             onDanmakuSettings = onOpenDanmakuSettings
                         )
                     }
-                    item { UpRow(d, account, onLogin, onOpenVideo) }
+                    item { UpRow(d, account, repo, scope, onLogin) }
                     item {
                         DetailTabs(tab, commentCount) { tab = it }
                     }
@@ -365,7 +390,19 @@ private fun ActionItem(icon: androidx.compose.ui.graphics.vector.ImageVector, la
 }
 
 @Composable
-private fun UpRow(d: VideoDetail, account: BiliAccount, onLogin: () -> Unit, onOpenVideo: (String) -> Unit) {
+private fun UpRow(
+    d: VideoDetail,
+    account: BiliAccount,
+    repo: VideoRepository,
+    scope: CoroutineScope,
+    onLogin: () -> Unit
+) {
+    val context = LocalContext.current
+    var following by remember(d.owner.mid) { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(d.owner.mid, account.isLogin) {
+        if (account.isLogin) following = runCatching { repo.isFollowing(d.owner.mid) }.getOrDefault(false)
+    }
     Row(
         Modifier
             .fillMaxWidth()
@@ -390,13 +427,33 @@ private fun UpRow(d: VideoDetail, account: BiliAccount, onLogin: () -> Unit, onO
             )
         }
         Text(
-            if (account.isLogin) "已登录" else "登录",
+            when {
+                !account.isLogin -> "登录"
+                following -> "已关注"
+                else -> "关注"
+            },
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onPrimary,
+            color = if (following) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier
                 .clip(RoundedCornerShape(50))
-                .background(MaterialTheme.colorScheme.primary)
-                .clickable { if (!account.isLogin) onLogin() }
+                .background(
+                    if (following) MaterialTheme.colorScheme.surfaceContainerHighest
+                    else MaterialTheme.colorScheme.primary
+                )
+                .clickable(enabled = !busy) {
+                    if (!account.isLogin) {
+                        onLogin()
+                    } else {
+                        busy = true
+                        scope.launch {
+                            val next = !following
+                            val ok = runCatching { repo.follow(d.owner.mid, next) }.getOrDefault(false)
+                            if (ok) following = next
+                            else toast(context, false, "关注失败")
+                            busy = false
+                        }
+                    }
+                }
                 .padding(horizontal = 16.dp, vertical = 6.dp)
         )
     }

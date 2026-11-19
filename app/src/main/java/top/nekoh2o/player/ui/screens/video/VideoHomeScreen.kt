@@ -40,6 +40,7 @@ sealed interface VideoRoute {
     data object Home : VideoRoute
     data class Search(val query: String) : VideoRoute
     data class Detail(val bvid: String, val startMs: Long) : VideoRoute
+    data object Profile : VideoRoute
 }
 
 @Composable
@@ -53,13 +54,14 @@ fun VideoScreen() {
 
     var route by remember { mutableStateOf<VideoRoute>(VideoRoute.Home) }
     var showLogin by remember { mutableStateOf(false) }
+    var showCloud by remember { mutableStateOf(false) }
     var showDanmakuSheet by remember { mutableStateOf(false) }
     var showPlayerSheet by remember { mutableStateOf(false) }
     var historyVersion by remember { mutableIntStateOf(0) }
 
     BackHandler(enabled = route != VideoRoute.Home) {
         route = when (val r = route) {
-            is VideoRoute.Search, is VideoRoute.Detail -> VideoRoute.Home
+            is VideoRoute.Search, is VideoRoute.Detail, is VideoRoute.Profile -> VideoRoute.Home
             else -> VideoRoute.Home
         }
     }
@@ -76,11 +78,23 @@ fun VideoScreen() {
                 onOpenSearch = { q -> route = VideoRoute.Search(q) },
                 onLogin = {
                     if (account.isLogin) {
-                        BiliSession.logout()
+                        route = VideoRoute.Profile
                     } else {
                         showLogin = true
                     }
                 }
+            )
+            VideoRoute.Profile -> VideoProfileScreen(
+                account = account,
+                history = history,
+                historyVersion = historyVersion,
+                onBack = { route = VideoRoute.Home; historyVersion++ },
+                onLogin = { showLogin = true },
+                onOpenVideo = { bvid -> route = VideoRoute.Detail(bvid, 0L) },
+                onOpenCloudFiles = { showCloud = true },
+                onOpenPlayerSettings = { showPlayerSheet = true },
+                onOpenDanmakuSettings = { showDanmakuSheet = true },
+                onChanged = { historyVersion++ }
             )
             is VideoRoute.Search -> VideoSearchScreen(
                 initialQuery = r.query,
@@ -104,6 +118,10 @@ fun VideoScreen() {
                 onSendDanmakuClick = {}
             )
         }
+    }
+
+    if (showCloud) {
+        top.nekoh2o.player.ui.screens.cloud.CloudFilesScreen(onBack = { showCloud = false })
     }
 
     if (showDanmakuSheet) {

@@ -62,6 +62,8 @@ class VideoRepository(
     suspend fun like(aid: Long): Boolean = api.like(aid)
     suspend fun coin(aid: Long): Boolean = api.coin(aid)
     suspend fun favorite(aid: Long): Boolean = api.favorite(aid)
+    suspend fun isFollowing(mid: Long): Boolean = api.isFollowing(mid)
+    suspend fun follow(mid: Long, follow: Boolean): Boolean = api.follow(mid, follow)
 
     suspend fun qrGenerate(): QrTicket = api.qrGenerate()
 

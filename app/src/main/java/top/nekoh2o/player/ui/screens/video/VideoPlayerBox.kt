@@ -47,6 +47,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 import top.nekoh2o.player.data.bilibili.DanmakuItem
+import top.nekoh2o.player.data.bilibili.BiliSession
 import top.nekoh2o.player.data.bilibili.PlaySource
 import top.nekoh2o.player.data.store.DanmakuSettings
 import top.nekoh2o.player.data.store.PlayerSettings
@@ -54,13 +55,17 @@ import top.nekoh2o.player.data.store.PlayerSettings
 private const val UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
 
 /** B 站视频源需要的请求头；缺失会被 403。 */
-private fun biliHeaders(): Map<String, String> = mapOf(
-    "Referer" to "https://www.bilibili.com/",
-    "Origin" to "https://www.bilibili.com",
-    "User-Agent" to UA,
-    "Accept" to "*/*",
-    "Range" to "bytes=0-"
-)
+private fun biliHeaders(): Map<String, String> {
+    val headers = mutableMapOf(
+        "Referer" to "https://www.bilibili.com/",
+        "Origin" to "https://www.bilibili.com",
+        "User-Agent" to UA,
+        "Accept" to "*/*"
+    )
+    val cookie = runCatching { BiliSession.cookieHeader() }.getOrDefault("")
+    if (cookie.isNotBlank()) headers["Cookie"] = cookie
+    return headers
+}
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -78,6 +83,7 @@ fun VideoPlayerBox(
     onProgress: (positionMs: Long, durationMs: Long) -> Unit,
     onOpenDanmakuSettings: () -> Unit,
     onOpenPlayerSettings: () -> Unit,
+    onFatalError: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -134,6 +140,12 @@ fun VideoPlayerBox(
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 errorText = error.errorCodeName + "：" + (error.message ?: "播放失败")
                 buffering = false
+                if (error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
+                    error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
+                    error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
+                ) {
+                    onFatalError()
+                }
             }
         }
         exo.addListener(listener)
