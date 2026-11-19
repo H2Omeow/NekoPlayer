@@ -57,9 +57,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -517,7 +519,7 @@ private fun QuotaHeader(quota: JsonObject?, usage: JsonObject?, onMeme: (String)
             Spacer(Modifier.height(NekoSpace.sm))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(tr("本月流量"), style = MaterialTheme.typography.labelMedium)
-                Text("${formatBytes(trafficUsed)} / ${if (trafficTotal > 0) formatBytes(trafficTotal) else "∞"}")
+                MemeAwareText("${formatBytes(trafficUsed)} / ${if (trafficTotal > 0) formatBytes(trafficTotal) else "∞"}", onMeme)
             }
             LinearProgressIndicator(
                 progress = { if (trafficTotal > 0) (trafficUsed.toFloat() / trafficTotal).coerceIn(0f, 1f) else 0f },
@@ -526,6 +528,27 @@ private fun QuotaHeader(quota: JsonObject?, usage: JsonObject?, onMeme: (String)
             Spacer(Modifier.height(NekoSpace.sm))
             Text(tr("文件数") + " " + count, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+private fun memeKindOf(text: String): String? = when {
+    text.contains("3.25") || text.contains("32.5") -> "325"
+    text.contains("7.99") -> "799"
+    else -> null
+}
+
+@Composable
+private fun MemeAwareText(
+    text: String,
+    onMeme: (String) -> Unit,
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    color: Color = Color.Unspecified
+) {
+    val kind = memeKindOf(text)
+    if (kind != null) {
+        MemeText(text, kind, style, color, onMeme)
+    } else {
+        Text(text, style = style, color = color)
     }
 }
 
@@ -550,7 +573,7 @@ private fun QuotaTab(quota: JsonObject?, usage: JsonObject?, onMeme: (String) ->
         items(rows) { (k, v) ->
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(k, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(v, fontWeight = FontWeight.Medium)
+                MemeAwareText(v, onMeme, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
             }
         }
         item {
@@ -601,8 +624,9 @@ private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onMeme: (String
         item {
             Text(tr("赞赏 NekoPlayer"), style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(NekoSpace.xs))
-            Text(
+            MemeAwareText(
                 tr("赞赏后不限文件份数、单文件大小，存储 32.5G / 月流量 50G，且文件永不清理。支付后上传截图，人工核对后开通。"),
+                onMeme,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
