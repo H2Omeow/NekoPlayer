@@ -165,6 +165,15 @@ object CloudApi {
             .build()
     )
 
+    suspend fun sklandWebToken(token: String): JsonObject = execute(
+        Request.Builder().url("$ACCOUNT/auth/skland/token")
+            .post(
+                JsonObject(mapOf("token" to JsonPrimitive(token)))
+                    .toString().toRequestBody("application/json".toMediaType())
+            )
+            .build()
+    )
+
     suspend fun sklandPasswordVerify(phone: String, password: String): JsonObject = execute(
         Request.Builder().url("$ACCOUNT/auth/skland/password/verify")
             .post(

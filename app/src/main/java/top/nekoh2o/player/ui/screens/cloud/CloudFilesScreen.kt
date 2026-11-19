@@ -634,6 +634,7 @@ private fun SklandBindDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
     var code by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    var showWeb by remember { mutableStateOf(false) }
     var countdown by remember { mutableStateOf(0) }
     var hint by remember { mutableStateOf("") }
     var failed by remember { mutableStateOf(false) }
@@ -831,10 +832,18 @@ private fun SklandBindDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
                 if (mode == "scan" && state == "expired") {
                     TextButton(onClick = { startScan() }) { Text(tr("重新生成")) }
                 }
+                TextButton(onClick = { showWeb = true }) { Text(tr("网页登录")) }
                 TextButton(onClick = onDismiss) { Text(tr("关闭")) }
             }
         }
     )
+
+    if (showWeb) {
+        SklandWebLoginDialog(
+            onDismiss = { showWeb = false },
+            onBound = { showWeb = false; onBound() }
+        )
+    }
 }
 
 @Composable
