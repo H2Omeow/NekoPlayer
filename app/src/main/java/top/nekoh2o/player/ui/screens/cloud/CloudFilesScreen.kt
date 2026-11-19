@@ -66,6 +66,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -548,12 +553,44 @@ private fun MemeAwareText(
     style: TextStyle = MaterialTheme.typography.bodyMedium,
     color: Color = Color.Unspecified
 ) {
-    val kind = memeKindOf(text)
-    if (kind != null) {
-        MemeText(text, kind, style, color, onMeme)
-    } else {
+    val kind = memeKindOf(text) ?: run {
         Text(text, style = style, color = color)
+        return
     }
+    // 直接在数字上挂可点链接，避免整段文字吸收点击后看不到反馈
+    val annotated = remember(text, kind) {
+        buildAnnotatedString {
+            var index = 0
+            while (index < text.length) {
+                val hit = listOf("3.25", "32.5", "7.99")
+                    .map { it to text.indexOf(it, index) }
+                    .filter { it.second >= 0 }
+                    .minByOrNull { it.second }
+                if (hit == null) {
+                    append(text.substring(index))
+                    break
+                }
+                if (hit.second > index) append(text.substring(index, hit.second))
+                pushStringAnnotation(tag = "meme", annotation = kind)
+                withLink(
+                    LinkAnnotation.Clickable(
+                        tag = kind,
+                        styles = TextLinkStyles(style = SpanStyle(color = color, textDecoration = null))
+                    ) { if (MemeTaps.tap(kind)) onMeme(kind) }
+                ) {
+                    append(hit.first)
+                }
+                pop()
+                index = hit.second + hit.first.length
+            }
+        }
+    }
+    Text(
+        annotated,
+        style = style,
+        color = color,
+        modifier = Modifier.clickable { if (MemeTaps.tap(kind)) onMeme(kind) }
+    )
 }
 
 @Composable
