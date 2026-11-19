@@ -3,6 +3,7 @@ package top.nekoh2o.player.ui.screens.video
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -24,6 +25,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.nekoh2o.player.data.bilibili.BiliAccount
@@ -34,6 +37,7 @@ import top.nekoh2o.player.data.repo.VideoRepository
 import top.nekoh2o.player.data.store.VideoHistoryStore
 import top.nekoh2o.player.data.store.VideoSettings
 import top.nekoh2o.player.data.store.VideoSettingsStore
+import top.nekoh2o.player.ui.screens.cloud.CloudFilesScreen
 import top.nekoh2o.player.ui.theme.NekoSpace
 
 sealed interface VideoRoute {
@@ -121,7 +125,14 @@ fun VideoScreen() {
     }
 
     if (showCloud) {
-        top.nekoh2o.player.ui.screens.cloud.CloudFilesScreen(onBack = { showCloud = false })
+        Dialog(
+            onDismissRequest = { showCloud = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+        ) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                CloudFilesScreen(onBack = { showCloud = false })
+            }
+        }
     }
 
     if (showDanmakuSheet) {

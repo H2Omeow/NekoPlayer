@@ -52,7 +52,7 @@ import top.nekoh2o.player.data.bilibili.PlaySource
 import top.nekoh2o.player.data.store.DanmakuSettings
 import top.nekoh2o.player.data.store.PlayerSettings
 
-private const val UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
+private const val UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 /** B 站视频源需要的请求头；缺失会被 403。 */
 private fun biliHeaders(): Map<String, String> {
@@ -60,7 +60,9 @@ private fun biliHeaders(): Map<String, String> {
         "Referer" to "https://www.bilibili.com/",
         "Origin" to "https://www.bilibili.com",
         "User-Agent" to UA,
-        "Accept" to "*/*"
+        "Accept" to "*/*",
+        // B 站 CDN 对没有 Range 的请求会直接返回 567/403，必须带上初始 Range
+        "Range" to "bytes=0-"
     )
     val cookie = runCatching { BiliSession.cookieHeader() }.getOrDefault("")
     if (cookie.isNotBlank()) headers["Cookie"] = cookie
