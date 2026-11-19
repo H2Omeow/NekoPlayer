@@ -37,6 +37,8 @@ import coil.request.ImageRequest
 import top.nekoh2o.player.data.bilibili.VideoItem
 import top.nekoh2o.player.ui.theme.NekoRadius
 import top.nekoh2o.player.ui.theme.NekoSpace
+import top.nekoh2o.player.i18n.NekoI18n
+import top.nekoh2o.player.i18n.NekoI18n.tr
 
 /** 图片请求带上 B 站 Referer，否则部分封面会 403。 */
 @Composable
@@ -55,10 +57,15 @@ fun biliImage(url: String, modifier: Modifier = Modifier, contentScale: ContentS
     )
 }
 
-fun formatCount(n: Long): String = when {
-    n >= 100_000_000 -> "%.1f亿".format(n / 100_000_000.0)
-    n >= 10_000 -> "%.1f万".format(n / 10_000.0)
-    else -> n.toString()
+fun formatCount(n: Long): String {
+    // 英文环境用 K/M/B，中日环境用万/億
+    val english = NekoI18n.activeLanguageTag().startsWith("en")
+    return when {
+        n >= 1_000_000_000 -> if (english) "%.1fB".format(n / 1_000_000_000.0) else tr("%.1f亿").format(n / 100_000_000.0)
+        n >= 1_000_000 -> if (english) "%.1fM".format(n / 1_000_000.0) else tr("%.1f万").format(n / 10_000.0)
+        n >= 10_000 -> if (english) "%.1fK".format(n / 1_000.0) else tr("%.1f万").format(n / 10_000.0)
+        else -> n.toString()
+    }
 }
 
 fun formatDuration(seconds: Int): String {

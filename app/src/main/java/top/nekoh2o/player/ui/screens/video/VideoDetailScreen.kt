@@ -117,7 +117,7 @@ fun VideoDetailScreen(
                 runCatching { repo.comments(d.item.aid) }
                     .onSuccess { r -> comments = r.first; commentCount = r.second }
             }
-            .onFailure { error = it.message ?: "加载失败" }
+            .onFailure { error = it.message ?: tr("加载失败") }
         loading = false
     }
 
@@ -184,9 +184,9 @@ fun VideoDetailScreen(
         } else if (detail == null) {
             VideoEmptyState(
                 icon = Icons.Outlined.ErrorOutline,
-                title = "视频加载失败",
+                title = tr("视频加载失败"),
                 message = error,
-                action = "返回",
+                action = tr("返回"),
                 onAction = onBack,
                 modifier = Modifier.align(Alignment.Center)
             )
@@ -239,9 +239,9 @@ fun VideoDetailScreen(
                         DetailActions(
                             d = d,
                             loggedIn = account.isLogin,
-                            onLike = { scope.launch { toast(context, runCatching { repo.like(d.item.aid) }.getOrDefault(false), "点赞") } },
-                            onCoin = { scope.launch { toast(context, runCatching { repo.coin(d.item.aid) }.getOrDefault(false), "投币") } },
-                            onFavorite = { scope.launch { toast(context, runCatching { repo.favorite(d.item.aid) }.getOrDefault(false), "收藏") } },
+                            onLike = { scope.launch { toast(context, runCatching { repo.like(d.item.aid) }.getOrDefault(false), tr("点赞")) } },
+                            onCoin = { scope.launch { toast(context, runCatching { repo.coin(d.item.aid) }.getOrDefault(false), tr("投币")) } },
+                            onFavorite = { scope.launch { toast(context, runCatching { repo.favorite(d.item.aid) }.getOrDefault(false), tr("收藏")) } },
                             onShare = {
                                 val url = "https://www.bilibili.com/video/" + d.item.bvid
                                 val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
@@ -261,7 +261,7 @@ fun VideoDetailScreen(
                             if (comments.isEmpty()) {
                                 item {
                                     Text(
-                                        "还没有评论，或评论加载失败",
+                                        tr("还没有评论，或评论加载失败"),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(NekoSpace.lg)
@@ -393,12 +393,12 @@ private fun DetailActions(
         ActionItem(Icons.Outlined.FavoriteBorder, formatCount(d.stat.like), onLike)
         ActionItem(Icons.Outlined.MonetizationOn, formatCount(d.stat.coin), onCoin)
         ActionItem(Icons.Outlined.StarBorder, formatCount(d.stat.favorite), onFavorite)
-        ActionItem(Icons.Outlined.Share, "分享", onShare)
-        ActionItem(Icons.Outlined.Subtitles, "弹幕设置", onDanmakuSettings)
+        ActionItem(Icons.Outlined.Share, tr("分享"), onShare)
+        ActionItem(Icons.Outlined.Subtitles, tr("弹幕设置"), onDanmakuSettings)
     }
     if (!loggedIn) {
         Text(
-            "登录后即可点赞、投币、收藏与发送弹幕",
+            tr("登录后即可点赞、投币、收藏与发送弹幕"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = NekoSpace.lg)
@@ -453,16 +453,16 @@ private fun UpRow(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                "UP 主 · 关注收取更新",
+                tr("UP 主 · 关注收取更新"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Text(
             when {
-                !account.isLogin -> "登录"
-                following -> "已关注"
-                else -> "关注"
+                !account.isLogin -> tr("登录")
+                following -> tr("已关注")
+                else -> tr("关注")
             },
             style = MaterialTheme.typography.labelLarge,
             color = if (following) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary,
@@ -481,7 +481,7 @@ private fun UpRow(
                             val next = !following
                             val ok = runCatching { repo.follow(d.owner.mid, next) }.getOrDefault(false)
                             if (ok) following = next
-                            else toast(context, false, "关注失败")
+                            else toast(context, false, tr("关注失败"))
                             busy = false
                         }
                     }
@@ -493,7 +493,7 @@ private fun UpRow(
 
 @Composable
 private fun DetailTabs(tab: Int, commentCount: Int, onSelect: (Int) -> Unit) {
-    val labels = listOf("简介", "评论 ${formatCount(commentCount.toLong())}", "相关推荐")
+    val labels = listOf(tr("简介"), "评论 ${formatCount(commentCount.toLong())}", tr("相关推荐"))
     Row(Modifier.fillMaxWidth().padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm)) {
         labels.forEachIndexed { i, label ->
             Column(
@@ -527,7 +527,7 @@ private fun DescriptionBlock(d: VideoDetail) {
     var expanded by remember { mutableStateOf(false) }
     Column(Modifier.padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm)) {
         Text(
-            d.desc.ifBlank { "暂无简介" },
+            d.desc.ifBlank { tr("暂无简介") },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = if (expanded) Int.MAX_VALUE else 3,
@@ -535,7 +535,7 @@ private fun DescriptionBlock(d: VideoDetail) {
         )
         if (d.desc.length > 80) {
             Text(
-                if (expanded) "收起" else "展开全部简介",
+                if (expanded) tr("收起") else tr("展开全部简介"),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
@@ -545,7 +545,7 @@ private fun DescriptionBlock(d: VideoDetail) {
         }
         Spacer(Modifier.height(NekoSpace.sm))
         Text(
-            "分区：${d.tname.ifBlank { "视频" }}" + if (d.copyright == 2) " · 转载" else "",
+            "分区：${d.tname.ifBlank { "视频" }}" + if (d.copyright == 2) tr(" · 转载") else "",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -589,7 +589,7 @@ private fun DanmakuInputBar(onSend: (String) -> Unit, onOpenSettings: () -> Unit
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
-                placeholder = { Text("发个友善的弹幕见证当下", style = MaterialTheme.typography.bodySmall) },
+                placeholder = { Text(tr("发个友善的弹幕见证当下"), style = MaterialTheme.typography.bodySmall) },
                 textStyle = MaterialTheme.typography.bodySmall,
                 singleLine = true,
                 shape = RoundedCornerShape(50),
@@ -603,14 +603,14 @@ private fun DanmakuInputBar(onSend: (String) -> Unit, onOpenSettings: () -> Unit
                 modifier = Modifier.weight(1f).height(44.dp)
             )
             IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Outlined.Settings, "弹幕设置", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Outlined.Settings, tr("弹幕设置"), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TextButton(onClick = {
                 if (text.isNotBlank()) {
                     onSend(text.trim())
                     text = ""
                 }
-            }) { Text("发送") }
+            }) { Text(tr("发送")) }
         }
     }
 }

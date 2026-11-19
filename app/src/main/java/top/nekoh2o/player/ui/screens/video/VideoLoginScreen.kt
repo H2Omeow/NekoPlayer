@@ -46,12 +46,13 @@ import top.nekoh2o.player.data.repo.VideoRepository
 import top.nekoh2o.player.ui.theme.NekoRadius
 import top.nekoh2o.player.ui.theme.NekoSpace
 import androidx.compose.foundation.text.KeyboardOptions
+import top.nekoh2o.player.i18n.NekoI18n.tr
 
 /** 登录方式：App 扫码、应用内网页登录、Cookie 导入。 */
 private enum class LoginMethod(val label: String) {
-    Scan("App 扫码"),
-    Web("网页登录"),
-    Cookie("Cookie 导入")
+    Scan(tr("App 扫码")),
+    Web(tr("网页登录")),
+    Cookie(tr("Cookie 导入"))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,7 +69,7 @@ fun VideoLoginScreen(
     var importError by remember { mutableStateOf<String?>(null) }
     fun finish(raw: String) {
         if (raw.isBlank()) {
-            importError = "请先填入 Cookie"
+            importError = tr("请先填入 Cookie")
             return
         }
         scope.launch {
@@ -76,7 +77,7 @@ fun VideoLoginScreen(
             importError = null
             val ok = runCatching { repo.importCookie(raw) }.getOrDefault(false)
             importing = false
-            if (ok) onLoggedIn() else importError = "Cookie 无效或已过期，请重新获取"
+            if (ok) onLoggedIn() else importError = tr("Cookie 无效或已过期，请重新获取")
         }
     }
 
@@ -89,11 +90,11 @@ fun VideoLoginScreen(
         Column(Modifier.fillMaxSize().padding(horizontal = NekoSpace.xl)) {
             Row(Modifier.fillMaxWidth().padding(vertical = NekoSpace.sm), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Filled.Close, "关闭", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(Icons.Filled.Close, tr("关闭"), tint = MaterialTheme.colorScheme.onSurface)
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    "遇到问题？",
+                    tr("遇到问题？"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.clickable { method = LoginMethod.Cookie }.padding(8.dp)
@@ -114,7 +115,7 @@ fun VideoLoginScreen(
             )
             Spacer(Modifier.height(NekoSpace.md))
             Text(
-                "登录 B 站账号",
+                tr("登录 B 站账号"),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -122,7 +123,7 @@ fun VideoLoginScreen(
             )
             Spacer(Modifier.height(NekoSpace.sm))
             Text(
-                "登录后可解锁 1080P / 4K 画质、发送弹幕，\n并与 B 站同步收藏、关注与历史记录",
+                tr("登录后可解锁 1080P / 4K 画质、发送弹幕，\n并与 B 站同步收藏、关注与历史记录"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
@@ -171,7 +172,7 @@ fun VideoLoginScreen(
             }
 
             Text(
-                "登录即表示同意《用户协议》与《隐私政策》，Cookie 仅保存在本机",
+                tr("登录即表示同意《用户协议》与《隐私政策》，Cookie 仅保存在本机"),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
@@ -189,14 +190,14 @@ fun VideoLoginScreen(
 private fun ScanPane(repo: VideoRepository, onLoggedIn: () -> Unit) {
     var ticket by remember { mutableStateOf<QrTicket?>(null) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var status by remember { mutableStateOf("正在生成二维码…") }
+    var status by remember { mutableStateOf(tr("正在生成二维码…")) }
     var expired by remember { mutableStateOf(false) }
     var countdown by remember { mutableIntStateOf(180) }
     var error by remember { mutableStateOf<String?>(null) }
     var pollKey by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(pollKey) {
-        status = "正在生成二维码…"
+        status = tr("正在生成二维码…")
         expired = false
         countdown = 180
         runCatching { repo.qrGenerate() }
@@ -205,11 +206,11 @@ private fun ScanPane(repo: VideoRepository, onLoggedIn: () -> Unit) {
                 bitmap = runCatching {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { qrBitmap(t.url) }
                 }.getOrNull()
-                status = "打开哔哩哔哩 App 扫一扫"
+                status = tr("打开哔哩哔哩 App 扫一扫")
             }
             .onFailure {
                 error = it.message
-                status = "二维码生成失败，点击重试"
+                status = tr("二维码生成失败，点击重试")
             }
     }
 
@@ -220,15 +221,15 @@ private fun ScanPane(repo: VideoRepository, onLoggedIn: () -> Unit) {
             if (countdown > 0) countdown--
             if (countdown == 0) {
                 expired = true
-                status = "二维码已失效，点击刷新"
+                status = tr("二维码已失效，点击刷新")
                 return@LaunchedEffect
             }
             if (countdown % 2 == 0) {
                 val state = runCatching { repo.qrPoll(t.key) }.getOrNull()
                 when (state) {
-                    QrState.Scanned -> status = "已扫码，请在手机上确认"
+                    QrState.Scanned -> status = tr("已扫码，请在手机上确认")
                     is QrState.Success -> {
-                        status = "登录成功"
+                        status = tr("登录成功")
                         delay(600)
                         onLoggedIn()
                         return@LaunchedEffect
@@ -254,7 +255,7 @@ private fun ScanPane(repo: VideoRepository, onLoggedIn: () -> Unit) {
                 if (bmp != null && !expired) {
                     Image(
                         bitmap = bmp.asImageBitmap(),
-                        contentDescription = "登录二维码",
+                        contentDescription = tr("登录二维码"),
                         modifier = Modifier.size(200.dp)
                     )
                 } else {
@@ -263,7 +264,7 @@ private fun ScanPane(repo: VideoRepository, onLoggedIn: () -> Unit) {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            if (expired) "二维码已失效\n点击刷新" else "生成中…",
+                            if (expired) tr("二维码已失效\n点击刷新") else tr("生成中…"),
                             color = Color(0xFF333333),
                             style = MaterialTheme.typography.bodySmall,
                             textAlign = TextAlign.Center,
@@ -273,7 +274,7 @@ private fun ScanPane(repo: VideoRepository, onLoggedIn: () -> Unit) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = if (expired) "点击刷新二维码" else "二维码 $countdown 秒后失效 · 点击刷新",
+                    text = if (expired) tr("点击刷新二维码") else "二维码 $countdown 秒后失效 · 点击刷新",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { pollKey++ }
@@ -288,15 +289,15 @@ private fun ScanPane(repo: VideoRepository, onLoggedIn: () -> Unit) {
         )
         if (error != null) {
             Text(
-                "网络异常，请检查代理或稍后重试",
+                tr("网络异常，请检查代理或稍后重试"),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Spacer(Modifier.height(NekoSpace.lg))
-        BenefitRow(Icons.Outlined.Hd, "1080P / 4K 原画，登录后自动取最高可用清晰度")
-        BenefitRow(Icons.Outlined.Subtitles, "发送与屏蔽弹幕，同步自己的弹幕偏好")
-        BenefitRow(Icons.Outlined.Shield, "Cookie 仅保存在本机，可随时退出并清除")
+        BenefitRow(Icons.Outlined.Hd, tr("1080P / 4K 原画，登录后自动取最高可用清晰度"))
+        BenefitRow(Icons.Outlined.Subtitles, tr("发送与屏蔽弹幕，同步自己的弹幕偏好"))
+        BenefitRow(Icons.Outlined.Shield, tr("Cookie 仅保存在本机，可随时退出并清除"))
     }
 }
 
@@ -306,7 +307,7 @@ private fun ScanPane(repo: VideoRepository, onLoggedIn: () -> Unit) {
 private fun WebPane(onCookies: (String) -> Unit) {
     var loaded by remember { mutableStateOf(false) }
     var blocked by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("正在打开 B 站登录页…") }
+    var status by remember { mutableStateOf(tr("正在打开 B 站登录页…")) }
     val target = "https://passport.bilibili.com/login"
 
     // 先清掉 WebView 里可能残留的旧登录态，避免把上一次的 Cookie 当成新登录
@@ -316,7 +317,7 @@ private fun WebPane(onCookies: (String) -> Unit) {
         while (isActive) {
             val cookie = readBiliCookie()
             if (cookie.contains("SESSDATA=") && cookie.length > 40) {
-                status = "登录成功，正在同步账号信息…"
+                status = tr("登录成功，正在同步账号信息…")
                 onCookies(cookie)
                 return@LaunchedEffect
             }
@@ -380,7 +381,7 @@ private fun WebPane(onCookies: (String) -> Unit) {
                         CircularProgressIndicator()
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "加载中…",
+                            tr("加载中…"),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -388,7 +389,7 @@ private fun WebPane(onCookies: (String) -> Unit) {
                 }
                 if (blocked) {
                     Text(
-                        "登录页被拦截，请改用扫码或 Cookie 导入",
+                        tr("登录页被拦截，请改用扫码或 Cookie 导入"),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
@@ -405,8 +406,8 @@ private fun WebPane(onCookies: (String) -> Unit) {
             modifier = Modifier.fillMaxWidth()
         )
         Text(
-            "在下方网页里用账号密码 / 短信验证码登录，完成后会自动跳回；" +
-                "若页面空白，请改用扫码登录",
+            tr("在下方网页里用账号密码 / 短信验证码登录，完成后会自动跳回；") +
+                tr("若页面空白，请改用扫码登录"),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             textAlign = TextAlign.Center,
@@ -454,19 +455,19 @@ private fun CookiePane(onCookies: (String) -> Unit) {
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
     ) {
         Text(
-            "SESSDATA 与 bili_jct 是登录态里最关键的两个值；" +
-                "完整 Cookie 里还有 DedeUserID 等字段，粘贴整串更省事。",
+            tr("SESSDATA 与 bili_jct 是登录态里最关键的两个值；") +
+                tr("完整 Cookie 里还有 DedeUserID 等字段，粘贴整串更省事。"),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(NekoSpace.md))
 
         if (!advanced) {
-            CookieField("SESSDATA", sessData, "从浏览器 Cookie 里复制 SESSDATA 的值") { sessData = it }
+            CookieField("SESSDATA", sessData, tr("从浏览器 Cookie 里复制 SESSDATA 的值")) { sessData = it }
             Spacer(Modifier.height(NekoSpace.sm))
-            CookieField("bili_jct", biliJct, "用于发送弹幕，可留空") { biliJct = it }
+            CookieField("bili_jct", biliJct, tr("用于发送弹幕，可留空")) { biliJct = it }
             Spacer(Modifier.height(NekoSpace.sm))
-            CookieField("DedeUserID", dedeUser, "可留空", KeyboardType.Number) { dedeUser = it }
+            CookieField("DedeUserID", dedeUser, tr("可留空"), KeyboardType.Number) { dedeUser = it }
         } else {
             OutlinedTextField(
                 value = rawCookie,
@@ -481,7 +482,7 @@ private fun CookiePane(onCookies: (String) -> Unit) {
         Spacer(Modifier.height(NekoSpace.md))
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = { advanced = !advanced }) {
-                Text(if (advanced) "改为分字段填写" else "粘贴整串 Cookie")
+                Text(if (advanced) tr("改为分字段填写") else tr("粘贴整串 Cookie"))
             }
             Spacer(Modifier.weight(1f))
             TextButton(
@@ -499,7 +500,7 @@ private fun CookiePane(onCookies: (String) -> Unit) {
             ) {
                 Icon(Icons.Outlined.ContentPaste, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("从剪贴板粘贴")
+                Text(tr("从剪贴板粘贴"))
             }
         }
 
@@ -511,12 +512,12 @@ private fun CookiePane(onCookies: (String) -> Unit) {
             },
             enabled = (advanced && rawCookie.isNotBlank()) || sessData.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
-        ) { Text("登录") }
+        ) { Text(tr("登录")) }
 
         Spacer(Modifier.height(NekoSpace.lg))
         Text(
-            "获取方法：桌面浏览器打开 bilibili.com 并登录 → F12 → Application → Cookies → " +
-                "复制 sessdata.bilibili.com 下的 SESSDATA 与 bili_jct。",
+            tr("获取方法：桌面浏览器打开 bilibili.com 并登录 → F12 → Application → Cookies → ") +
+                tr("复制 sessdata.bilibili.com 下的 SESSDATA 与 bili_jct。"),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
         )

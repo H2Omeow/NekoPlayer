@@ -30,8 +30,9 @@ import kotlinx.coroutines.launch
 import top.nekoh2o.player.data.bilibili.VideoItem
 import top.nekoh2o.player.data.repo.VideoRepository
 import top.nekoh2o.player.ui.theme.NekoSpace
+import top.nekoh2o.player.i18n.NekoI18n.tr
 
-private val ORDER_LABELS = listOf("综合" to "totalrank", "最多播放" to "click", "最新发布" to "pubdate", "最多弹幕" to "dm")
+private val ORDER_LABELS = listOf(tr("综合") to "totalrank", tr("最多播放") to "click", tr("最新发布") to "pubdate", tr("最多弹幕") to "dm")
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -64,7 +65,7 @@ fun VideoSearchScreen(
                 page = target
                 hasMore = r.hasMore && r.items.isNotEmpty()
             }
-            .onFailure { error = it.message ?: "搜索失败" }
+            .onFailure { error = it.message ?: tr("搜索失败") }
         loading = false
     }
 
@@ -86,17 +87,17 @@ fun VideoSearchScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, "返回", tint = MaterialTheme.colorScheme.onSurface)
+                Icon(Icons.Filled.ArrowBack, tr("返回"), tint = MaterialTheme.colorScheme.onSurface)
             }
             TextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("搜索视频、UP 主，或直接粘贴 BV 号", style = MaterialTheme.typography.bodySmall) },
+                placeholder = { Text(tr("搜索视频、UP 主，或直接粘贴 BV 号"), style = MaterialTheme.typography.bodySmall) },
                 leadingIcon = { Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { query = "" }) {
-                            Icon(Icons.Filled.Close, "清除", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Filled.Close, tr("清除"), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 },
@@ -122,7 +123,7 @@ fun VideoSearchScreen(
                 if (hotWords.isNotEmpty()) {
                     item {
                         Column(Modifier.padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm)) {
-                            SectionHeader("B 站热搜")
+                            SectionHeader(tr("B 站热搜"))
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 hotWords.forEach { word ->
                                     Text(
@@ -145,8 +146,8 @@ fun VideoSearchScreen(
                 item {
                     VideoEmptyState(
                         icon = Icons.Outlined.SearchOff,
-                        title = "搜点什么",
-                        message = "支持关键词、UP 主名，也可以直接粘贴 BV 号"
+                        title = tr("搜点什么"),
+                        message = tr("支持关键词、UP 主名，也可以直接粘贴 BV 号")
                     )
                 }
             } else {
@@ -191,13 +192,13 @@ fun VideoSearchScreen(
                                 Text("加载失败，点击重试：$error")
                             }
                             results.isEmpty() -> Text(
-                                "没有找到相关视频",
+                                tr("没有找到相关视频"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            hasMore -> TextButton(onClick = { scope.launch { load(false) } }) { Text("加载更多") }
+                            hasMore -> TextButton(onClick = { scope.launch { load(false) } }) { Text(tr("加载更多")) }
                             else -> Text(
-                                "— 已经到底啦 —",
+                                tr("— 已经到底啦 —"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

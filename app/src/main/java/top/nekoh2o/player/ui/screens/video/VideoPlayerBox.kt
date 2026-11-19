@@ -52,6 +52,7 @@ import top.nekoh2o.player.data.bilibili.BiliSession
 import top.nekoh2o.player.data.bilibili.PlaySource
 import top.nekoh2o.player.data.store.DanmakuSettings
 import top.nekoh2o.player.data.store.PlayerSettings
+import top.nekoh2o.player.i18n.NekoI18n.tr
 
 private const val UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
@@ -141,7 +142,7 @@ fun VideoPlayerBox(
             }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                errorText = error.errorCodeName + "：" + (error.message ?: "播放失败")
+                errorText = error.errorCodeName + "：" + (error.message ?: tr("播放失败"))
                 buffering = false
                 if (error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
                     error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
@@ -354,7 +355,7 @@ fun VideoPlayerBox(
                     durationMs = durationMs,
                     bufferedMs = bufferedMs,
                     speed = speed,
-                    qualityLabel = source?.qualityLabel ?: "自动",
+                    qualityLabel = source?.qualityLabel ?: tr("自动"),
                     danmakuOn = danmakuSettings.enabled,
                     fullscreen = fullscreen,
                     onBack = onBack,
@@ -398,7 +399,7 @@ fun VideoPlayerBox(
                 Text(errorText!!, color = Color.White, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "点击重试",
+                    tr("点击重试"),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier
@@ -428,10 +429,10 @@ fun VideoPlayerBox(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("已播放完毕", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                    Text(tr("已播放完毕"), color = Color.White, style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "重新播放",
+                        tr("重新播放"),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier
@@ -487,7 +488,7 @@ private fun PlayerChrome(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Filled.ArrowBackIosNew, "返回", tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Filled.ArrowBackIosNew, tr("返回"), tint = Color.White, modifier = Modifier.size(18.dp))
                 }
                 Text(
                     title,
@@ -498,7 +499,7 @@ private fun PlayerChrome(
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onOpenPlayerSettings) {
-                    Icon(Icons.Outlined.MoreVert, "更多", tint = Color.White)
+                    Icon(Icons.Outlined.MoreVert, tr("更多"), tint = Color.White)
                 }
             }
             Spacer(Modifier.weight(1f))
@@ -534,7 +535,7 @@ private fun PlayerChrome(
                         IconButton(onClick = onToggleFullscreen, modifier = Modifier.size(34.dp)) {
                             Icon(
                                 if (fullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
-                                "全屏",
+                                tr("全屏"),
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -569,7 +570,7 @@ private fun PlayerChrome(
                     IconButton(onClick = onToggleFullscreen, modifier = Modifier.size(36.dp)) {
                         Icon(
                             if (fullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
-                            "全屏",
+                            tr("全屏"),
                             tint = Color.White
                         )
                     }
@@ -584,7 +585,7 @@ private fun PlayPauseButton(isPlaying: Boolean, onTogglePlay: () -> Unit, size: 
     IconButton(onClick = onTogglePlay, modifier = Modifier.size(size)) {
         Icon(
             if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-            if (isPlaying) "暂停" else "播放",
+            if (isPlaying) tr("暂停") else tr("播放"),
             tint = Color.White
         )
     }
@@ -595,7 +596,7 @@ private fun DanmakuButton(danmakuOn: Boolean, onToggleDanmaku: () -> Unit, size:
     IconButton(onClick = onToggleDanmaku, modifier = Modifier.size(size)) {
         Icon(
             if (danmakuOn) Icons.Filled.Subtitles else Icons.Outlined.SubtitlesOff,
-            "弹幕",
+            tr("弹幕"),
             tint = if (danmakuOn) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f)
         )
     }
@@ -604,7 +605,7 @@ private fun DanmakuButton(danmakuOn: Boolean, onToggleDanmaku: () -> Unit, size:
 @Composable
 private fun QualityChip(label: String) {
     Text(
-        label.ifBlank { "自动" },
+        label.ifBlank { tr("自动") },
         color = Color.White.copy(alpha = 0.85f),
         style = MaterialTheme.typography.labelMedium,
         modifier = Modifier

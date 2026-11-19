@@ -19,6 +19,7 @@ import top.nekoh2o.player.data.store.PlayerSettings
 import top.nekoh2o.player.data.store.VideoSettings
 import top.nekoh2o.player.ui.theme.NekoSolid
 import top.nekoh2o.player.ui.theme.NekoSpace
+import top.nekoh2o.player.i18n.NekoI18n.tr
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,43 +43,43 @@ fun DanmakuSettingsSheet(
             contentPadding = PaddingValues(bottom = NekoSpace.xl)
         ) {
             item {
-                SheetTitle("弹幕设置", action = "恢复默认", onAction = onReset)
-                SwitchRow("显示弹幕", d.enabled) { v -> set { it.copy(enabled = v) } }
-                SliderRow("不透明度", d.opacity, 0.15f..1f, "${(d.opacity * 100).toInt()}%") { v ->
+                SheetTitle(tr("弹幕设置"), action = tr("恢复默认"), onAction = onReset)
+                SwitchRow(tr("显示弹幕"), d.enabled) { v -> set { it.copy(enabled = v) } }
+                SliderRow(tr("不透明度"), d.opacity, 0.15f..1f, "${(d.opacity * 100).toInt()}%") { v ->
                     set { it.copy(opacity = v) }
                 }
-                ChoiceRow("字号", listOf("小" to 0.8f, "标准" to 1f, "大" to 1.25f, "超大" to 1.5f), d.fontScale) { v ->
+                ChoiceRow(tr("字号"), listOf(tr("小") to 0.8f, tr("标准") to 1f, tr("大") to 1.25f, tr("超大") to 1.5f), d.fontScale) { v ->
                     set { it.copy(fontScale = v) }
                 }
-                ChoiceRow("速度", listOf("慢" to 0.6f, "标准" to 1f, "快" to 1.5f, "极快" to 2f), d.speed) { v ->
+                ChoiceRow(tr("速度"), listOf(tr("慢") to 0.6f, tr("标准") to 1f, tr("快") to 1.5f, tr("极快") to 2f), d.speed) { v ->
                     set { it.copy(speed = v) }
                 }
                 ChoiceRow(
-                    "显示区域",
-                    listOf("1/4" to 0.25f, "1/2" to 0.5f, "3/4" to 0.75f, "全屏" to 1f),
+                    tr("显示区域"),
+                    listOf("1/4" to 0.25f, "1/2" to 0.5f, "3/4" to 0.75f, tr("全屏") to 1f),
                     d.area
                 ) { v -> set { it.copy(area = v) } }
-                RowTitle("弹幕类型")
+                RowTitle(tr("弹幕类型"))
                 Row(Modifier.fillMaxWidth().padding(horizontal = NekoSpace.lg), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ToggleChip("滚动", d.showScroll) { v -> set { it.copy(showScroll = v) } }
-                    ToggleChip("顶部", d.showTop) { v -> set { it.copy(showTop = v) } }
-                    ToggleChip("底部", d.showBottom) { v -> set { it.copy(showBottom = v) } }
+                    ToggleChip(tr("滚动"), d.showScroll) { v -> set { it.copy(showScroll = v) } }
+                    ToggleChip(tr("顶部"), d.showTop) { v -> set { it.copy(showTop = v) } }
+                    ToggleChip(tr("底部"), d.showBottom) { v -> set { it.copy(showBottom = v) } }
                 }
-                SwitchRow("保留彩色弹幕", d.keepColor) { v -> set { it.copy(keepColor = v) } }
-                SwitchRow("加粗", d.bold) { v -> set { it.copy(bold = v) } }
-                SwitchRow("描边阴影", d.shadow) { v -> set { it.copy(shadow = v) } }
-                SliderRow("描边粗细", d.strokeWidth, 0f..3f, "%.1f".format(d.strokeWidth)) { v ->
+                SwitchRow(tr("保留彩色弹幕"), d.keepColor) { v -> set { it.copy(keepColor = v) } }
+                SwitchRow(tr("加粗"), d.bold) { v -> set { it.copy(bold = v) } }
+                SwitchRow(tr("描边阴影"), d.shadow) { v -> set { it.copy(shadow = v) } }
+                SliderRow(tr("描边粗细"), d.strokeWidth, 0f..3f, "%.1f".format(d.strokeWidth)) { v ->
                     set { it.copy(strokeWidth = v) }
                 }
                 ChoiceRow(
-                    "字体",
-                    listOf("系统" to "system", "衬线" to "serif", "等宽" to "mono"),
+                    tr("字体"),
+                    listOf(tr("系统") to "system", tr("衬线") to "serif", tr("等宽") to "mono"),
                     d.fontFamily
                 ) { v -> set { it.copy(fontFamily = v) } }
-                SliderRow("同屏上限", d.density.toFloat(), 30f..300f, "${d.density} 条") { v ->
+                SliderRow(tr("同屏上限"), d.density.toFloat(), 30f..300f, "${d.density} 条") { v ->
                     set { it.copy(density = v.toInt()) }
                 }
-                SwitchRow("合并重复弹幕", d.mergeDuplicate) { v -> set { it.copy(mergeDuplicate = v) } }
+                SwitchRow(tr("合并重复弹幕"), d.mergeDuplicate) { v -> set { it.copy(mergeDuplicate = v) } }
                 BlockWordsRow(d.blockWords) { list -> set { it.copy(blockWords = list) } }
             }
         }
@@ -107,33 +108,33 @@ fun PlayerSettingsSheet(
             contentPadding = PaddingValues(bottom = NekoSpace.xl)
         ) {
             item {
-                SheetTitle("播放设置", action = "恢复默认", onAction = onReset)
+                SheetTitle(tr("播放设置"), action = tr("恢复默认"), onAction = onReset)
                 ChoiceRow(
-                    "默认清晰度",
+                    tr("默认清晰度"),
                     listOf("1080P" to 80f, "720P" to 64f, "480P" to 32f, "360P" to 16f),
                     p.defaultQuality.toFloat()
                 ) { v -> set { it.copy(defaultQuality = v.toInt()) } }
                 ChoiceRow(
-                    "默认倍速",
+                    tr("默认倍速"),
                     listOf("0.75×" to 0.75f, "1.0×" to 1f, "1.25×" to 1.25f, "1.5×" to 1.5f),
                     p.defaultSpeed
                 ) { v -> set { it.copy(defaultSpeed = v) } }
                 ChoiceRow(
-                    "双击跳转",
-                    listOf("5 秒" to 5f, "10 秒" to 10f, "15 秒" to 15f, "30 秒" to 30f),
+                    tr("双击跳转"),
+                    listOf(tr("5 秒") to 5f, tr("10 秒") to 10f, tr("15 秒") to 15f, tr("30 秒") to 30f),
                     p.doubleTapSeekSec.toFloat()
                 ) { v -> set { it.copy(doubleTapSeekSec = v.toInt()) } }
                 ChoiceRow(
-                    "长按倍速",
-                    listOf("1.5×" to 1.5f, "2.0×" to 2f, "3.0×" to 3f, "关闭" to 1f),
+                    tr("长按倍速"),
+                    listOf("1.5×" to 1.5f, "2.0×" to 2f, "3.0×" to 3f, tr("关闭") to 1f),
                     p.longPressSpeed
                 ) { v -> set { it.copy(longPressSpeed = v) } }
-                SliderRow("控制条自动隐藏", p.autoHideControlsSec.toFloat(), 1f..10f, "${p.autoHideControlsSec} 秒") { v ->
+                SliderRow(tr("控制条自动隐藏"), p.autoHideControlsSec.toFloat(), 1f..10f, "${p.autoHideControlsSec} 秒") { v ->
                     set { it.copy(autoHideControlsSec = v.toInt()) }
                 }
-                SwitchRow("横屏自动全屏", p.autoFullscreen) { v -> set { it.copy(autoFullscreen = v) } }
-                SwitchRow("播完自动下一个", p.autoPlayNext) { v -> set { it.copy(autoPlayNext = v) } }
-                SwitchRow("记住播放进度", p.rememberProgress) { v -> set { it.copy(rememberProgress = v) } }
+                SwitchRow(tr("横屏自动全屏"), p.autoFullscreen) { v -> set { it.copy(autoFullscreen = v) } }
+                SwitchRow(tr("播完自动下一个"), p.autoPlayNext) { v -> set { it.copy(autoPlayNext = v) } }
+                SwitchRow(tr("记住播放进度"), p.rememberProgress) { v -> set { it.copy(rememberProgress = v) } }
             }
         }
     }
@@ -254,7 +255,7 @@ private fun BlockWordsRow(words: List<String>, onChange: (List<String>) -> Unit)
             .padding(horizontal = NekoSpace.lg, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("屏蔽关键词", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(tr("屏蔽关键词"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text(
             "已屏蔽 ${words.size} 个",
             style = MaterialTheme.typography.bodySmall,
@@ -265,11 +266,11 @@ private fun BlockWordsRow(words: List<String>, onChange: (List<String>) -> Unit)
         var draft by remember { mutableStateOf(words.joinToString("\n")) }
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("屏蔽关键词") },
+            title = { Text(tr("屏蔽关键词")) },
             text = {
                 Column {
                     Text(
-                        "每行一个关键词，命中即不显示",
+                        tr("每行一个关键词，命中即不显示"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -287,10 +288,10 @@ private fun BlockWordsRow(words: List<String>, onChange: (List<String>) -> Unit)
                 TextButton(onClick = {
                     onChange(draft.split("\n", "，", ",").map { it.trim() }.filter { it.isNotEmpty() })
                     showDialog = false
-                }) { Text("保存") }
+                }) { Text(tr("保存")) }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text("取消") }
+                TextButton(onClick = { showDialog = false }) { Text(tr("取消")) }
             }
         )
     }

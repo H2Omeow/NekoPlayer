@@ -48,6 +48,7 @@ import top.nekoh2o.player.data.store.WatchEntry
 import top.nekoh2o.player.ui.components.DetailTopBar
 import top.nekoh2o.player.ui.theme.NekoRadius
 import top.nekoh2o.player.ui.theme.NekoSpace
+import top.nekoh2o.player.i18n.NekoI18n.tr
 
 @Composable
 fun VideoProfileScreen(
@@ -68,7 +69,7 @@ fun VideoProfileScreen(
     val entries = remember(historyVersion, refresh) { history.list() }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        DetailTopBar("我的", onBack)
+        DetailTopBar(tr("我的"), onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
@@ -83,9 +84,9 @@ fun VideoProfileScreen(
                     shape = RoundedCornerShape(NekoRadius.card)
                 ) {
                     Column(Modifier.fillMaxWidth()) {
-                        ProfileRow(Icons.Outlined.CloudUpload, "云存储", "上传文件、分享链接、查看额度") { onOpenCloudFiles() }
-                        ProfileRow(Icons.Outlined.Subtitles, "弹幕设置", "字号、速度、透明度、屏蔽词") { onOpenDanmakuSettings() }
-                        ProfileRow(Icons.Outlined.Settings, "播放设置", "默认清晰度、倍速、手势") { onOpenPlayerSettings() }
+                        ProfileRow(Icons.Outlined.CloudUpload, tr("云存储"), tr("上传文件、分享链接、查看额度")) { onOpenCloudFiles() }
+                        ProfileRow(Icons.Outlined.Subtitles, tr("弹幕设置"), tr("字号、速度、透明度、屏蔽词")) { onOpenDanmakuSettings() }
+                        ProfileRow(Icons.Outlined.Settings, tr("播放设置"), tr("默认清晰度、倍速、手势")) { onOpenPlayerSettings() }
                     }
                 }
             }
@@ -96,11 +97,11 @@ fun VideoProfileScreen(
                 ) {
                     Icon(Icons.Outlined.History, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(6.dp))
-                    Text("观看历史", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(tr("观看历史"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.weight(1f))
                     if (entries.isNotEmpty()) {
                         Text(
-                            "清空",
+                            tr("清空"),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
@@ -113,7 +114,7 @@ fun VideoProfileScreen(
             if (entries.isEmpty()) {
                 item {
                     Text(
-                        "还没有观看记录",
+                        tr("还没有观看记录"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = NekoSpace.lg)
@@ -135,7 +136,7 @@ fun VideoProfileScreen(
                     ) {
                         Icon(Icons.AutoMirrored.Outlined.Logout, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("退出 B 站账号")
+                        Text(tr("退出 B 站账号"))
                     }
                 }
             }
@@ -145,34 +146,34 @@ fun VideoProfileScreen(
         if (confirmClear) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
-            title = { Text("清空观看历史") },
-            text = { Text("清空后无法恢复，确定要继续吗？") },
+            title = { Text(tr("清空观看历史")) },
+            text = { Text(tr("清空后无法恢复，确定要继续吗？")) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmClear = false
                     history.clear()
                     refresh++
                     onChanged()
-                }) { Text("清空", color = MaterialTheme.colorScheme.error) }
+                }) { Text(tr("清空"), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("取消") } }
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text(tr("取消")) } }
         )
     }
 
 if (confirmLogout) {
         AlertDialog(
             onDismissRequest = { confirmLogout = false },
-            title = { Text("退出登录") },
-            text = { Text("退出后将无法观看 1080P、发送弹幕或同步收藏，确定退出吗？") },
+            title = { Text(tr("退出登录")) },
+            text = { Text(tr("退出后将无法观看 1080P、发送弹幕或同步收藏，确定退出吗？")) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmLogout = false
                     BiliSession.logout()
                     onChanged()
-                }) { Text("退出", color = MaterialTheme.colorScheme.error) }
+                }) { Text(tr("退出"), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmLogout = false }) { Text("取消") }
+                TextButton(onClick = { confirmLogout = false }) { Text(tr("取消")) }
             }
         )
     }
@@ -192,19 +193,19 @@ private fun AccountCard(account: BiliAccount, onLogin: () -> Unit) {
             Spacer(Modifier.width(NekoSpace.md))
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (account.isLogin) account.name.ifBlank { "B 站用户" } else "未登录",
+                    if (account.isLogin) account.name.ifBlank { tr("B 站用户") } else tr("未登录"),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    if (account.isLogin) "UID ${account.mid}" else "登录后可看 1080P、发弹幕、同步收藏",
+                    if (account.isLogin) "UID ${account.mid}" else tr("登录后可看 1080P、发弹幕、同步收藏"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (!account.isLogin) {
-                Button(onClick = onLogin) { Text("登录") }
+                Button(onClick = onLogin) { Text(tr("登录")) }
             }
         }
     }

@@ -41,6 +41,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
@@ -57,7 +59,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -91,9 +95,9 @@ import top.nekoh2o.player.ui.theme.NekoSolid
 import top.nekoh2o.player.ui.theme.NekoSpace
 
 private enum class CloudTab(private val raw: String) {
-    FILES("文件"),
-    QUOTA("额度"),
-    SPONSOR("赞赏");
+    FILES(tr("文件")),
+    QUOTA(tr("额度")),
+    SPONSOR(tr("赞赏"));
 
     val label: String get() = tr(raw)
 }
@@ -593,6 +597,7 @@ private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onMeme: (String
     var orders by remember { mutableStateOf<JsonArray?>(null) }
     val context = LocalContext.current
     var receiptFor by remember { mutableStateOf<String?>(null) }
+    var payFor by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     LaunchedEffect(Unit) {
         runCatching { CloudApi.pricing() }.onSuccess { body ->
@@ -660,7 +665,13 @@ private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onMeme: (String
                     Button(onClick = {
                         scope.launch {
                             runCatching { CloudApi.createOrder(id, 1) }
-                                .onSuccess { receiptFor = it["id"]?.jsonPrimitive?.content; receiptPicker.launch(arrayOf("image/*")) }
+                                .onSuccess {
+                                    val orderId = it["id"]?.jsonPrimitive?.content
+                                    if (orderId != null) payFor = orderId to price
+                                }
+                                .onFailure {
+                                    android.widget.Toast.makeText(context, it.message ?: tr("创建订单失败"), android.widget.Toast.LENGTH_SHORT).show()
+                                }
                             onChanged()
                         }
                     }) { Text(tr("去赞赏")) }
@@ -685,6 +696,14 @@ private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onMeme: (String
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(orderStatusLabel(status), fontWeight = FontWeight.Medium)
+                    if (status == "rejected") {
+                        val reason = order["reject_reason"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+                        Text(
+                            reason ?: tr("未填写原因，可联系管理员"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                     if (status == "pending") {
                         TextButton(onClick = { receiptFor = order["id"]!!.jsonPrimitive.content; receiptPicker.launch(arrayOf("image/*")) }) {
                             Text(tr("上传凭证"))
@@ -692,6 +711,70 @@ private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onMeme: (String
                     }
                 }
             }
+        }
+    }
+
+    val pay = payFor
+    if (pay != null) {
+        PaySheet(
+            orderId = pay.first,
+            price = pay.second,
+            onUpload = {
+                receiptFor = pay.first
+                payFor = null
+                receiptPicker.launch(arrayOf("image/*"))
+            },
+            onDismiss = { payFor = null }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PaySheet(
+    orderId: String,
+    price: String,
+    onUpload: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = NekoSolid.sheet
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = NekoSpace.xl).padding(bottom = NekoSpace.xl)) {
+            Text(tr("扫码支付 ¥") + price, style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(NekoSpace.xs))
+            Text(
+                tr("微信或支付宝扫码支付，付款后点下面的按钮上传支付截图，核对通过会自动开通。"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(NekoSpace.md))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(NekoSpace.md)) {
+                listOf("wechat" to tr("微信"), "alipay" to tr("支付宝")).forEach { (kind, label) ->
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        AsyncImage(
+                            model = "https://player.nekoh2o.top/reward/" + kind,
+                            contentDescription = label,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(NekoRadius.control))
+                        )
+                        Spacer(Modifier.height(NekoSpace.xs))
+                        Text(label, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+            Spacer(Modifier.height(NekoSpace.lg))
+            Button(onClick = { onUpload() }, modifier = Modifier.fillMaxWidth()) {
+                Text(tr("我已完成支付，上传凭证"))
+            }
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(tr("稍后再说")) }
+            Text(
+                tr("订单号 ") + orderId,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

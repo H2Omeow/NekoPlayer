@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONTokener
 import top.nekoh2o.player.data.cloud.CloudApi
 import top.nekoh2o.player.ui.theme.NekoRadius
+import top.nekoh2o.player.i18n.NekoI18n.tr
 
 /**
  * 网页登录兜底：鹰角短信接口风控要求人机验证时，在 WebView 里走官方登录页，
@@ -41,7 +42,7 @@ import top.nekoh2o.player.ui.theme.NekoRadius
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun SklandWebLoginDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
-    var status by remember { mutableStateOf("在下方登录森空岛（含人机验证）") }
+    var status by remember { mutableStateOf(tr("在下方登录森空岛（含人机验证）")) }
     var webView by remember { mutableStateOf<WebView?>(null) }
     var finished by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -50,7 +51,7 @@ fun SklandWebLoginDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        title = { Text("网页登录森空岛") },
+        title = { Text(tr("网页登录森空岛")) },
         text = {
             Column {
                 Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -81,7 +82,7 @@ fun SklandWebLoginDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("关闭")) } }
     )
 
     DisposableEffect(webView) {
@@ -123,14 +124,14 @@ fun SklandWebLoginDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
                     if (value.length < 24 || !tried.add(value)) return@forEach
                     // 只尝试看起来像 token 的值，避免把主题等无关内容提交上去
                     if (!value.matches(Regex("[A-Za-z0-9._~+/=-]{24,2048}"))) return@forEach
-                    status = "正在校验登录状态…"
+                    status = tr("正在校验登录状态…")
                     scope.launch {
                         val ok = runCatching { CloudApi.sklandWebToken(value) }.isSuccess
                         if (ok && !finished) {
                             finished = true
                             onBound()
                         } else if (!finished) {
-                            status = "在下方登录森空岛（含人机验证）"
+                            status = tr("在下方登录森空岛（含人机验证）")
                         }
                     }
                 }

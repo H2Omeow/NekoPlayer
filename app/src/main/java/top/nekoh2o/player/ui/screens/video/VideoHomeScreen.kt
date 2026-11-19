@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +40,7 @@ import top.nekoh2o.player.data.store.VideoSettings
 import top.nekoh2o.player.data.store.VideoSettingsStore
 import top.nekoh2o.player.ui.screens.cloud.CloudFilesScreen
 import top.nekoh2o.player.ui.theme.NekoSpace
+import top.nekoh2o.player.i18n.NekoI18n.tr
 
 sealed interface VideoRoute {
     data object Home : VideoRoute
@@ -56,13 +58,24 @@ fun VideoScreen() {
     val settings by settingsStore.state.collectAsState()
     val account by BiliSession.account.collectAsState()
 
-    val routeStack = remember { mutableStateListOf<VideoRoute>(VideoRoute.Home) }
+    // 用可保存的字符串镜像路由栈，转屏/Activity 重建后还能回到原来的页面
+    var savedStack by rememberSaveable { mutableStateOf("home") }
+    val routeStack = remember {
+        mutableStateListOf<VideoRoute>().apply {
+            addAll(savedStack.split('|').map(::decodeVideoRoute).ifEmpty { listOf(VideoRoute.Home) })
+        }
+    }
     val route: VideoRoute = routeStack.last()
+    fun syncStack() {
+        savedStack = routeStack.joinToString("|", transform = ::encodeVideoRoute)
+    }
     fun push(next: VideoRoute) {
         routeStack.add(next)
+        syncStack()
     }
     fun pop() {
         if (routeStack.size > 1) routeStack.removeAt(routeStack.lastIndex)
+        syncStack()
     }
     var showLogin by remember { mutableStateOf(false) }
     var showCloud by remember { mutableStateOf(false) }
@@ -194,7 +207,7 @@ private fun VideoHomeContent(
                 items = if (reset) pageData.items else (items + pageData.items).distinctBy { it.bvid }
                 page = target
             }
-            .onFailure { error = it.message ?: "加载失败" }
+            .onFailure { error = it.message ?: tr("加载失败") }
         loading = false
     }
 
@@ -233,13 +246,13 @@ private fun VideoHomeContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "继续观看",
+                            tr("继续观看"),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            "全部",
+                            tr("全部"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.clickable { }
@@ -281,12 +294,12 @@ private fun VideoHomeContent(
         item(span = { GridItemSpan(maxLineSpan) }) {
             SectionHeader(
                 title = when (category) {
-                    VideoCategory.RECOMMEND -> "为你推荐"
-                    VideoCategory.FOLLOW -> "关注动态"
-                    VideoCategory.HOT -> "热门"
+                    VideoCategory.RECOMMEND -> tr("为你推荐")
+                    VideoCategory.FOLLOW -> tr("关注动态")
+                    VideoCategory.HOT -> tr("热门")
                     else -> category.label
                 },
-                action = if (loading) "加载中…" else null
+                action = if (loading) tr("加载中…") else null
             )
         }
 
@@ -294,9 +307,9 @@ private fun VideoHomeContent(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 VideoEmptyState(
                     icon = Icons.Outlined.ErrorOutline,
-                    title = "加载失败",
+                    title = tr("加载失败"),
                     message = error,
-                    action = "重试",
+                    action = tr("重试"),
                     onAction = { scope.launch { load(true) } }
                 )
             }
@@ -304,9 +317,9 @@ private fun VideoHomeContent(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 VideoEmptyState(
                     icon = Icons.Outlined.Movie,
-                    title = if (category == VideoCategory.FOLLOW) "登录后查看关注动态" else "这里还没有内容",
-                    message = if (category == VideoCategory.FOLLOW) "关注喜欢的 UP 主，新投稿会出现在这里" else null,
-                    action = if (category == VideoCategory.FOLLOW) "去登录" else null,
+                    title = if (category == VideoCategory.FOLLOW) tr("登录后查看关注动态") else tr("这里还没有内容"),
+                    message = if (category == VideoCategory.FOLLOW) tr("关注喜欢的 UP 主，新投稿会出现在这里") else null,
+                    action = if (category == VideoCategory.FOLLOW) tr("去登录") else null,
                     onAction = onLogin
                 )
             }
@@ -334,9 +347,9 @@ private fun VideoHomeContent(
                             modifier = Modifier.size(22.dp)
                         )
                     } else if (error != null) {
-                        TextButton(onClick = { scope.launch { load(false) } }) { Text("加载失败，点击重试") }
+                        TextButton(onClick = { scope.launch { load(false) } }) { Text(tr("加载失败，点击重试")) }
                     } else {
-                        TextButton(onClick = { scope.launch { load(false) } }) { Text("加载更多") }
+                        TextButton(onClick = { scope.launch { load(false) } }) { Text(tr("加载更多")) }
                     }
                 }
             }
@@ -351,18 +364,41 @@ private fun HomeHeader(account: BiliAccount, onSearch: () -> Unit, onLogin: () -
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            "视频",
+            tr("视频"),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onSearch) {
-            Icon(Icons.Filled.Search, "搜索", tint = MaterialTheme.colorScheme.onSurface)
+            Icon(Icons.Filled.Search, tr("搜索"), tint = MaterialTheme.colorScheme.onSurface)
         }
         Spacer(Modifier.width(4.dp))
         Box(Modifier.clickable(onClick = onLogin)) {
             Avatar(account.face, 34.dp)
         }
+    }
+}
+
+
+private fun encodeVideoRoute(route: VideoRoute): String = when (route) {
+    VideoRoute.Home -> "home"
+    VideoRoute.Profile -> "profile"
+    is VideoRoute.Search -> "search:" + java.net.URLEncoder.encode(route.query, "UTF-8")
+    is VideoRoute.Detail -> "detail:${route.bvid}:${route.startMs}"
+}
+
+private fun decodeVideoRoute(code: String): VideoRoute {
+    val parts = code.split(':')
+    return when (parts.firstOrNull()) {
+        "profile" -> VideoRoute.Profile
+        "search" -> VideoRoute.Search(
+            parts.getOrNull(1)?.let { java.net.URLDecoder.decode(it, "UTF-8") }.orEmpty()
+        )
+        "detail" -> VideoRoute.Detail(
+            bvid = parts.getOrNull(1).orEmpty(),
+            startMs = parts.getOrNull(2)?.toLongOrNull() ?: 0L
+        )
+        else -> VideoRoute.Home
     }
 }
