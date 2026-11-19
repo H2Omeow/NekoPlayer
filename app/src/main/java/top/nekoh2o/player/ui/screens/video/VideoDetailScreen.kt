@@ -38,6 +38,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.nekoh2o.player.data.bilibili.BiliAccount
 import top.nekoh2o.player.data.bilibili.CommentItem
+import top.nekoh2o.player.data.bilibili.DanmakuFilter
 import top.nekoh2o.player.data.bilibili.DanmakuItem
 import top.nekoh2o.player.data.bilibili.PlaySource
 import top.nekoh2o.player.data.bilibili.VideoDetail
@@ -46,7 +47,10 @@ import top.nekoh2o.player.data.repo.VideoRepository
 import top.nekoh2o.player.data.store.VideoHistoryStore
 import top.nekoh2o.player.data.store.WatchEntry
 import top.nekoh2o.player.data.store.VideoSettings
+import top.nekoh2o.player.i18n.NekoI18n.tr
 import top.nekoh2o.player.ui.theme.NekoRadius
+import top.nekoh2o.player.ui.Immersive
+import top.nekoh2o.player.ui.theme.NekoSolid
 import top.nekoh2o.player.ui.theme.NekoSpace
 
 private fun qualityFor(base: Int, step: Int): Int {
@@ -85,11 +89,22 @@ fun VideoDetailScreen(
     var positionMs by remember { mutableLongStateOf(startMs) }
     var tab by remember { mutableIntStateOf(0) }
     var retryKey by remember { mutableIntStateOf(0) }
+    var sendingDanmaku by remember { mutableStateOf(false) }
     var qualityStep by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(bvid) {
         loading = true
         error = null
+        detail = null
+        source = null
+        related = emptyList()
+        comments = emptyList()
+        danmaku = emptyList()
+        commentCount = 0
+        tab = 0
+        qualityStep = 0
+        retryKey = 0
+        positionMs = startMs
         runCatching { repo.detail(bvid) }
             .onSuccess { d ->
                 detail = d
@@ -98,7 +113,7 @@ fun VideoDetailScreen(
                     .onSuccess { source = it }
                     .onFailure { error = "无法获取播放地址：${it.message}" }
                 runCatching { repo.danmaku(d.cid, d.item.aid, d.item.durationSec) }
-                    .onSuccess { danmaku = it }
+                    .onSuccess { danmaku = DanmakuFilter.apply(it, settings.danmaku) }
                 runCatching { repo.comments(d.item.aid) }
                     .onSuccess { r -> comments = r.first; commentCount = r.second }
             }
@@ -121,7 +136,7 @@ fun VideoDetailScreen(
         val d = detail ?: return@LaunchedEffect
         while (true) {
             kotlinx.coroutines.delay(3000)
-            if (positionMs > 3000 && d.item.durationSec > 0) {
+            if (settings.player.rememberProgress && positionMs > 3000 && d.item.durationSec > 0) {
                 history.upsert(
                     WatchEntry(
                         bvid = d.item.bvid,
@@ -139,6 +154,8 @@ fun VideoDetailScreen(
     }
 
     val activity = remember(context) { context.activity() }
+    LaunchedEffect(fullscreen) { Immersive.active = fullscreen }
+    DisposableEffect(Unit) { onDispose { Immersive.active = false } }
     DisposableEffect(fullscreen) {
         val window = activity?.window
         val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
@@ -148,7 +165,7 @@ fun VideoDetailScreen(
             controller?.systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         } else {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             controller?.show(WindowInsetsCompat.Type.systemBars())
         }
         onDispose {
@@ -176,6 +193,8 @@ fun VideoDetailScreen(
         } else {
             val d = detail!!
             val listState = rememberLazyListState()
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+            val viewportHeight = maxHeight
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -188,7 +207,7 @@ fun VideoDetailScreen(
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .then(if (fullscreen) Modifier.fillMaxHeight() else Modifier.aspectRatio(16f / 9f))
+                            .then(if (fullscreen) Modifier.height(viewportHeight) else Modifier.aspectRatio(16f / 9f))
                     ) {
                         VideoPlayerBox(
                             source = source,
@@ -223,8 +242,12 @@ fun VideoDetailScreen(
                             onLike = { scope.launch { toast(context, runCatching { repo.like(d.item.aid) }.getOrDefault(false), "点赞") } },
                             onCoin = { scope.launch { toast(context, runCatching { repo.coin(d.item.aid) }.getOrDefault(false), "投币") } },
                             onFavorite = { scope.launch { toast(context, runCatching { repo.favorite(d.item.aid) }.getOrDefault(false), "收藏") } },
-                            onShare = { toast(context, true, "已复制链接") },
-                            onWatchLater = { toast(context, true, "已加入稍后再看") },
+                            onShare = {
+                                val url = "https://www.bilibili.com/video/" + d.item.bvid
+                                val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                cm.setPrimaryClip(android.content.ClipData.newPlainText("NekoPlayer", url))
+                                android.widget.Toast.makeText(context, tr("已复制链接"), android.widget.Toast.LENGTH_SHORT).show()
+                            },
                             onDanmakuSettings = onOpenDanmakuSettings
                         )
                     }
@@ -262,36 +285,46 @@ fun VideoDetailScreen(
             if (!fullscreen) {
                 DanmakuInputBar(
                     onSend = { text ->
+                        if (sendingDanmaku) return@DanmakuInputBar
                         val cid = d.cid
+                        val mode = if (settings.danmaku.showScroll) 1 else 5
+                        val atMs = positionMs
+                        sendingDanmaku = true
                         scope.launch {
-                            val ok = runCatching {
+                            val result = runCatching {
                                 repo.postDanmaku(
                                     cid = cid,
                                     aid = d.item.aid,
                                     content = text,
-                                    progressMs = positionMs,
-                                    mode = if (settings.danmaku.showScroll) 1 else 5,
+                                    progressMs = atMs,
+                                    mode = mode,
                                     fontSize = 25,
                                     color = 0xFFFFFF
                                 )
-                            }.getOrDefault(false)
+                            }
+                            sendingDanmaku = false
+                            val ok = result.getOrDefault(false)
                             if (ok) {
                                 danmaku = danmaku + DanmakuItem(
                                     id = System.currentTimeMillis(),
-                                    progressMs = positionMs,
-                                    mode = 1,
+                                    progressMs = atMs,
+                                    mode = mode,
                                     fontSize = 25,
                                     color = 0xFFFFFF,
                                     content = text,
                                     weight = 10
                                 )
+                                android.widget.Toast.makeText(context, tr("弹幕已发送"), android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                val reason = if (!account.isLogin) tr("请先登录") else (result.exceptionOrNull()?.message ?: tr("发送失败"))
+                                android.widget.Toast.makeText(context, reason, android.widget.Toast.LENGTH_SHORT).show()
                             }
-                            toast(context, ok, if (ok) "弹幕已发送" else "发送失败（需登录）")
                         }
                     },
                     onOpenSettings = onOpenDanmakuSettings,
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
+            }
             }
         }
     }
@@ -349,7 +382,6 @@ private fun DetailActions(
     onCoin: () -> Unit,
     onFavorite: () -> Unit,
     onShare: () -> Unit,
-    onWatchLater: () -> Unit,
     onDanmakuSettings: () -> Unit
 ) {
     Row(
@@ -543,7 +575,7 @@ private fun CommentRow(c: CommentItem) {
 private fun DanmakuInputBar(onSend: (String) -> Unit, onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
     var text by remember { mutableStateOf("") }
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = NekoSolid.sheet,
         tonalElevation = 0.dp,
         modifier = modifier.fillMaxWidth()
     ) {

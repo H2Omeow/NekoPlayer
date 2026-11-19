@@ -70,9 +70,9 @@ class VideoRepository(
     suspend fun qrPoll(key: String): QrState = api.qrPoll(key)
 
     /** 手动导入 Cookie：写入后立即拉一次 nav 补全昵称头像。 */
-    suspend fun importCookie(raw: String) {
-        BiliSession.importCookie(raw)
-        runCatching { api.nav() }
+    suspend fun importCookie(raw: String): Boolean {
+        if (!BiliSession.importCookie(raw)) return false
+        return runCatching { api.nav() }.isSuccess
     }
 
     suspend fun refreshAccount() {

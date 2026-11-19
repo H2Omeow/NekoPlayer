@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import top.nekoh2o.player.data.store.DanmakuSettings
 import top.nekoh2o.player.data.store.PlayerSettings
 import top.nekoh2o.player.data.store.VideoSettings
+import top.nekoh2o.player.ui.theme.NekoSolid
 import top.nekoh2o.player.ui.theme.NekoSpace
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,7 +34,7 @@ fun DanmakuSettingsSheet(
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = NekoSolid.sheet,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         LazyColumn(
@@ -98,7 +99,7 @@ fun PlayerSettingsSheet(
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = NekoSolid.sheet,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         LazyColumn(

@@ -85,6 +85,7 @@ import androidx.compose.material.icons.filled.Person
 import top.nekoh2o.player.i18n.NekoI18n.tr
 import top.nekoh2o.player.ui.components.DetailTopBar
 import top.nekoh2o.player.ui.theme.NekoRadius
+import top.nekoh2o.player.ui.theme.NekoSolid
 import top.nekoh2o.player.ui.theme.NekoSpace
 
 private enum class CloudTab(private val raw: String) {
@@ -99,6 +100,7 @@ private enum class CloudTab(private val raw: String) {
 @Composable
 fun CloudFilesScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+
     val scope = rememberCoroutineScope()
     val social = remember { SocialRepository() }
     var tab by remember { mutableStateOf(CloudTab.FILES) }
@@ -111,8 +113,18 @@ fun CloudFilesScreen(onBack: () -> Unit) {
     var uploadProgress by remember { mutableStateOf<Float?>(null) }
     var showSkland by remember { mutableStateOf(false) }
     var shareTarget by remember { mutableStateOf<JsonObject?>(null) }
+    var deleteTarget by remember { mutableStateOf<JsonObject?>(null) }
+    var actionError by remember { mutableStateOf<String?>(null) }
     var memeKind by remember { mutableStateOf<String?>(null) }
     var notifications by remember { mutableStateOf(JsonArray(emptyList())) }
+
+    LaunchedEffect(actionError) {
+        actionError?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_SHORT).show()
+            actionError = null
+        }
+    }
+
     var unread by remember { mutableStateOf(0) }
     var showNotices by remember { mutableStateOf(false) }
     var pendingShare by remember { mutableStateOf<String?>(null) }
@@ -206,7 +218,7 @@ fun CloudFilesScreen(onBack: () -> Unit) {
                     usage = usage,
                     uploadProgress = uploadProgress,
                     onUpload = { picker.launch(arrayOf("*/*")) },
-                    onDelete = { id -> scope.launch { runCatching { CloudApi.delete(id) }; reload() } },
+                    onDelete = { item -> deleteTarget = item },
                     onShare = { item -> shareTarget = item },
                     onMeme = { memeKind = it }
                 )
@@ -258,19 +270,53 @@ fun CloudFilesScreen(onBack: () -> Unit) {
         })
     }
 
+    deleteTarget?.let { item ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text(tr("删除文件")) },
+            text = {
+                Text(
+                    tr("删除后无法恢复，确定删除") +
+                        "「" + (item["name"]?.jsonPrimitive?.content ?: "") + "」？"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val id = item["id"]?.jsonPrimitive?.content
+                    deleteTarget = null
+                    if (id != null) {
+                        scope.launch {
+                            val result = runCatching { CloudApi.delete(id) }
+                            actionError = result.exceptionOrNull()?.message
+                            reload()
+                        }
+                    }
+                }) { Text(tr("删除"), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text(tr("取消")) } }
+        )
+    }
+
     shareTarget?.let { item ->
         ShareDialog(
             item = item,
             onDismiss = { shareTarget = null },
             onShare = { mode, days ->
-                scope.launch {
-                    runCatching { CloudApi.share(item["id"]!!.jsonPrimitive.content, mode, days) }
-                        .onSuccess {
-                            pendingShare = it["token"]?.jsonPrimitive?.content
+                val id = item["id"]?.jsonPrimitive?.content
+                if (id == null) {
+                    actionError = tr("文件信息不完整")
+                } else {
+                    scope.launch {
+                        val result = runCatching { CloudApi.share(id, mode, days) }
+                        val token = result.getOrNull()?.get("token")?.jsonPrimitive?.content
+                        if (token != null) {
+                            pendingShare = token
                             pendingName = item["name"]?.jsonPrimitive?.content ?: tr("文件")
+                            shareTarget = null
+                        } else {
+                            actionError = result.exceptionOrNull()?.message ?: tr("分享失败")
                         }
-                    shareTarget = null
-                    reload()
+                    }
                 }
             }
         )
@@ -292,6 +338,11 @@ fun CloudFilesScreen(onBack: () -> Unit) {
             },
             confirmButton = {
                 Row {
+                    TextButton(onClick = {
+                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("NekoPlayer", base))
+                        android.widget.Toast.makeText(context, tr("链接已复制"), android.widget.Toast.LENGTH_SHORT).show()
+                    }) { Text(tr("复制链接")) }
                     TextButton(onClick = { showFriendPicker = true }) { Text(tr("发送给好友")) }
                     TextButton(onClick = { pendingShare = null }) { Text(tr("完成")) }
                 }
@@ -323,6 +374,9 @@ fun CloudFilesScreen(onBack: () -> Unit) {
                 }
             }
         )
+    }
+    memeKind?.let { kind ->
+        MemeSheet(kind) { memeKind = null }
     }
 }
 
@@ -380,7 +434,7 @@ private fun FilesTab(
     usage: JsonObject?,
     uploadProgress: Float?,
     onUpload: () -> Unit,
-    onDelete: (String) -> Unit,
+    onDelete: (JsonObject) -> Unit,
     onShare: (JsonObject) -> Unit,
     onMeme: (String) -> Unit
 ) {
@@ -407,7 +461,7 @@ private fun FilesTab(
         }
         items(files.toList()) { element ->
             val item = element as JsonObject
-            FileRow(item, onDelete = { onDelete(item["id"]!!.jsonPrimitive.content) }, onShare = { onShare(item) })
+            FileRow(item, onDelete = { onDelete(item) }, onShare = { onShare(item) })
         }
     }
 }
@@ -712,7 +766,7 @@ private fun SklandBindDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        containerColor = NekoSolid.dialog,
         title = { Text(tr("绑定森空岛")) },
         text = {
             Column(
@@ -730,11 +784,17 @@ private fun SklandBindDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
 
                 when (mode) {
                     "scan" -> {
-                        val bitmap = remember(url) { url?.let { qrBitmap(it) } }
+                        var bitmap by remember(url) { mutableStateOf<Bitmap?>(null) }
+                        LaunchedEffect(url) {
+                            bitmap = url?.let {
+                                withContext(kotlinx.coroutines.Dispatchers.Default) { qrBitmap(it) }
+                            }
+                        }
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            if (bitmap != null) {
+                            val qr = bitmap
+                            if (qr != null) {
                                 Image(
-                                    bitmap.asImageBitmap(),
+                                    qr.asImageBitmap(),
                                     contentDescription = tr("二维码"),
                                     modifier = Modifier.size(190.dp),
                                     contentScale = ContentScale.Fit

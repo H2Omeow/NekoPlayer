@@ -63,13 +63,17 @@ object BiliSession {
         saveCookie(cookie)
     }
 
-    fun importCookie(raw: String) {
+    /** 导入 Cookie；必须包含 SESSDATA 才认为是有效登录态。 */
+    fun importCookie(raw: String): Boolean {
         val cookie = raw.trim().removePrefix("Cookie:").trim()
+        val sess = Regex("SESSDATA=([^;]+)").find(cookie)?.groupValues?.getOrNull(1).orEmpty()
+        if (sess.isBlank()) return false
         saveCookie(cookie)
         val mid = cookieValue("DedeUserID").toLongOrNull() ?: 0
-        val updated = _account.value.copy(mid = mid, isLogin = cookie.isNotEmpty())
+        val updated = _account.value.copy(mid = mid, isLogin = true)
         _account.value = updated
         prefs?.edit()?.putLong(KEY_MID, mid)?.apply()
+        return true
     }
 
     fun updateProfile(mid: Long, name: String, face: String) {

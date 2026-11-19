@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,6 +83,16 @@ fun SklandWebLoginDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
         confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
     )
+
+    DisposableEffect(webView) {
+        onDispose {
+            webView?.apply {
+                stopLoading()
+                loadUrl("about:blank")
+                destroy()
+            }
+        }
+    }
 
     LaunchedEffect(webView) {
         val view = webView ?: return@LaunchedEffect

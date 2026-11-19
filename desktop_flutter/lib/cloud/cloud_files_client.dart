@@ -315,14 +315,14 @@ class CloudFilesClient {
     final partCount = (init['partCount'] as num).toInt();
     final chunkSize = (init['partSize'] as num?)?.toInt() ?? partSize;
     final parts = <Map<String, dynamic>>[];
+    RandomAccessFile? raf;
     try {
+      raf = await file.open();
       for (var index = 0; index < partCount; index++) {
         final start = index * chunkSize;
-        final end = (start + chunkSize).clamp(0, size);
-        final raf = await file.open();
+        final end = start + chunkSize > size ? size : start + chunkSize;
         await raf.setPosition(start);
         final chunk = await raf.read(end - start);
-        await raf.close();
         final part = await _json('GET', '/files/multipart/$fileId/part/${index + 1}');
         final etag = await _putBytes('${part['url']}', chunk, 'application/octet-stream');
         parts.add({'partNumber': index + 1, 'etag': etag});
@@ -333,6 +333,8 @@ class CloudFilesClient {
     } catch (error) {
       unawaited(_json('POST', '/files/multipart/$fileId/abort').catchError((_) => <String, dynamic>{}));
       rethrow;
+    } finally {
+      await raf?.close();
     }
   }
 

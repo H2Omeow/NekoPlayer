@@ -125,11 +125,14 @@ private fun prepareDanmaku(
     // 轨道分配：同一轨道上一条飞完才允许下一条进入
     val lanesFree = LongArray(laneCount) { Long.MIN_VALUE }
     var scrollSeen = 0
-    var staticSlot = 0
     for (p in out) {
         if (p.mode == 4 || p.mode == 5) {
-            p.lane = staticSlot++ % laneCount
+            // 固定弹幕也占用轨道，避免和滚动弹幕、其它固定弹幕叠字
+            val slot = lanesFree.indexOfFirst { it <= p.progressMs }
+            if (slot < 0) continue
+            p.lane = slot
             p.durationMs = STATIC_MS
+            lanesFree[slot] = p.progressMs + STATIC_MS
             continue
         }
         if (scrollSeen >= cap) continue

@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
@@ -154,15 +155,21 @@ fun VideoPlayerBox(
         onDispose { exo.removeListener(listener) }
     }
 
-    // 媒体源切换
+    // 媒体源切换：只在首次使用导航带入的进度，之后换源/重试都从当前位置继续
+    var startConsumed by remember { mutableStateOf(false) }
     LaunchedEffect(source?.url) {
         val url = source?.url ?: return@LaunchedEffect
+        val resumeAt = when {
+            !startConsumed && startPositionMs > 0 -> startPositionMs
+            else -> exo.currentPosition.coerceAtLeast(0L)
+        }
+        startConsumed = true
         ended = false
         errorText = null
         exo.setMediaItem(MediaItem.fromUri(url))
         exo.prepare()
+        if (resumeAt > 0) exo.seekTo(resumeAt)
         exo.playWhenReady = true
-        if (startPositionMs > 0) exo.seekTo(startPositionMs)
         exo.setPlaybackSpeed(speed)
     }
 
@@ -184,11 +191,17 @@ fun VideoPlayerBox(
         }
     }
 
-    // 播放中常亮
-    LaunchedEffect(isPlaying) {
+    // 播放中常亮，离开页面时恢复
+    DisposableEffect(isPlaying) {
         activity?.window?.let { w ->
             if (isPlaying) w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             else w.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            activity?.window?.let { w ->
+                w.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                w.attributes = w.attributes.apply { screenBrightness = -1f }
+            }
         }
     }
 
@@ -466,89 +479,153 @@ private fun PlayerChrome(
     onToggleFullscreen: () -> Unit,
     onOpenPlayerSettings: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBackIosNew, "返回", tint = Color.White, modifier = Modifier.size(18.dp))
-            }
-            Text(
-                title,
-                color = Color.White,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = onOpenPlayerSettings) {
-                Icon(Icons.Outlined.MoreVert, "更多", tint = Color.White)
-            }
-        }
-        Spacer(Modifier.weight(1f))
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onTogglePlay, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    if (isPlaying) "暂停" else "播放",
-                    tint = Color.White
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val compact = maxWidth < 560.dp
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Filled.ArrowBackIosNew, "返回", tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+                Text(
+                    title,
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
+                IconButton(onClick = onOpenPlayerSettings) {
+                    Icon(Icons.Outlined.MoreVert, "更多", tint = Color.White)
+                }
             }
-            Text(
-                "${formatPosition(positionMs)} / ${formatPosition(durationMs)}",
-                color = Color.White.copy(alpha = 0.92f),
-                style = MaterialTheme.typography.labelMedium
-            )
-            Spacer(Modifier.width(12.dp))
-            SeekBar(
-                positionMs = positionMs,
-                bufferedMs = bufferedMs,
-                durationMs = durationMs,
-                onSeek = onSeek,
-                onSeekFinished = onSeekFinished,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(Modifier.width(12.dp))
-            IconButton(onClick = onToggleDanmaku, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    if (danmakuOn) Icons.Filled.Subtitles else Icons.Outlined.SubtitlesOff,
-                    "弹幕",
-                    tint = if (danmakuOn) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f)
-                )
-            }
-            Text(
-                qualityLabel.ifBlank { "自动" },
-                color = Color.White.copy(alpha = 0.85f),
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.14f))
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                if (speed == speed.toInt().toFloat()) "${speed.toInt()}×" else "${speed}×",
-                color = Color.White.copy(alpha = 0.85f),
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.14f))
-                    .clickableNoRipple { onSpeed() }
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
-            )
-            IconButton(onClick = onToggleFullscreen, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    if (fullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
-                    "全屏",
-                    tint = Color.White
-                )
+            Spacer(Modifier.weight(1f))
+            if (compact) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        PlayPauseButton(isPlaying, onTogglePlay, 36.dp)
+                        Text(
+                            "${formatPosition(positionMs)} / ${formatPosition(durationMs)}",
+                            color = Color.White.copy(alpha = 0.92f),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        SeekBar(
+                            positionMs = positionMs,
+                            bufferedMs = bufferedMs,
+                            durationMs = durationMs,
+                            onSeek = onSeek,
+                            onSeekFinished = onSeekFinished,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        DanmakuButton(danmakuOn, onToggleDanmaku, 34.dp)
+                        Spacer(Modifier.weight(1f))
+                        QualityChip(qualityLabel)
+                        Spacer(Modifier.width(6.dp))
+                        SpeedChip(speed, onSpeed)
+                        Spacer(Modifier.width(2.dp))
+                        IconButton(onClick = onToggleFullscreen, modifier = Modifier.size(34.dp)) {
+                            Icon(
+                                if (fullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
+                                "全屏",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            } else {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    PlayPauseButton(isPlaying, onTogglePlay, 40.dp)
+                    Text(
+                        "${formatPosition(positionMs)} / ${formatPosition(durationMs)}",
+                        color = Color.White.copy(alpha = 0.92f),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    SeekBar(
+                        positionMs = positionMs,
+                        bufferedMs = bufferedMs,
+                        durationMs = durationMs,
+                        onSeek = onSeek,
+                        onSeekFinished = onSeekFinished,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    DanmakuButton(danmakuOn, onToggleDanmaku, 36.dp)
+                    QualityChip(qualityLabel)
+                    Spacer(Modifier.width(8.dp))
+                    SpeedChip(speed, onSpeed)
+                    IconButton(onClick = onToggleFullscreen, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            if (fullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
+                            "全屏",
+                            tint = Color.White
+                        )
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun PlayPauseButton(isPlaying: Boolean, onTogglePlay: () -> Unit, size: Dp) {
+    IconButton(onClick = onTogglePlay, modifier = Modifier.size(size)) {
+        Icon(
+            if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+            if (isPlaying) "暂停" else "播放",
+            tint = Color.White
+        )
+    }
+}
+
+@Composable
+private fun DanmakuButton(danmakuOn: Boolean, onToggleDanmaku: () -> Unit, size: Dp) {
+    IconButton(onClick = onToggleDanmaku, modifier = Modifier.size(size)) {
+        Icon(
+            if (danmakuOn) Icons.Filled.Subtitles else Icons.Outlined.SubtitlesOff,
+            "弹幕",
+            tint = if (danmakuOn) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f)
+        )
+    }
+}
+
+@Composable
+private fun QualityChip(label: String) {
+    Text(
+        label.ifBlank { "自动" },
+        color = Color.White.copy(alpha = 0.85f),
+        style = MaterialTheme.typography.labelMedium,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.14f))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    )
+}
+
+@Composable
+private fun SpeedChip(speed: Float, onSpeed: () -> Unit) {
+    Text(
+        if (speed == speed.toInt().toFloat()) "${speed.toInt()}×" else "${speed}×",
+        color = Color.White.copy(alpha = 0.85f),
+        style = MaterialTheme.typography.labelMedium,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.14f))
+            .clickableNoRipple { onSpeed() }
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    )
 }
 
 @Composable
@@ -577,7 +654,6 @@ private fun SeekBar(
         modifier = modifier.height(24.dp)
     )
 }
-
 
 private fun Context.findActivity(): ComponentActivity? {
     var ctx: Context? = this

@@ -63,6 +63,7 @@ fun VideoProfileScreen(
     onChanged: () -> Unit
 ) {
     var confirmLogout by remember { mutableStateOf(false) }
+    var confirmClear by remember { mutableStateOf(false) }
     var refresh by remember { mutableIntStateOf(0) }
     val entries = remember(historyVersion, refresh) { history.list() }
 
@@ -103,9 +104,7 @@ fun VideoProfileScreen(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
-                                history.clear()
-                                refresh++
-                                onChanged()
+                                confirmClear = true
                             }.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -143,7 +142,24 @@ fun VideoProfileScreen(
         }
     }
 
-    if (confirmLogout) {
+        if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("清空观看历史") },
+            text = { Text("清空后无法恢复，确定要继续吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmClear = false
+                    history.clear()
+                    refresh++
+                    onChanged()
+                }) { Text("清空", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("取消") } }
+        )
+    }
+
+if (confirmLogout) {
         AlertDialog(
             onDismissRequest = { confirmLogout = false },
             title = { Text("退出登录") },

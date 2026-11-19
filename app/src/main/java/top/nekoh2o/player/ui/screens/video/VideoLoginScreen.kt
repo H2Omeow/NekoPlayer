@@ -64,10 +64,19 @@ fun VideoLoginScreen(
     var method by remember { mutableStateOf(LoginMethod.Scan) }
     val scope = rememberCoroutineScope()
 
+    var importing by remember { mutableStateOf(false) }
+    var importError by remember { mutableStateOf<String?>(null) }
     fun finish(raw: String) {
+        if (raw.isBlank()) {
+            importError = "请先填入 Cookie"
+            return
+        }
         scope.launch {
-            runCatching { repo.importCookie(raw) }
-            onLoggedIn()
+            importing = true
+            importError = null
+            val ok = runCatching { repo.importCookie(raw) }.getOrDefault(false)
+            importing = false
+            if (ok) onLoggedIn() else importError = "Cookie 无效或已过期，请重新获取"
         }
     }
 
@@ -193,7 +202,9 @@ private fun ScanPane(repo: VideoRepository, onLoggedIn: () -> Unit) {
         runCatching { repo.qrGenerate() }
             .onSuccess { t ->
                 ticket = t
-                bitmap = runCatching { qrBitmap(t.url) }.getOrNull()
+                bitmap = runCatching {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { qrBitmap(t.url) }
+                }.getOrNull()
                 status = "打开哔哩哔哩 App 扫一扫"
             }
             .onFailure {

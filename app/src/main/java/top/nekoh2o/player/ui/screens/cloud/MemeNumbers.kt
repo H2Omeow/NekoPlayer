@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import top.nekoh2o.player.ui.theme.NekoSolid
 import top.nekoh2o.player.ui.theme.NekoSpace
 
 /** 点满 7 次才触发的小彩蛋计数（只存在内存里，重启就清零）。 */
@@ -71,7 +72,7 @@ fun MemeSheet(kind: String, onDismiss: () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        containerColor = NekoSolid.sheet
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = NekoSpace.xl)) {
             Text(copy.title, style = MaterialTheme.typography.titleLarge)

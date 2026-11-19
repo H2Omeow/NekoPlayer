@@ -53,6 +53,7 @@ import top.nekoh2o.player.ui.screens.MusicScreen
 import top.nekoh2o.player.ui.screens.video.VideoScreen
 import top.nekoh2o.player.ui.social.SocialScreen
 import top.nekoh2o.player.ui.theme.NekoRadius
+import top.nekoh2o.player.ui.Immersive
 import top.nekoh2o.player.ui.theme.NekoSpace
 
 enum class Tab(private val rawLabel: String, val icon: ImageVector, val selectedIcon: ImageVector) {
@@ -149,6 +150,7 @@ fun MainScaffold(
         MainLayout(
             tab = tab,
             useRail = useRail,
+            immersive = Immersive.active,
             transparent = wallpaper != null,
             snackbar = snackbar,
             socialUnread = socialState.unread,
@@ -194,6 +196,7 @@ fun MainScaffold(
 fun MainLayout(
     tab: Tab,
     useRail: Boolean,
+    immersive: Boolean,
     transparent: Boolean,
     snackbar: SnackbarHostState,
     socialUnread: Int,
@@ -217,65 +220,75 @@ fun MainLayout(
         unselectedTextColor = colors.onSurfaceVariant
     )
     Scaffold(
-        containerColor = if (transparent) Color.Transparent else colors.background,
-        snackbarHost = { SnackbarHost(snackbar) },
+        containerColor = if (transparent || immersive) Color.Black else colors.background,
+        snackbarHost = { if (!immersive) SnackbarHost(snackbar) },
         bottomBar = {
-            Column {
-                miniPlayer()
-                if (!useRail) NavigationBar(
-                    containerColor = colors.surfaceContainerLow,
-                    tonalElevation = 0.dp
-                ) {
-                    Tab.entries.forEach { t ->
-                        NavigationBarItem(
-                            selected = tab == t,
-                            onClick = { onSelect(t) },
-                            icon = {
-                                TabIcon(
-                                    tab = t,
+            if (!immersive) {
+                Column {
+                    miniPlayer()
+                    if (!useRail) {
+                        NavigationBar(
+                            containerColor = colors.surfaceContainerLow,
+                            tonalElevation = 0.dp
+                        ) {
+                            Tab.entries.forEach { t ->
+                                NavigationBarItem(
                                     selected = tab == t,
-                                    unread = if (t == Tab.SOCIAL) socialUnread else 0
+                                    onClick = { onSelect(t) },
+                                    icon = {
+                                        TabIcon(
+                                            tab = t,
+                                            selected = tab == t,
+                                            unread = if (t == Tab.SOCIAL) socialUnread else 0
+                                        )
+                                    },
+                                    label = { Text(t.label) },
+                                    colors = itemColors
                                 )
-                            },
-                            label = { Text(t.label) },
-                            colors = itemColors
-                        )
+                            }
+                        }
                     }
                 }
             }
         }
     ) { pad ->
-        Row(Modifier.padding(pad)) {
-            if (useRail) NavigationRail(
-                Modifier.fillMaxHeight(),
-                containerColor = colors.surfaceContainerLow,
-                header = {
-                    Text(
-                        "Neko",
-                        Modifier.padding(vertical = NekoSpace.xl),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.primary
-                    )
-                }
-            ) {
-                Tab.entries.forEach { t ->
-                    NavigationRailItem(
-                        selected = tab == t,
-                        onClick = { onSelect(t) },
-                        icon = {
-                            TabIcon(
-                                tab = t,
-                                selected = tab == t,
-                                unread = if (t == Tab.SOCIAL) socialUnread else 0
+        if (immersive) {
+            Box(Modifier.fillMaxSize()) { content() }
+        } else {
+            Row(Modifier.padding(pad)) {
+                if (useRail) {
+                    NavigationRail(
+                        Modifier.fillMaxHeight(),
+                        containerColor = colors.surfaceContainerLow,
+                        header = {
+                            Text(
+                                "Neko",
+                                Modifier.padding(vertical = NekoSpace.xl),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = colors.primary
                             )
-                        },
-                        label = { Text(t.label) },
-                        colors = railColors,
-                        modifier = Modifier.padding(vertical = NekoSpace.sm)
-                    )
+                        }
+                    ) {
+                        Tab.entries.forEach { t ->
+                            NavigationRailItem(
+                                selected = tab == t,
+                                onClick = { onSelect(t) },
+                                icon = {
+                                    TabIcon(
+                                        tab = t,
+                                        selected = tab == t,
+                                        unread = if (t == Tab.SOCIAL) socialUnread else 0
+                                    )
+                                },
+                                label = { Text(t.label) },
+                                colors = railColors,
+                                modifier = Modifier.padding(vertical = NekoSpace.sm)
+                            )
+                        }
+                    }
                 }
+                Box(Modifier.weight(1f)) { content() }
             }
-            Box(Modifier.weight(1f)) { content() }
         }
     }
 }

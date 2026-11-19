@@ -43,6 +43,17 @@ object NekoRadius {
     val sheet = 28.dp
 }
 
+/**
+ * 弹层与对话框使用的不透明色。
+ *
+ * 壁纸开启时 surface 系列会被统一调成半透明，弹层如果继续用 colorScheme.surfaceContainerX，
+ * 正文和封面会透到面板上。这里固定一组实体色，保证弹层始终可读。
+ */
+object NekoSolid {
+    val sheet = Color(0xFF211F22)
+    val dialog = Color(0xFF2A282B)
+}
+
 // 与桌面端深色方案同色，两端视觉一致
 private val Scheme = darkColorScheme(
     primary = Color(0xFFF0546E),

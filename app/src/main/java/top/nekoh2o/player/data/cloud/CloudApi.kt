@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -201,58 +202,79 @@ object CloudApi {
     ): JsonObject = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val resolver = context.contentResolver
         val mime = resolver.getType(uri) ?: "application/octet-stream"
-        if (size <= PART_SIZE) {
-            val meta = uploadUrl(name, size, category)
-            val url = meta["uploadUrl"]!!.jsonPrimitive.content
-            val fileId = meta["fileId"]!!.jsonPrimitive.content
-            resolver.openInputStream(uri)?.use { input ->
-                val bytes = input.readBytes()
-                putBytes(url, bytes, mime)
-            } ?: throw CloudException(0, "无法读取文件")
-            onProgress(1f)
-            return@withContext complete(fileId)
-        }
 
-        val meta = createMultipart(name, size, category)
-        val fileId = meta["fileId"]!!.jsonPrimitive.content
-        val partCount = meta["partCount"]!!.jsonPrimitive.content.toInt()
-        resolver.openInputStream(uri) ?: throw CloudException(0, "无法读取文件")
-        val parts = mutableListOf<Pair<Int, String>>()
+        // 部分 provider 不返回 SIZE：先落到缓存文件拿到真实大小，避免整文件读进内存
+        var realSize = size
+        var tempFile: java.io.File? = null
+        if (realSize <= 0L) {
+            val temp = java.io.File.createTempFile("upload_", ".bin", context.cacheDir)
+            resolver.openInputStream(uri)?.use { input -> temp.outputStream().use { output -> input.copyTo(output) } }
+                ?: throw CloudException(0, "无法读取文件")
+            realSize = temp.length()
+            tempFile = temp
+        }
         try {
-            for (index in 1..partCount) {
-                val url = partUrl(fileId, index)
-                val bytes = readChunk(resolver.openInputStream(uri)!!, index, PART_SIZE, size)
-                val etag = putBytes(url, bytes, "application/octet-stream")
-                parts.add(index to etag)
-                onProgress((index.toFloat() / partCount).coerceIn(0f, 1f))
+            if (realSize <= PART_SIZE) {
+                val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: throw CloudException(0, "无法读取文件")
+                if (bytes.isEmpty()) throw CloudException(0, "文件是空的")
+                val meta = uploadUrl(name, bytes.size.toLong(), category)
+                putBytes(field(meta, "uploadUrl"), bytes, mime)
+                onProgress(1f)
+                return@withContext complete(field(meta, "fileId"))
             }
-            return@withContext completeMultipart(fileId, parts)
-        } catch (error: Throwable) {
-            abortMultipart(fileId)
-            throw error
+            return@withContext uploadMultipart(resolver, uri, name, realSize, category, mime, onProgress)
+        } finally {
+            tempFile?.delete()
         }
     }
 
-    private fun readChunk(input: InputStream, index: Int, partSize: Int, total: Long): ByteArray {
-        input.use { stream ->
-            val skip = (index - 1).toLong() * partSize
-            if (skip > 0) {
-                var remaining = skip
-                while (remaining > 0) {
-                    val skipped = stream.skip(remaining)
-                    if (skipped <= 0) break
-                    remaining -= skipped
+    private fun field(json: JsonObject, key: String): String =
+        json[key]?.takeIf { it !is JsonNull }?.jsonPrimitive?.content
+            ?: throw CloudException(0, "服务端响应缺少 $key")
+
+    private suspend fun uploadMultipart(
+        resolver: android.content.ContentResolver,
+        uri: Uri,
+        name: String,
+        size: Long,
+        category: String,
+        mime: String,
+        onProgress: (Float) -> Unit
+    ): JsonObject {
+
+        val meta = createMultipart(name, size, category)
+        val fileId = field(meta, "fileId")
+        val partSize = meta["partSize"]?.jsonPrimitive?.content?.toLongOrNull() ?: PART_SIZE.toLong()
+        val parts = mutableListOf<Pair<Int, String>>()
+        var uploaded = 0L
+        try {
+            val input = resolver.openInputStream(uri) ?: throw CloudException(0, "无法读取文件")
+            input.use { stream ->
+                var index = 1
+                val buffer = ByteArray(partSize.toInt())
+                while (true) {
+                    var read = 0
+                    while (read < buffer.size) {
+                        val n = stream.read(buffer, read, buffer.size - read)
+                        if (n <= 0) break
+                        read += n
+                    }
+                    if (read <= 0) break
+                    val chunk = if (read == buffer.size) buffer else buffer.copyOf(read)
+                    val url = partUrl(fileId, index)
+                    val etag = putBytes(url, chunk, "application/octet-stream")
+                    parts.add(index to etag)
+                    uploaded += read
+                    onProgress((uploaded.toFloat() / size).coerceIn(0f, 1f))
+                    index++
                 }
             }
-            val length = minOf(partSize.toLong(), total - skip).toInt().coerceAtLeast(0)
-            val buffer = ByteArray(length)
-            var read = 0
-            while (read < length) {
-                val n = stream.read(buffer, read, length - read)
-                if (n <= 0) break
-                read += n
-            }
-            return if (read == length) buffer else buffer.copyOf(read)
+            if (uploaded != size) throw CloudException(0, "文件读取不完整")
+            return completeMultipart(fileId, parts)
+        } catch (error: Throwable) {
+            runCatching { abortMultipart(fileId) }
+            throw error
         }
     }
 

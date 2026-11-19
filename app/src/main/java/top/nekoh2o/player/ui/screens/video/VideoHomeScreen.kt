@@ -56,19 +56,21 @@ fun VideoScreen() {
     val settings by settingsStore.state.collectAsState()
     val account by BiliSession.account.collectAsState()
 
-    var route by remember { mutableStateOf<VideoRoute>(VideoRoute.Home) }
+    val routeStack = remember { mutableStateListOf<VideoRoute>(VideoRoute.Home) }
+    val route: VideoRoute = routeStack.last()
+    fun push(next: VideoRoute) {
+        routeStack.add(next)
+    }
+    fun pop() {
+        if (routeStack.size > 1) routeStack.removeAt(routeStack.lastIndex)
+    }
     var showLogin by remember { mutableStateOf(false) }
     var showCloud by remember { mutableStateOf(false) }
     var showDanmakuSheet by remember { mutableStateOf(false) }
     var showPlayerSheet by remember { mutableStateOf(false) }
     var historyVersion by remember { mutableIntStateOf(0) }
 
-    BackHandler(enabled = route != VideoRoute.Home) {
-        route = when (val r = route) {
-            is VideoRoute.Search, is VideoRoute.Detail, is VideoRoute.Profile -> VideoRoute.Home
-            else -> VideoRoute.Home
-        }
-    }
+    BackHandler(enabled = routeStack.size > 1) { pop() }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         when (val r = route) {
@@ -78,11 +80,11 @@ fun VideoScreen() {
                 settings = settings,
                 history = history,
                 historyVersion = historyVersion,
-                onOpenVideo = { bvid, start -> route = VideoRoute.Detail(bvid, start) },
-                onOpenSearch = { q -> route = VideoRoute.Search(q) },
+                onOpenVideo = { bvid, start -> push(VideoRoute.Detail(bvid, start)) },
+                onOpenSearch = { q -> push(VideoRoute.Search(q)) },
                 onLogin = {
                     if (account.isLogin) {
-                        route = VideoRoute.Profile
+                        push(VideoRoute.Profile)
                     } else {
                         showLogin = true
                     }
@@ -92,9 +94,9 @@ fun VideoScreen() {
                 account = account,
                 history = history,
                 historyVersion = historyVersion,
-                onBack = { route = VideoRoute.Home; historyVersion++ },
+                onBack = { pop(); historyVersion++ },
                 onLogin = { showLogin = true },
-                onOpenVideo = { bvid -> route = VideoRoute.Detail(bvid, 0L) },
+                onOpenVideo = { bvid -> push(VideoRoute.Detail(bvid, 0L)) },
                 onOpenCloudFiles = { showCloud = true },
                 onOpenPlayerSettings = { showPlayerSheet = true },
                 onOpenDanmakuSettings = { showDanmakuSheet = true },
@@ -103,8 +105,8 @@ fun VideoScreen() {
             is VideoRoute.Search -> VideoSearchScreen(
                 initialQuery = r.query,
                 repo = repo,
-                onBack = { route = VideoRoute.Home },
-                onOpenVideo = { bvid -> route = VideoRoute.Detail(bvid, 0L) }
+                onBack = { pop() },
+                onOpenVideo = { bvid -> push(VideoRoute.Detail(bvid, 0L)) }
             )
             is VideoRoute.Detail -> VideoDetailScreen(
                 bvid = r.bvid,
@@ -113,8 +115,8 @@ fun VideoScreen() {
                 repo = repo,
                 history = history,
                 account = account,
-                onBack = { route = VideoRoute.Home; historyVersion++ },
-                onOpenVideo = { bvid -> route = VideoRoute.Detail(bvid, 0L) },
+                onBack = { pop(); historyVersion++ },
+                onOpenVideo = { bvid -> push(VideoRoute.Detail(bvid, 0L)) },
                 onLogin = { showLogin = true },
                 onOpenDanmakuSettings = { showDanmakuSheet = true },
                 onOpenPlayerSettings = { showPlayerSheet = true },
