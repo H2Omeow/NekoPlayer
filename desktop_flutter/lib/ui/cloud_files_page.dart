@@ -344,7 +344,7 @@ class _CloudFilesPageState extends State<CloudFilesPage> with SingleTickerProvid
         Text(tr('赞赏 NekoPlayer'), style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: NekoSpace.xs),
         Text(
-          tr('赞赏后不限文件份数、单文件大小，存储 32.5G / 月流量 50G，且文件永不清理。支付后上传截图，人工核对后开通。'),
+          tr('赞赏后不限文件份数、单文件大小，且文件永不清理。不同档位的容量见下方，支付后上传截图，人工核对后开通。'),
           style: TextStyle(color: colors.onSurfaceVariant, height: 1.6),
         ),
         const SizedBox(height: NekoSpace.lg),

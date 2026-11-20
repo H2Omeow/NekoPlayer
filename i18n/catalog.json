@@ -10839,6 +10839,21 @@
       "en": ", please play it in the NekoPlayer app",
       "ja": "。NekoPlayer アプリで再生してください",
       "zh-TW": "，請在 NekoPlayer 用戶端中播放"
+    },
+    "赞赏后不限文件份数、单文件大小，且文件永不清理。不同档位的容量见下方，支付后上传截图，人工核对后开通。": {
+      "en": "Sponsors get unlimited file count and file size, and files are never deleted. See the tiers below for capacity. After paying, upload a screenshot and we will review it manually.",
+      "ja": "スポンサーはファイル数とサイズが無制限で、ファイルが削除されることはありません。容量は下のプランをご覧ください。お支払い後にスクリーンショットをアップロードしてください。確認後に有効化します。",
+      "zh-TW": "贊助後不限檔案份數、單檔大小，且檔案永不清理。不同方案的容量見下方，付款後上傳截圖，人工核對後開通。"
+    },
+    "存储 ": {
+      "en": "Storage ",
+      "ja": "ストレージ ",
+      "zh-TW": "儲存 "
+    },
+    "月流量 ": {
+      "en": "Traffic ",
+      "ja": "月間通信量 ",
+      "zh-TW": "月流量 "
     }
   },
   "sourceLocale": "zh-CN",

@@ -38,7 +38,9 @@ Each release ships `SHA256SUMS` for integrity checks.
 
 - Direct upload to S3-compatible object storage with private buckets and presigned URLs; files over 5MB are uploaded in parts and the server never stores the payload.
 - Free tier: 3.25 GB storage, 3.25 GB monthly traffic, 50 files; video ≤50MB, image ≤5MB, audio ≤25MB, custom file ≤1GB (counts as five files).
-- Supporter tier: 32.5 GB storage, 50 GB monthly traffic, unlimited files and file size, and files are never expired.
+- Supporter (7.99/mo): 32.5 GB storage, 50 GB monthly traffic, unlimited files and file size, files never expire
+- Plus (32.5/mo): 80 GB storage, 100 GB monthly traffic
+- Sponsor seat (64.8/mo): 200 GB storage, 100 GB monthly traffic, limited to 2 concurrent seats
 - Sharing: in-app sharing (downloads consume half of the sharer's traffic) or direct links (public download, full traffic), valid for 1, 7, or 30 days.
 - Cloud storage requires a Skland binding; QR code, SMS, phone password, and a web-login fallback are supported.
 - Free accounts inactive for 180 days have uploaded files removed (playlists, favorites, and history are unaffected); a notice is sent 7 days in advance.

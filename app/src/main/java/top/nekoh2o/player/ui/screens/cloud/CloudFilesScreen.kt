@@ -86,6 +86,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import top.nekoh2o.player.data.cloud.CloudApi
 import top.nekoh2o.player.data.social.SendMessageRequest
 import top.nekoh2o.player.data.social.SocialConversation
@@ -667,7 +668,7 @@ private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onMeme: (String
             Text(tr("赞赏 NekoPlayer"), style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(NekoSpace.xs))
             MemeAwareText(
-                tr("赞赏后不限文件份数、单文件大小，存储 32.5G / 月流量 50G，且文件永不清理。支付后上传截图，人工核对后开通。"),
+                tr("赞赏后不限文件份数、单文件大小，且文件永不清理。不同档位的容量见下方，支付后上传截图，人工核对后开通。"),
                 onMeme,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -686,6 +687,15 @@ private fun SponsorTab(scope: kotlinx.coroutines.CoroutineScope, onMeme: (String
                 Row(Modifier.padding(NekoSpace.md), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(label, fontWeight = FontWeight.SemiBold)
+                        val storageText = tier["storageBytes"]?.jsonPrimitive?.longOrNull
+                        val trafficText = tier["trafficBytes"]?.jsonPrimitive?.longOrNull
+                        if (storageText != null && trafficText != null) {
+                            Text(
+                                tr("存储 ") + formatBytes(storageText) + " · " + tr("月流量 ") + formatBytes(trafficText),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         if (price == "7.99") {
                             MemeText(
                                 "¥$price / " + tr("月"),
