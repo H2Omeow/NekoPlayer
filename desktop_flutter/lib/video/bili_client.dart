@@ -59,12 +59,48 @@ class BiliDetail {
     required this.cid,
     required this.desc,
     required this.tname,
+    this.ownerMid = 0,
+    this.ownerFace = '',
+    this.views = 0,
+    this.danmakuCount = 0,
+    this.replyCount = 0,
+    this.likeCount = 0,
+    this.coinCount = 0,
+    this.favCount = 0,
+    this.shareCount = 0,
   });
 
   final BiliVideo video;
   final int cid;
   final String desc;
   final String tname;
+  final int ownerMid;
+  final String ownerFace;
+  final int views;
+  final int danmakuCount;
+  final int replyCount;
+  final int likeCount;
+  final int coinCount;
+  final int favCount;
+  final int shareCount;
+}
+
+class BiliComment {
+  const BiliComment({
+    required this.rpid,
+    required this.uname,
+    required this.face,
+    required this.content,
+    required this.like,
+    required this.ctime,
+  });
+
+  final int rpid;
+  final String uname;
+  final String face;
+  final String content;
+  final int like;
+  final int ctime;
 }
 
 class BiliDanmaku {
@@ -346,6 +382,15 @@ class BiliClient {
       cid: (data['cid'] as num?)?.toInt() ?? 0,
       desc: (data['desc'] as String?) ?? '',
       tname: (data['tname'] as String?) ?? '',
+      ownerMid: (owner?['mid'] as num?)?.toInt() ?? 0,
+      ownerFace: normalizeUrl((owner?['face'] as String?) ?? ''),
+      views: (stat?['view'] as num?)?.toInt() ?? 0,
+      danmakuCount: (stat?['danmaku'] as num?)?.toInt() ?? 0,
+      replyCount: (stat?['reply'] as num?)?.toInt() ?? 0,
+      likeCount: (stat?['like'] as num?)?.toInt() ?? 0,
+      coinCount: (stat?['coin'] as num?)?.toInt() ?? 0,
+      favCount: (stat?['favorite'] as num?)?.toInt() ?? 0,
+      shareCount: (stat?['share'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -482,6 +527,142 @@ class BiliClient {
     );
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     return json['code'] == 0;
+  }
+
+  Future<({List<BiliComment> items, int next, bool isEnd})> comments(int aid, {int next = 0}) async {
+    final body = await _getJson(
+      'https://api.bilibili.com/x/v2/reply/main?type=1&oid=$aid&mode=3&next=$next&ps=20',
+      signed: false,
+    );
+    final data = body['data'] as Map?;
+    final list = <BiliComment>[];
+    for (final key in const ['top_replies', 'replies']) {
+      final raw = data?[key];
+      if (raw is! List) continue;
+      for (final item in raw.whereType<Map>()) {
+        final member = item['member'] as Map?;
+        final content = item['content'] as Map?;
+        list.add(BiliComment(
+          rpid: (item['rpid'] as num?)?.toInt() ?? 0,
+          uname: (member?['uname'] as String?) ?? '',
+          face: normalizeUrl((member?['avatar'] as String?) ?? ''),
+          content: (content?['message'] as String?) ?? '',
+          like: (item['like'] as num?)?.toInt() ?? 0,
+          ctime: (item['ctime'] as num?)?.toInt() ?? 0,
+        ));
+      }
+    }
+    final cursor = data?['cursor'] as Map?;
+    return (
+      items: list,
+      next: (cursor?['next'] as num?)?.toInt() ?? 0,
+      isEnd: (cursor?['is_end'] as bool?) ?? true,
+    );
+  }
+
+  Future<bool> like(int aid, {required bool liked}) =>
+      _action('https://api.bilibili.com/x/v2/view/like', {'aid': '$aid', 'like': liked ? '1' : '0'});
+
+  Future<bool> coin(int aid, int count) =>
+      _action('https://api.bilibili.com/x/v2/coin', {'aid': '$aid', 'multiply': '$count', 'select_like': '0'});
+
+  Future<bool> favorite(int aid, {required bool fav}) async {
+    var folderId = 0;
+    try {
+      final body = await _getJson(
+        'https://api.bilibili.com/x/v3/fav/folder/created/list-all?rid=$aid&type=2',
+        signed: false,
+      );
+      final data = body['data'] as Map?;
+      final list = data?['list'];
+      if (list is List && list.isNotEmpty && list.first is Map) {
+        folderId = ((list.first as Map)['id'] as num?)?.toInt() ?? 0;
+      }
+    } catch (_) {
+      folderId = 0;
+    }
+    if (folderId == 0) return false;
+    return _action('https://api.bilibili.com/x/v3/fav/resource/deal', {
+      'rid': '$aid',
+      'type': '2',
+      'add_media_ids': fav ? '$folderId' : '',
+      'del_media_ids': fav ? '' : '$folderId',
+      'csrf': _session.csrf,
+    });
+  }
+
+  Future<bool> isFollowing(int mid) async {
+    if (mid == 0) return false;
+    try {
+      final body = await _getJson('https://api.bilibili.com/x/relation?fid=$mid', signed: false);
+      final data = body['data'] as Map?;
+      final attribute = (data?['attribute'] as num?)?.toInt() ?? 0;
+      return attribute == 2 || attribute == 6;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> follow(int mid, {required bool follow}) => _action(
+        'https://api.bilibili.com/x/relation/modify',
+        {'fid': '$mid', 'act': follow ? '1' : '2', 're_src': '11', 'csrf': _session.csrf},
+      );
+
+  Future<List<String>> hotSearchWords() async {
+    try {
+      final body = await _getJson('https://api.bilibili.com/x/web-interface/search/square?limit=10', signed: false);
+      final data = body['data'] as Map?;
+      final trending = data?['trending'] as Map?;
+      final list = trending?['list'];
+      if (list is! List) return const [];
+      return list.whereType<Map>().map((e) => (e['show_name'] as String?) ?? (e['keyword'] as String?) ?? '').where((e) => e.isNotEmpty).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// 关注动态：只保留视频投稿。
+  Future<List<BiliVideo>> followingVideos({int page = 1}) async {
+    final body = await _getJson(
+      'https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all?type=video&page=$page',
+      signed: false,
+    );
+    final data = body['data'] as Map?;
+    final items = data?['items'];
+    if (items is! List) return const [];
+    final out = <BiliVideo>[];
+    for (final item in items.whereType<Map>()) {
+      final modules = item['modules'] as Map?;
+      final major = modules?['module_dynamic']?['major'] as Map?;
+      final archive = major?['archive'] as Map?;
+      if (archive == null) continue;
+      out.add(BiliVideo(
+        bvid: (archive['bvid'] as String?) ?? '',
+        aid: (archive['aid'] as num?)?.toInt() ?? 0,
+        title: (archive['title'] as String?) ?? '',
+        cover: normalizeUrl((archive['cover'] as String?) ?? ''),
+        upName: ((modules?['module_author'] as Map?)?['name'] as String?) ?? '',
+        upFace: normalizeUrl((((modules?['module_author'] as Map?)?['face'] as String?) ?? '')),
+        durationSec: parseDuration(((archive['duration_text'] as String?) ?? '')),
+        views: 0,
+        danmakuCount: 0,
+        pubdate: (archive['pubdate'] as num?)?.toInt() ?? 0,
+      ));
+    }
+    return out;
+  }
+
+  Future<bool> _action(String url, Map<String, String> data) async {
+    final csrf = _session.csrf;
+    if (csrf.isEmpty) return false;
+    final body = {...data, 'csrf': csrf};
+    try {
+      final response = await _send(Uri.parse(url), signed: false, method: 'POST', form: body);
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      return json['code'] == 0;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ==================== 内部 ====================

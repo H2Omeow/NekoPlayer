@@ -12,6 +12,9 @@ import '../../video/video_settings.dart';
 import '../neko_theme.dart';
 import '../widgets/settings_list.dart';
 import 'danmaku_overlay.dart';
+import 'video_profile_page.dart';
+import 'video_search_page.dart';
+import 'video_widgets.dart';
 
 /// 视频模块首页：搜索 + 推荐/热门/关注 + 双列封面墙。
 class VideoPage extends StatefulWidget {
@@ -36,6 +39,14 @@ class _VideoPageState extends State<VideoPage> {
   List<BiliVideo> items = const [];
   String keyword = '';
   String order = 'totalrank';
+  /// 首页分区：推荐 / 音乐现场 / MV / 知识 / 关注。
+  static const feedKinds = <String, String>{
+    'recommend': '推荐',
+    'live': '音乐现场',
+    'mv': 'MV',
+    'knowledge': '知识',
+    'following': '关注',
+  };
   String feed = 'recommend';
   bool loading = false;
   String? error;
@@ -98,10 +109,19 @@ class _VideoPageState extends State<VideoPage> {
       final trimmed = keyword.trim();
       if (trimmed.isNotEmpty) {
         next = await client.search(trimmed, page: page, order: order);
-      } else if (feed == 'hot') {
-        next = await client.popular(page: page);
       } else {
-        next = await client.search('音乐现场', page: page, order: order);
+        switch (feed) {
+          case 'live':
+            next = await client.search('音乐现场', page: page, order: order);
+          case 'mv':
+            next = await client.search('MV 音乐', page: page, order: order);
+          case 'knowledge':
+            next = await client.search('知识', page: page, order: order);
+          case 'following':
+            next = await client.followingVideos(page: page);
+          default:
+            next = await client.popular(page: page);
+        }
       }
       if (!mounted) return;
       setState(() {
@@ -142,6 +162,33 @@ class _VideoPageState extends State<VideoPage> {
     );
   }
 
+  void _openSearch() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => VideoSearchPage(
+          client: client,
+          onOpenVideo: _openVideo,
+          initialQuery: keyword,
+        ),
+      ),
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _openProfile() {
+    widget.onPauseMusic?.call();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => VideoProfilePage(
+          client: client,
+          store: store!,
+          onOpenVideo: _openVideo,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -169,6 +216,8 @@ class _VideoPageState extends State<VideoPage> {
                 Expanded(
                   child: _SearchField(
                     controller: searchController,
+                    readOnly: true,
+                    onTap: _openSearch,
                     onSubmitted: _submit,
                     onClear: () {
                       searchController.clear();
@@ -180,16 +229,7 @@ class _VideoPageState extends State<VideoPage> {
                 const SizedBox(width: NekoSpace.md),
                 InkWell(
                   borderRadius: BorderRadius.circular(999),
-                  onTap: () async {
-                    await showDialog<void>(
-                      context: context,
-                      builder: (_) => BiliLoginDialog(client: client),
-                    );
-                    if (mounted) {
-                      setState(() => account = BiliSession.instance.account);
-                      unawaited(_load(reset: true));
-                    }
-                  },
+                  onTap: _openProfile,
                   child: Row(
                     children: [
                       CircleAvatar(
@@ -212,36 +252,20 @@ class _VideoPageState extends State<VideoPage> {
             padding: const EdgeInsets.symmetric(horizontal: NekoSpace.xl),
             child: Row(
               children: [
-                _Chip(
-                  label: tr('推荐'),
-                  selected: feed == 'recommend' && keyword.isEmpty,
-                  onTap: () {
-                    feed = 'recommend';
-                    keyword = '';
-                    searchController.clear();
-                    unawaited(_load(reset: true));
-                  },
-                ),
-                const SizedBox(width: NekoSpace.sm),
-                _Chip(
-                  label: tr('热门'),
-                  selected: feed == 'hot' && keyword.isEmpty,
-                  onTap: () {
-                    feed = 'hot';
-                    keyword = '';
-                    searchController.clear();
-                    unawaited(_load(reset: true));
-                  },
-                ),
-                const SizedBox(width: NekoSpace.sm),
-                _Chip(
-                  label: tr('最多播放'),
-                  selected: order == 'click' && keyword.isNotEmpty,
-                  onTap: () {
-                    order = order == 'click' ? 'totalrank' : 'click';
-                    if (keyword.isNotEmpty) unawaited(_load(reset: true));
-                  },
-                ),
+                for (final entry in feedKinds.entries) ...[
+                  _Chip(
+                    label: tr(entry.value),
+                    selected: feed == entry.key && keyword.isEmpty,
+                    onTap: () {
+                      feed = entry.key;
+                      keyword = '';
+                      searchController.clear();
+                      scrollController.jumpTo(0);
+                      unawaited(_load(reset: true));
+                    },
+                  ),
+                  const SizedBox(width: NekoSpace.sm),
+                ],
                 const Spacer(),
                 if (account.isLogin)
                   Text(
@@ -280,9 +304,65 @@ class _VideoPageState extends State<VideoPage> {
         ),
       );
     }
+    final watch = store?.watchHistory ?? const <WatchEntry>[];
     return CustomScrollView(
       controller: scrollController,
       slivers: [
+        if (watch.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(NekoSpace.xl, NekoSpace.sm, NekoSpace.xl, NekoSpace.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  VideoSectionHeader(title: tr('继续观看')),
+                  const SizedBox(height: NekoSpace.sm),
+                  SizedBox(
+                    height: 196,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: watch.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: NekoSpace.md),
+                      itemBuilder: (context, index) {
+                        final entry = watch[index];
+                        return VideoRailCard(
+                          video: BiliVideo(
+                            bvid: entry.bvid,
+                            aid: 0,
+                            title: entry.title,
+                            cover: entry.cover,
+                            upName: entry.upName,
+                            upFace: '',
+                            durationSec: entry.durationSec,
+                            views: 0,
+                            danmakuCount: 0,
+                            pubdate: 0,
+                          ),
+                          progress: entry.progress,
+                          onTap: () => _openVideo(
+                            BiliVideo(
+                              bvid: entry.bvid,
+                              aid: 0,
+                              title: entry.title,
+                              cover: entry.cover,
+                              upName: entry.upName,
+                              upFace: '',
+                              durationSec: entry.durationSec,
+                              views: 0,
+                              danmakuCount: 0,
+                              pubdate: 0,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: NekoSpace.md),
+                  VideoSectionHeader(title: tr('为你推荐')),
+                ],
+              ),
+            ),
+          ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(NekoSpace.xl, NekoSpace.sm, NekoSpace.xl, NekoSpace.xxl),
           sliver: SliverGrid(
@@ -311,11 +391,19 @@ class _VideoPageState extends State<VideoPage> {
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField({required this.controller, required this.onSubmitted, required this.onClear});
+  const _SearchField({
+    required this.controller,
+    required this.onSubmitted,
+    required this.onClear,
+    this.readOnly = false,
+    this.onTap,
+  });
 
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
   final VoidCallback onClear;
+  final bool readOnly;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -324,6 +412,8 @@ class _SearchField extends StatelessWidget {
       height: 38,
       child: TextField(
         controller: controller,
+        readOnly: readOnly,
+        onTap: onTap,
         textInputAction: TextInputAction.search,
         onSubmitted: onSubmitted,
         style: Theme.of(context).textTheme.bodyMedium,
@@ -344,6 +434,43 @@ class _SearchField extends StatelessWidget {
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(NekoRadius.control),
             borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final color = active ? colors.primary : colors.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.only(right: NekoSpace.sm),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(NekoRadius.control),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              Icon(icon, size: 19, color: color),
+              const SizedBox(width: 6),
+              Text(label, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: color)),
+            ],
           ),
         ),
       ),
@@ -513,6 +640,22 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   Timer? autosave;
   Timer? hideTimer;
 
+  // 互动状态
+  bool liked = false;
+  bool favored = false;
+  bool following = false;
+  int likeCount = 0;
+  int coinCount = 0;
+  int favCount = 0;
+  int replyCount = 0;
+  String tab = 'desc';
+  List<BiliComment> comments = const [];
+  bool commentsLoading = false;
+  bool commentsEnd = false;
+  int commentNext = 0;
+  final danmakuInput = TextEditingController();
+  bool sendingDanmaku = false;
+
   VideoSettings get settings => widget.store.settings;
 
   @override
@@ -534,9 +677,15 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     }));
     autosave = Timer.periodic(const Duration(seconds: 5), (_) {
       final d = detail;
-      if (d != null && settings.rememberPosition) {
-        widget.store.savePosition(d.video.bvid, position.inMilliseconds);
-      }
+      if (d == null || !settings.rememberPosition) return;
+      widget.store.recordWatch(
+        bvid: d.video.bvid,
+        title: d.video.title,
+        cover: d.video.cover,
+        upName: d.video.upName,
+        durationSec: d.video.durationSec > 0 ? d.video.durationSec : duration.inSeconds,
+        positionMs: position.inMilliseconds,
+      );
     });
     unawaited(_bootstrap());
   }
@@ -549,6 +698,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       unawaited(sub.cancel());
     }
     focusNode.dispose();
+    danmakuInput.dispose();
     unawaited(player.dispose());
     super.dispose();
   }
@@ -560,7 +710,12 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       setState(() {
         detail = loaded;
         loading = false;
+        likeCount = loaded.likeCount;
+        coinCount = loaded.coinCount;
+        favCount = loaded.favCount;
+        replyCount = loaded.replyCount;
       });
+      unawaited(_loadFollowState(loaded.ownerMid));
       unawaited(widget.client.related(widget.video.bvid).then((list) {
         if (mounted) setState(() => related = list.where((v) => v.bvid != widget.video.bvid).take(12).toList());
       }));
@@ -604,6 +759,130 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
   void _toggleFullscreen() {
     setState(() => fullscreen = !fullscreen);
+  }
+
+  Future<void> _loadFollowState(int mid) async {
+    if (mid <= 0) return;
+    final value = await widget.client.isFollowing(mid);
+    if (mounted) setState(() => following = value);
+  }
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _toggleLike() async {
+    final d = detail;
+    if (d == null) return;
+    final next = !liked;
+    final ok = await widget.client.like(d.video.aid, liked: next);
+    if (!mounted) return;
+    if (!ok) {
+      _toast(tr('操作失败，请先登录 B 站账号'));
+      return;
+    }
+    setState(() {
+      liked = next;
+      likeCount += next ? 1 : -1;
+      if (likeCount < 0) likeCount = 0;
+    });
+  }
+
+  Future<void> _addCoin() async {
+    final d = detail;
+    if (d == null) return;
+    final ok = await widget.client.coin(d.video.aid, 1);
+    if (!mounted) return;
+    if (!ok) {
+      _toast(tr('投币失败，请先登录 B 站账号'));
+      return;
+    }
+    setState(() => coinCount += 1);
+    _toast(tr('投币成功'));
+  }
+
+  Future<void> _toggleFavorite() async {
+    final d = detail;
+    if (d == null) return;
+    final next = !favored;
+    final ok = await widget.client.favorite(d.video.aid, fav: next);
+    if (!mounted) return;
+    if (!ok) {
+      _toast(tr('收藏失败，请先登录 B 站账号'));
+      return;
+    }
+    setState(() {
+      favored = next;
+      favCount += next ? 1 : -1;
+      if (favCount < 0) favCount = 0;
+    });
+  }
+
+  Future<void> _toggleFollow() async {
+    final d = detail;
+    if (d == null || d.ownerMid <= 0) return;
+    final next = !following;
+    final ok = await widget.client.follow(d.ownerMid, follow: next);
+    if (!mounted) return;
+    if (!ok) {
+      _toast(tr('操作失败，请先登录 B 站账号'));
+      return;
+    }
+    setState(() => following = next);
+  }
+
+  Future<void> _loadComments() async {
+    final d = detail;
+    if (d == null || commentsLoading || commentsEnd) return;
+    setState(() => commentsLoading = true);
+    try {
+      final page = await widget.client.comments(d.video.aid, next: commentNext);
+      if (!mounted) return;
+      setState(() {
+        comments = [...comments, ...page.items];
+        commentNext = page.next;
+        commentsEnd = page.isEnd || page.items.isEmpty;
+        commentsLoading = false;
+      });
+    } catch (failure) {
+      if (!mounted) return;
+      setState(() => commentsLoading = false);
+      _toast(tr('评论加载失败'));
+    }
+  }
+
+  Future<void> _sendDanmaku() async {
+    final d = detail;
+    final text = danmakuInput.text.trim();
+    if (d == null || text.isEmpty || sendingDanmaku) return;
+    setState(() => sendingDanmaku = true);
+    final ok = await widget.client.postDanmaku(
+      cid: d.cid,
+      aid: d.video.aid,
+      content: text,
+      progressMs: position.inMilliseconds,
+    );
+    if (!mounted) return;
+    setState(() => sendingDanmaku = false);
+    if (ok) {
+      danmakuInput.clear();
+      setState(() {
+        danmaku = [
+          ...danmaku,
+          BiliDanmaku(
+            progressMs: position.inMilliseconds,
+            mode: 1,
+            fontSize: 25,
+            color: 16777215,
+            content: text,
+          ),
+        ];
+      });
+      _toast(tr('弹幕已发送'));
+    } else {
+      _toast(tr('弹幕发送失败，请先登录 B 站账号'));
+    }
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
@@ -815,26 +1094,231 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
   Widget _buildInfoPanel(BuildContext context, ColorScheme colors) {
     final d = detail;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(NekoSpace.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final text = Theme.of(context).textTheme;
+    return Container(
+      color: NekoPalette.of(context).canvas,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(NekoSpace.xl, NekoSpace.lg, NekoSpace.xl, NekoSpace.md),
         children: [
           Text(
             d?.video.title ?? widget.video.title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+            style: text.titleLarge?.copyWith(fontWeight: FontWeight.w600, height: 1.32),
           ),
           const SizedBox(height: NekoSpace.sm),
           Text(
-            '${formatCount((d?.video.views ?? widget.video.views))} ${tr('播放')} · '
-            '${formatCount(d?.video.danmakuCount ?? widget.video.danmakuCount)} ${tr('弹幕')} · ${d?.tname ?? ''}',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: colors.onSurfaceVariant),
+            '${formatCount(d?.video.views ?? widget.video.views)} ${tr('播放')} · '
+            '${formatCount(d?.video.danmakuCount ?? widget.video.danmakuCount)} ${tr('弹幕')} · '
+            '${d?.tname ?? ''}',
+            style: text.labelMedium?.copyWith(color: colors.onSurfaceVariant),
           ),
-          const SizedBox(height: NekoSpace.lg),
-          if ((d?.desc ?? '').isNotEmpty)
-            Text(d!.desc, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+          const SizedBox(height: NekoSpace.md),
+          _buildActions(context, colors, d),
+          const SizedBox(height: NekoSpace.md),
+          if (d != null) _buildUploaderRow(context, colors, d),
+          const SizedBox(height: NekoSpace.md),
+          _buildTabs(context, colors, d),
+          const SizedBox(height: NekoSpace.sm),
+          if (tab == 'desc') _buildDescription(context, colors, d),
+          if (tab == 'comments') _buildComments(context, colors),
         ],
       ),
+    );
+  }
+
+  Widget _buildActions(BuildContext context, ColorScheme colors, BiliDetail? d) {
+    return Wrap(
+      spacing: 2,
+      runSpacing: 2,
+      children: [
+        _ActionButton(
+          icon: liked ? Icons.favorite : Icons.favorite_border,
+          label: formatCount(likeCount),
+          active: liked,
+          onTap: _toggleLike,
+        ),
+        _ActionButton(
+          icon: Icons.monetization_on_outlined,
+          label: formatCount(coinCount),
+          onTap: _addCoin,
+        ),
+        _ActionButton(
+          icon: favored ? Icons.star : Icons.star_border,
+          label: formatCount(favCount),
+          active: favored,
+          onTap: _toggleFavorite,
+        ),
+        _ActionButton(
+          icon: Icons.share_outlined,
+          label: tr('分享'),
+          onTap: () async {
+            final bvid = d?.video.bvid ?? widget.video.bvid;
+            await Clipboard.setData(ClipboardData(text: 'https://www.bilibili.com/video/$bvid'));
+            _toast(tr('链接已复制'));
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUploaderRow(BuildContext context, ColorScheme colors, BiliDetail d) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: colors.surfaceContainerHigh,
+          foregroundImage: d.ownerFace.isEmpty ? null : NetworkImage(d.ownerFace),
+          child: const Icon(Icons.person_outline, size: 18),
+        ),
+        const SizedBox(width: NekoSpace.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(d.video.upName, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text(
+                tr('UP 主 · 关注获取更新'),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+        FilledButton.tonal(
+          onPressed: _toggleFollow,
+          child: Text(following ? tr('已关注') : tr('关注')),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabs(BuildContext context, ColorScheme colors, BiliDetail? d) {
+    final tabs = {
+      'desc': tr('简介'),
+      'comments': '${tr('评论')} ${formatCount(replyCount)}',
+    };
+    return Row(
+      children: [
+        for (final entry in tabs.entries)
+          Padding(
+            padding: const EdgeInsets.only(right: NekoSpace.lg),
+            child: InkWell(
+              onTap: () {
+                setState(() => tab = entry.key);
+                if (entry.key == 'comments' && comments.isEmpty) unawaited(_loadComments());
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  children: [
+                    Text(
+                      entry.value,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: tab == entry.key ? FontWeight.w600 : FontWeight.w400,
+                        color: tab == entry.key ? colors.onSurface : colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Container(
+                      height: 2,
+                      width: 22,
+                      color: tab == entry.key ? colors.primary : Colors.transparent,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildDescription(BuildContext context, ColorScheme colors, BiliDetail? d) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if ((d?.desc ?? '').isNotEmpty)
+          Text(d?.desc ?? '', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.6)),
+        const SizedBox(height: NekoSpace.lg),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: danmakuInput,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => unawaited(_sendDanmaku()),
+                decoration: InputDecoration(
+                  hintText: tr('发个友善的弹幕…'),
+                  isDense: true,
+                  filled: true,
+                  fillColor: colors.surfaceContainerHigh,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(NekoRadius.control),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: sendingDanmaku ? null : () => unawaited(_sendDanmaku()),
+              child: Text(tr('发送')),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildComments(BuildContext context, ColorScheme colors) {
+    if (commentsLoading && comments.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(NekoSpace.xl),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (comments.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(NekoSpace.xl),
+        child: Center(child: Text(tr('还没有评论'), style: TextStyle(color: colors.onSurfaceVariant))),
+      );
+    }
+    return Column(
+      children: [
+        for (final comment in comments)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: NekoSpace.sm),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: colors.surfaceContainerHigh,
+                  foregroundImage: comment.face.isEmpty ? null : NetworkImage(comment.face),
+                  child: const Icon(Icons.person_outline, size: 14),
+                ),
+                const SizedBox(width: NekoSpace.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        comment.uname,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: colors.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(comment.content, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.5)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (!commentsEnd)
+          TextButton(
+            onPressed: () => unawaited(_loadComments()),
+            child: Text(commentsLoading ? tr('加载中…') : tr('加载更多评论')),
+          ),
+      ],
     );
   }
 

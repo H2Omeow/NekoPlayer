@@ -10854,6 +10854,596 @@
       "en": "Traffic ",
       "ja": "月間通信量 ",
       "zh-TW": "月流量 "
+    },
+    "继续观看": {
+      "en": "Continue watching",
+      "ja": "続きを見る",
+      "zh-TW": "繼續觀看"
+    },
+    "为你推荐": {
+      "en": "Recommended for you",
+      "ja": "おすすめ",
+      "zh-TW": "為你推薦"
+    },
+    "观看历史": {
+      "en": "Watch history",
+      "ja": "視聴履歴",
+      "zh-TW": "觀看歷史"
+    },
+    "清空观看历史？": {
+      "en": "Clear watch history?",
+      "ja": "視聴履歴を消去しますか？",
+      "zh-TW": "清空觀看歷史？"
+    },
+    "清空后无法恢复，已上传的文件不受影响。": {
+      "en": "This cannot be undone. Uploaded files are not affected.",
+      "ja": "元に戻せません。アップロード済みのファイルには影響しません。",
+      "zh-TW": "清空後無法復原，已上傳的檔案不受影響。"
+    },
+    "还没有观看记录": {
+      "en": "No watch history yet",
+      "ja": "視聴履歴はまだありません",
+      "zh-TW": "尚無觀看記錄"
+    },
+    "已观看": {
+      "en": "Watched",
+      "ja": "視聴済み",
+      "zh-TW": "已觀看"
+    },
+    "删除记录": {
+      "en": "Remove entry",
+      "ja": "記録を削除",
+      "zh-TW": "刪除記錄"
+    },
+    "登录后可发送弹幕、点赞收藏": {
+      "en": "Sign in to send comments, like and favorite",
+      "ja": "ログインするとコメント送信・いいね・お気に入りが使えます",
+      "zh-TW": "登入後可發送彈幕、按讚與收藏"
+    },
+    "退出登录？": {
+      "en": "Sign out?",
+      "ja": "ログアウトしますか？",
+      "zh-TW": "登出？"
+    },
+    "退出后需要重新扫码才能发送弹幕和同步数据。": {
+      "en": "You will need to sign in again to send comments and sync data.",
+      "ja": "再度ログインしないとコメント送信や同期ができません。",
+      "zh-TW": "登出後需重新登入才能發送彈幕與同步資料。"
+    },
+    "大家都在搜": {
+      "en": "Trending searches",
+      "ja": "人気の検索",
+      "zh-TW": "大家都在搜"
+    },
+    "搜索失败：": {
+      "en": "Search failed: ",
+      "ja": "検索に失敗しました：",
+      "zh-TW": "搜尋失敗："
+    },
+    "没有找到相关视频": {
+      "en": "No matching videos",
+      "ja": "該当する動画がありません",
+      "zh-TW": "找不到相關影片"
+    },
+    "弹幕已发送": {
+      "en": "Comment sent",
+      "ja": "コメントを送信しました",
+      "zh-TW": "彈幕已發送"
+    },
+    "弹幕发送失败，请先登录 B 站账号": {
+      "en": "Failed to send. Please sign in to Bilibili first.",
+      "ja": "送信に失敗しました。先にBilibiliへログインしてください。",
+      "zh-TW": "發送失敗，請先登入 B 站帳號"
+    },
+    "操作失败，请先登录 B 站账号": {
+      "en": "Action failed. Please sign in to Bilibili first.",
+      "ja": "操作に失敗しました。先にBilibiliへログインしてください。",
+      "zh-TW": "操作失敗，請先登入 B 站帳號"
+    },
+    "投币失败，请先登录 B 站账号": {
+      "en": "Failed to add coin. Please sign in to Bilibili first.",
+      "ja": "投げ銭に失敗しました。先にログインしてください。",
+      "zh-TW": "投幣失敗，請先登入 B 站帳號"
+    },
+    "投币成功": {
+      "en": "Coin added",
+      "ja": "投げ銭しました",
+      "zh-TW": "投幣成功"
+    },
+    "收藏失败，请先登录 B 站账号": {
+      "en": "Failed to favorite. Please sign in to Bilibili first.",
+      "ja": "お気に入りに失敗しました。先にログインしてください。",
+      "zh-TW": "收藏失敗，請先登入 B 站帳號"
+    },
+    "评论加载失败": {
+      "en": "Failed to load comments",
+      "ja": "コメントの読み込みに失敗しました",
+      "zh-TW": "評論載入失敗"
+    },
+    "加载更多评论": {
+      "en": "Load more comments",
+      "ja": "コメントをさらに読み込む",
+      "zh-TW": "載入更多評論"
+    },
+    "还没有评论": {
+      "en": "No comments yet",
+      "ja": "コメントはまだありません",
+      "zh-TW": "尚無評論"
+    },
+    "UP 主 · 关注获取更新": {
+      "en": "Creator · follow for updates",
+      "ja": "UP主・フォローで更新通知",
+      "zh-TW": "UP 主 · 追蹤取得更新"
+    },
+    "音乐现场": {
+      "en": "Live music",
+      "ja": "ライブ音楽",
+      "zh-TW": "音樂現場"
+    },
+    "知识": {
+      "en": "Knowledge",
+      "ja": "知識",
+      "zh-TW": "知識"
+    },
+    "MV": {
+      "en": "MV",
+      "ja": "MV",
+      "zh-TW": "MV"
+    },
+    "上传中": {
+      "en": "Uploading",
+      "ja": "アップロード中",
+      "zh-TW": "上傳中"
+    },
+    "上传支付凭证": {
+      "en": "Upload payment proof",
+      "ja": "支払いの証拠をアップロード",
+      "zh-TW": "上傳付款憑證"
+    },
+    "上传文件": {
+      "en": "Upload file",
+      "ja": "ファイルをアップロード",
+      "zh-TW": "上傳檔案"
+    },
+    "上传文件、分享链接、查看额度与赞赏": {
+      "en": "Upload files, share links, check quota and support",
+      "ja": "ファイルのアップロード・共有リンク・容量確認・支援",
+      "zh-TW": "上傳檔案、分享連結、查看額度與贊助"
+    },
+    "不限": {
+      "en": "Unlimited",
+      "ja": "無制限",
+      "zh-TW": "不限"
+    },
+    "二维码 180 秒后失效 · 点击刷新": {
+      "en": "The QR code expires in 180 s · tap to refresh",
+      "ja": "QRコードは180秒で失効します・タップで更新",
+      "zh-TW": "二維碼 180 秒後失效 · 點擊重新整理"
+    },
+    "二维码已失效，点击重新生成": {
+      "en": "QR code expired, tap to regenerate",
+      "ja": "QRコードの有効期限が切れました。タップで再生成",
+      "zh-TW": "二維碼已失效，點擊重新產生"
+    },
+    "云存储": {
+      "en": "Cloud storage",
+      "ja": "クラウドストレージ",
+      "zh-TW": "雲端儲存"
+    },
+    "云存储需要绑定森空岛账号": {
+      "en": "Cloud storage requires a Skland account",
+      "ja": "クラウドストレージには森空島アカウントの連携が必要です",
+      "zh-TW": "雲端儲存需要綁定森空島帳號"
+    },
+    "从剪贴板粘贴": {
+      "en": "Paste from clipboard",
+      "ja": "クリップボードから貼り付け",
+      "zh-TW": "從剪貼簿貼上"
+    },
+    "保留颜色": {
+      "en": "Keep colors",
+      "ja": "色を保持",
+      "zh-TW": "保留顏色"
+    },
+    "免费用户超过 180 天未登录会清理上传的文件（歌单、收藏、播放记录不受影响），清理前 7 天会在消息里提醒。分享和下载消耗分享者的流量，应用内下载减半。": {
+      "en": "Uploaded files of free users are removed after 180 days without signing in (playlists, favorites and history are not affected), with a reminder 7 days before. Sharing and downloads use the sharer traffic; in-app downloads count half.",
+      "ja": "無料ユーザーは180日間ログインしないとアップロードしたファイルが削除されます（プレイリスト・お気に入り・再生履歴は対象外）。7日前に通知します。共有とダウンロードは共有者の通信量を消費し、アプリ内ダウンロードは半分です。",
+      "zh-TW": "免費使用者超過 180 天未登入會清理上傳的檔案（歌單、收藏、播放記錄不受影響），清理前 7 天會在訊息裡提醒。分享與下載消耗分享者的流量，應用內下載減半。"
+    },
+    "全屏": {
+      "en": "Full screen",
+      "ja": "全画面",
+      "zh-TW": "全螢幕"
+    },
+    "分享了一个文件给你：": {
+      "en": "shared a file with you: ",
+      "ja": "がファイルを共有しました：",
+      "zh-TW": "分享了一個檔案給你："
+    },
+    "分享方式": {
+      "en": "Share mode",
+      "ja": "共有方法",
+      "zh-TW": "分享方式"
+    },
+    "分享链接已复制：{link}": {
+      "en": "Share link copied: {link}",
+      "ja": "共有リンクをコピーしました：{link}",
+      "zh-TW": "分享連結已複製：{link}"
+    },
+    "加粗": {
+      "en": "Bold",
+      "ja": "太字",
+      "zh-TW": "粗體"
+    },
+    "加载失败：": {
+      "en": "Failed to load: ",
+      "ja": "読み込みに失敗しました：",
+      "zh-TW": "載入失敗："
+    },
+    "去绑定": {
+      "en": "Bind now",
+      "ja": "連携する",
+      "zh-TW": "去綁定"
+    },
+    "去赞赏": {
+      "en": "Support now",
+      "ja": "支援する",
+      "zh-TW": "去贊助"
+    },
+    "发个友善的弹幕…": {
+      "en": "Send a friendly comment…",
+      "ja": "コメントを送信…",
+      "zh-TW": "發個友善的彈幕…"
+    },
+    "发送给好友": {
+      "en": "Send to a friend",
+      "ja": "友だちに送る",
+      "zh-TW": "傳送給好友"
+    },
+    "同屏密度": {
+      "en": "On-screen density",
+      "ja": "同時表示数",
+      "zh-TW": "同螢幕密度"
+    },
+    "字号、速度、透明度、显示区域": {
+      "en": "Size, speed, opacity, display area",
+      "ja": "文字サイズ・速度・透明度・表示領域",
+      "zh-TW": "字號、速度、透明度、顯示區域"
+    },
+    "密码": {
+      "en": "Password",
+      "ja": "パスワード",
+      "zh-TW": "密碼"
+    },
+    "密码只在内存中使用一次以换取凭证，服务器不会保存。": {
+      "en": "The password is used once in memory to obtain credentials and is never stored.",
+      "ja": "パスワードは認証情報の取得に一度だけメモリ上で使用され、保存されません。",
+      "zh-TW": "密碼只在記憶體中使用一次以換取憑證，伺服器不會保存。"
+    },
+    "已发送给好友": {
+      "en": "Sent to your friend",
+      "ja": "友だちに送信しました",
+      "zh-TW": "已傳送給好友"
+    },
+    "已开通": {
+      "en": "Activated",
+      "ja": "有効化済み",
+      "zh-TW": "已開通"
+    },
+    "已扫码，请在手机上确认": {
+      "en": "QR scanned, please confirm on your phone",
+      "ja": "読み取り済みです。スマホで確認してください",
+      "zh-TW": "已掃碼，請在手機上確認"
+    },
+    "已有 Cookie？粘贴 SESSDATA=...; bili_jct=...": {
+      "en": "Already have cookies? Paste SESSDATA=...; bili_jct=...",
+      "ja": "Cookieをお持ちですか？SESSDATA=...; bili_jct=... を貼り付け",
+      "zh-TW": "已有 Cookie？貼上 SESSDATA=...; bili_jct=..."
+    },
+    "已登录 B 站 · 可播放 1080P": {
+      "en": "Signed in to Bilibili · 1080P available",
+      "ja": "Bilibiliにログイン済み・1080P再生可能",
+      "zh-TW": "已登入 B 站 · 可播放 1080P"
+    },
+    "已驳回": {
+      "en": "Rejected",
+      "ja": "却下",
+      "zh-TW": "已駁回"
+    },
+    "应用内（流量减半）": {
+      "en": "In-app (half traffic)",
+      "ja": "アプリ内（通信量半分）",
+      "zh-TW": "應用內（流量減半）"
+    },
+    "底部": {
+      "en": "Bottom",
+      "ja": "下部",
+      "zh-TW": "底部"
+    },
+    "弹幕": {
+      "en": "Comments",
+      "ja": "コメント",
+      "zh-TW": "彈幕"
+    },
+    "弹幕关": {
+      "en": "Comments off",
+      "ja": "コメントOFF",
+      "zh-TW": "彈幕關"
+    },
+    "弹幕开": {
+      "en": "Comments on",
+      "ja": "コメントON",
+      "zh-TW": "彈幕開"
+    },
+    "弹幕设置": {
+      "en": "Comment settings",
+      "ja": "コメント設定",
+      "zh-TW": "彈幕設定"
+    },
+    "待审核": {
+      "en": "Pending review",
+      "ja": "審査待ち",
+      "zh-TW": "待審核"
+    },
+    "总存储": {
+      "en": "Total storage",
+      "ja": "総容量",
+      "zh-TW": "總儲存"
+    },
+    "恢复默认": {
+      "en": "Restore defaults",
+      "ja": "既定に戻す",
+      "zh-TW": "恢復預設"
+    },
+    "我的订单": {
+      "en": "My orders",
+      "ja": "注文履歴",
+      "zh-TW": "我的訂單"
+    },
+    "所有文件": {
+      "en": "All files",
+      "ja": "すべてのファイル",
+      "zh-TW": "所有檔案"
+    },
+    "手机号": {
+      "en": "Phone number",
+      "ja": "電話番号",
+      "zh-TW": "手機號"
+    },
+    "打开森空岛 App 扫码": {
+      "en": "Scan with the Skland app",
+      "ja": "森空島アプリでスキャン",
+      "zh-TW": "打開森空島 App 掃碼"
+    },
+    "扫码": {
+      "en": "Scan QR",
+      "ja": "QRスキャン",
+      "zh-TW": "掃碼"
+    },
+    "描边粗细": {
+      "en": "Outline width",
+      "ja": "縁取りの太さ",
+      "zh-TW": "描邊粗細"
+    },
+    "搜索视频、UP 主，或直接粘贴 BV 号": {
+      "en": "Search videos, creators, or paste a BV id",
+      "ja": "動画・UP主を検索、またはBV番号を貼り付け",
+      "zh-TW": "搜尋影片、UP 主，或直接貼上 BV 號"
+    },
+    "播放失败：": {
+      "en": "Playback failed: ",
+      "ja": "再生に失敗しました：",
+      "zh-TW": "播放失敗："
+    },
+    "支付后把截图传上来，核对通过会立即开通，通常几分钟到几小时。": {
+      "en": "Upload a screenshot after paying; activation is manual and usually takes minutes to hours.",
+      "ja": "お支払い後にスクリーンショットをアップロードしてください。確認後、通常数分〜数時間で有効化されます。",
+      "zh-TW": "付款後把截圖傳上來，核對通過會立即開通，通常幾分鐘到幾小時。"
+    },
+    "文件": {
+      "en": "Files",
+      "ja": "ファイル",
+      "zh-TW": "檔案"
+    },
+    "文件份数": {
+      "en": "File count",
+      "ja": "ファイル数",
+      "zh-TW": "檔案份數"
+    },
+    "文件数": {
+      "en": "Files",
+      "ja": "ファイル数",
+      "zh-TW": "檔案數"
+    },
+    "显示区域": {
+      "en": "Display area",
+      "ja": "表示領域",
+      "zh-TW": "顯示區域"
+    },
+    "显示弹幕": {
+      "en": "Show comments",
+      "ja": "コメントを表示",
+      "zh-TW": "顯示彈幕"
+    },
+    "月流量": {
+      "en": "Monthly traffic",
+      "ja": "月間通信量",
+      "zh-TW": "月流量"
+    },
+    "有效期": {
+      "en": "Valid for",
+      "ja": "有効期間",
+      "zh-TW": "有效期"
+    },
+    "本月流量": {
+      "en": "Traffic this month",
+      "ja": "今月の通信量",
+      "zh-TW": "本月流量"
+    },
+    "森空岛暂时不可用": {
+      "en": "Skland is temporarily unavailable",
+      "ja": "森空島は一時的に利用できません",
+      "zh-TW": "森空島暫時無法使用"
+    },
+    "没有找到视频，换个关键词试试": {
+      "en": "No videos found, try another keyword",
+      "ja": "動画が見つかりません。別のキーワードを試してください",
+      "zh-TW": "找不到影片，換個關鍵字試試"
+    },
+    "滚动": {
+      "en": "Scrolling",
+      "ja": "流れる",
+      "zh-TW": "滾動"
+    },
+    "点击刷新二维码": {
+      "en": "Tap to refresh the QR code",
+      "ja": "タップでQRコードを更新",
+      "zh-TW": "點擊重新整理二維碼"
+    },
+    "生成链接": {
+      "en": "Create link",
+      "ja": "リンクを生成",
+      "zh-TW": "產生連結"
+    },
+    "登录 B 站账号": {
+      "en": "Sign in to Bilibili",
+      "ja": "Bilibiliにログイン",
+      "zh-TW": "登入 B 站帳號"
+    },
+    "登录后可播放 1080P / 4K、发送弹幕，并同步收藏与历史。": {
+      "en": "Sign in for 1080P / 4K, comments, and synced favorites and history.",
+      "ja": "ログインすると1080P/4K再生・コメント送信・お気に入りと履歴の同期ができます。",
+      "zh-TW": "登入後可播放 1080P / 4K、發送彈幕，並同步收藏與歷史。"
+    },
+    "直链（免登录）": {
+      "en": "Direct link (no sign-in)",
+      "ja": "直リンク（ログイン不要）",
+      "zh-TW": "直連（免登入）"
+    },
+    "相关推荐": {
+      "en": "Related",
+      "ja": "関連動画",
+      "zh-TW": "相關推薦"
+    },
+    "稍后": {
+      "en": "Later",
+      "ja": "後で",
+      "zh-TW": "稍後"
+    },
+    "简介": {
+      "en": "Description",
+      "ja": "概要",
+      "zh-TW": "簡介"
+    },
+    "绑定": {
+      "en": "Bind",
+      "ja": "連携",
+      "zh-TW": "綁定"
+    },
+    "绑定后用于确认账号归属，不会读取你的游戏数据。": {
+      "en": "Used only to verify account ownership; game data is never read.",
+      "ja": "アカウントの紐付け確認のみに使用し、ゲームデータは読み取りません。",
+      "zh-TW": "綁定後用於確認帳號歸屬，不會讀取你的遊戲資料。"
+    },
+    "绑定成功": {
+      "en": "Bound successfully",
+      "ja": "連携しました",
+      "zh-TW": "綁定成功"
+    },
+    "绑定森空岛": {
+      "en": "Bind Skland",
+      "ja": "森空島を連携",
+      "zh-TW": "綁定森空島"
+    },
+    "视频最多 50MB，图片 5MB，音乐 25MB，自定义文件 1GB": {
+      "en": "Videos up to 50 MB, images 5 MB, audio 25 MB, custom files 1 GB",
+      "ja": "動画50MB・画像5MB・音声25MB・カスタムファイル1GBまで",
+      "zh-TW": "影片最多 50MB，圖片 5MB，音樂 25MB，自訂檔案 1GB"
+    },
+    "请先登录 NekoPlayer 账号": {
+      "en": "Please sign in to your NekoPlayer account first",
+      "ja": "先にNekoPlayerアカウントへログインしてください",
+      "zh-TW": "請先登入 NekoPlayer 帳號"
+    },
+    "赞赏": {
+      "en": "Support",
+      "ja": "支援",
+      "zh-TW": "贊助"
+    },
+    "赞赏 NekoPlayer": {
+      "en": "Support NekoPlayer",
+      "ja": "NekoPlayerを支援",
+      "zh-TW": "贊助 NekoPlayer"
+    },
+    "还没有上传任何文件": {
+      "en": "No files uploaded yet",
+      "ja": "まだファイルがありません",
+      "zh-TW": "還沒有上傳任何檔案"
+    },
+    "还没有可以发消息的好友。": {
+      "en": "No friends to message yet.",
+      "ja": "メッセージできる友だちがいません。",
+      "zh-TW": "還沒有可以傳訊息的好友。"
+    },
+    "还没有订单": {
+      "en": "No orders yet",
+      "ja": "注文はまだありません",
+      "zh-TW": "還沒有訂單"
+    },
+    "退出全屏": {
+      "en": "Exit full screen",
+      "ja": "全画面を終了",
+      "zh-TW": "退出全螢幕"
+    },
+    "选择截图": {
+      "en": "Choose a screenshot",
+      "ja": "スクリーンショットを選択",
+      "zh-TW": "選擇截圖"
+    },
+    "选择清晰度": {
+      "en": "Choose quality",
+      "ja": "画質を選択",
+      "zh-TW": "選擇畫質"
+    },
+    "速度": {
+      "en": "Speed",
+      "ja": "速度",
+      "zh-TW": "速度"
+    },
+    "重新生成": {
+      "en": "Regenerate",
+      "ja": "再生成",
+      "zh-TW": "重新產生"
+    },
+    "阴影": {
+      "en": "Shadow",
+      "ja": "影",
+      "zh-TW": "陰影"
+    },
+    "顶部": {
+      "en": "Top",
+      "ja": "上部",
+      "zh-TW": "頂部"
+    },
+    "额度": {
+      "en": "Quota",
+      "ja": "容量",
+      "zh-TW": "額度"
+    },
+    "验证码会发送到该手机号，只用于换取森空岛凭证。": {
+      "en": "The code is sent to this phone and used only to obtain Skland credentials.",
+      "ja": "認証コードはこの電話番号に送信され、森空島の認証情報取得のみに使われます。",
+      "zh-TW": "驗證碼會傳送到該手機號，只用於換取森空島憑證。"
+    },
+    "默认清晰度、倍速、续播": {
+      "en": "Default quality, speed, resume",
+      "ja": "既定の画質・速度・続きから再生",
+      "zh-TW": "預設畫質、倍速、續播"
+    },
+    "（需登录）": {
+      "en": " (sign-in required)",
+      "ja": "（ログインが必要）",
+      "zh-TW": "（需登入）"
     }
   },
   "sourceLocale": "zh-CN",

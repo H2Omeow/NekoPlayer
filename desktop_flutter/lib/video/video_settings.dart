@@ -149,15 +149,69 @@ class VideoSettings {
 }
 
 /// 视频模块设置 + 播放进度，持久化在 SharedPreferences。
+/// 一条观看记录：首页「继续观看」和历史页都用它。
+@immutable
+class WatchEntry {
+  const WatchEntry({
+    required this.bvid,
+    required this.title,
+    required this.cover,
+    required this.upName,
+    required this.durationSec,
+    required this.positionMs,
+    required this.updatedAt,
+  });
+
+  final String bvid;
+  final String title;
+  final String cover;
+  final String upName;
+  final int durationSec;
+  final int positionMs;
+  final int updatedAt;
+
+  double get progress {
+    if (durationSec <= 0) return 0;
+    final ratio = positionMs / (durationSec * 1000);
+    return ratio.clamp(0.0, 1.0);
+  }
+
+  Map<String, dynamic> toJson() => {
+    'bvid': bvid,
+    'title': title,
+    'cover': cover,
+    'up': upName,
+    'duration': durationSec,
+    'position': positionMs,
+    'at': updatedAt,
+  };
+
+  static WatchEntry? fromJson(Map<String, dynamic> raw) {
+    final bvid = raw['bvid'] as String? ?? '';
+    if (bvid.isEmpty) return null;
+    return WatchEntry(
+      bvid: bvid,
+      title: raw['title'] as String? ?? '',
+      cover: raw['cover'] as String? ?? '',
+      upName: raw['up'] as String? ?? '',
+      durationSec: (raw['duration'] as num?)?.toInt() ?? 0,
+      positionMs: (raw['position'] as num?)?.toInt() ?? 0,
+      updatedAt: (raw['at'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
 class VideoSettingsStore extends ChangeNotifier {
-  VideoSettingsStore._(this._prefs, this._settings, this._history);
+  VideoSettingsStore._(this._prefs, this._settings, this._history, this._watchList);
 
   static const _keySettings = 'video_settings_v1';
   static const _keyHistory = 'video_history_v1';
+  static const _keyWatch = 'video_watch_v1';
 
   final SharedPreferences _prefs;
   VideoSettings _settings;
   final Map<String, int> _history;
+  final List<WatchEntry> _watchList;
 
   static Future<VideoSettingsStore> open() async {
     final prefs = await SharedPreferences.getInstance();
@@ -180,7 +234,21 @@ class VideoSettingsStore extends ChangeNotifier {
         history = const {};
       }
     }
-    return VideoSettingsStore._(prefs, settings, Map.of(history));
+    final watchList = <WatchEntry>[];
+    final watchRaw = prefs.getString(_keyWatch);
+    if (watchRaw != null && watchRaw.isNotEmpty) {
+      try {
+        for (final item in (jsonDecode(watchRaw) as List)) {
+          if (item is Map<String, dynamic>) {
+            final entry = WatchEntry.fromJson(item);
+            if (entry != null) watchList.add(entry);
+          }
+        }
+      } catch (_) {
+        watchList.clear();
+      }
+    }
+    return VideoSettingsStore._(prefs, settings, Map.of(history), watchList);
   }
 
   VideoSettings get settings => _settings;
@@ -203,7 +271,49 @@ class VideoSettingsStore extends ChangeNotifier {
 
   void clearHistory() {
     _history.clear();
+    _watchList.clear();
     _prefs.remove(_keyHistory);
+    _prefs.remove(_keyWatch);
+    notifyListeners();
+  }
+
+  /// 首页「继续观看」与历史页：最近的在前。
+  List<WatchEntry> get watchHistory => List.unmodifiable(_watchList);
+
+  void recordWatch({
+    required String bvid,
+    required String title,
+    required String cover,
+    required String upName,
+    required int durationSec,
+    required int positionMs,
+  }) {
+    if (bvid.isEmpty) return;
+    _watchList.removeWhere((entry) => entry.bvid == bvid);
+    _watchList.insert(
+      0,
+      WatchEntry(
+        bvid: bvid,
+        title: title,
+        cover: cover,
+        upName: upName,
+        durationSec: durationSec,
+        positionMs: positionMs,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+    if (_watchList.length > 100) _watchList.removeRange(100, _watchList.length);
+    _history[bvid] = positionMs;
+    _prefs.setString(_keyHistory, jsonEncode(_history));
+    _prefs.setString(_keyWatch, jsonEncode(_watchList.map((e) => e.toJson()).toList()));
+    notifyListeners();
+  }
+
+  void removeWatch(String bvid) {
+    _watchList.removeWhere((entry) => entry.bvid == bvid);
+    _history.remove(bvid);
+    _prefs.setString(_keyHistory, jsonEncode(_history));
+    _prefs.setString(_keyWatch, jsonEncode(_watchList.map((e) => e.toJson()).toList()));
     notifyListeners();
   }
 
