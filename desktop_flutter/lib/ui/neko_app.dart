@@ -614,7 +614,10 @@ class _PlayerShellState extends State<PlayerShell> {
       onRecent: () => navigate(const Destination(Section.recent)),
     ),
     Section.discover => searchPage(),
-    Section.video => VideoPage(onPauseMusic: () => unawaited(controller.pause())),
+    Section.video => VideoPage(
+      onPauseMusic: () => unawaited(controller.pause()),
+      accounts: catalog.accounts,
+    ),
     Section.social => SocialPage(
       site: site,
       social: social,

@@ -7,8 +7,10 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../i18n/tr.dart';
+import '../../data/account_store.dart';
 import '../../video/bili_client.dart';
 import '../../video/video_settings.dart';
+import '../cloud_files_page.dart';
 import '../neko_theme.dart';
 import '../widgets/settings_list.dart';
 import 'danmaku_overlay.dart';
@@ -22,10 +24,12 @@ class VideoPage extends StatefulWidget {
     super.key,
     this.store,
     this.onPauseMusic,
+    this.accounts,
   });
 
   final VideoSettingsStore? store;
   final VoidCallback? onPauseMusic;
+  final AccountStore? accounts;
 
   @override
   State<VideoPage> createState() => _VideoPageState();
@@ -184,6 +188,15 @@ class _VideoPageState extends State<VideoPage> {
           client: client,
           store: store!,
           onOpenVideo: _openVideo,
+          onOpenCloud: widget.accounts == null
+              ? null
+              : () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => CloudFilesPage(accounts: widget.accounts!),
+                    ),
+                  );
+                },
         ),
       ),
     );
