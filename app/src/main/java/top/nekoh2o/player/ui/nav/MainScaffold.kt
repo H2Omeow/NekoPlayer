@@ -220,7 +220,11 @@ fun MainLayout(
         unselectedTextColor = colors.onSurfaceVariant
     )
     Scaffold(
-        containerColor = if (transparent || immersive) Color.Black else colors.background,
+        containerColor = when {
+            immersive -> Color.Black
+            transparent -> Color.Transparent
+            else -> colors.background
+        },
         snackbarHost = { if (!immersive) SnackbarHost(snackbar) },
         bottomBar = {
             if (!immersive) {
