@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import top.nekoh2o.player.data.model.AppSettings
+import top.nekoh2o.player.data.model.AudioEffectEngine
 import top.nekoh2o.player.data.model.BgSource
 import top.nekoh2o.player.diagnostics.AppDataExporter
 import top.nekoh2o.player.diagnostics.CrashLog
@@ -110,9 +111,9 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
                 if (it.first == NekoI18n.SYSTEM) tr("跟随系统") else it.second
             }
             val fxLabel = when (state.settings.audioEffects.engine) {
-                top.nekoh2o.player.data.model.AudioEffectEngine.NONE -> tr("关闭")
-                top.nekoh2o.player.data.model.AudioEffectEngine.SYSTEM -> tr("系统音效")
-                top.nekoh2o.player.data.model.AudioEffectEngine.NATIVE_CPP -> tr("专业音效")
+                AudioEffectEngine.NONE -> tr("关闭")
+                AudioEffectEngine.SYSTEM -> tr("系统音效")
+                AudioEffectEngine.NATIVE_CPP -> tr("专业音效")
             }
             val qLabel = qualityLevels().firstOrNull { it.first == state.quality }?.second ?: state.quality
             SettingsHome(

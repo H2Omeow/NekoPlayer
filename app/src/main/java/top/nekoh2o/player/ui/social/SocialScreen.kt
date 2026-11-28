@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -589,9 +590,9 @@ private fun ProfileSheet(vm: PlayerViewModel, state: SocialUiState) {
             Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-            return@ModalBottomSheet
+            return@NekoBottomSheet
         }
-        if (profile == null) return@ModalBottomSheet
+        if (profile == null) return@NekoBottomSheet
         Column(
             Modifier.fillMaxWidth().padding(horizontal = NekoSpace.xl).padding(bottom = NekoSpace.xl),
             horizontalAlignment = Alignment.CenterHorizontally
