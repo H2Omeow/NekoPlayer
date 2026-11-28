@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import android.content.Intent
@@ -134,7 +136,7 @@ fun PluginManagerScreen(onBack: () -> Unit, manager: PluginManagerViewModel = vi
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
     deleting?.let { id ->
-        AlertDialog(onDismissRequest = { deleting = null }, title = { Text(tr("删除外部订阅？")) },
+        NekoAlertDialog(onDismissRequest = { deleting = null }, title = { Text(tr("删除外部订阅？")) },
             text = { Text(tr("将移除订阅内的音源及配置。歌单中的歌曲仍会保留。")) },
             confirmButton = { TextButton(onClick = { manager.delete(id); deleting = null }) { Text(tr("删除")) } },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text(tr("取消")) } })
@@ -155,7 +157,7 @@ private fun PluginVariablesDialog(plugin: MusicPlugin, onDismiss: () -> Unit, on
         }
     } }
     var invalid by remember { mutableStateOf(false) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(tr("{name} · 变量", "name" to plugin.name)) }, text = {
+    NekoAlertDialog(onDismissRequest = onDismiss, title = { Text(tr("{name} · 变量", "name" to plugin.name)) }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (declared.isEmpty()) {
                 OutlinedTextField(text, { text = it; invalid = false }, label = { Text(tr("变量 JSON 对象")) }, isError = invalid)

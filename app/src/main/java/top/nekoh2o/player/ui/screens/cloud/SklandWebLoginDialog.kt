@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens.cloud
 
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import android.annotation.SuppressLint
 import android.webkit.CookieManager
 import android.webkit.WebView
@@ -48,9 +50,8 @@ fun SklandWebLoginDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
     val scope = rememberCoroutineScope()
     val tried = remember { mutableSetOf<String>() }
 
-    AlertDialog(
+    NekoAlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = { Text(tr("网页登录森空岛")) },
         text = {
             Column {

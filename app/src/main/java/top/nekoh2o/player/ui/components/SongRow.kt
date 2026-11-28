@@ -151,7 +151,7 @@ private fun SongMenu(onAdd: (() -> Unit)?, onAddToPlaylist: (() -> Unit)?, onSha
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        NekoDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             if (onAdd != null) {
                 DropdownMenuItem(
                     text = { Text(tr("加入播放队列")) },

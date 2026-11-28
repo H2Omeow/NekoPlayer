@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import android.graphics.BitmapFactory
@@ -205,7 +207,7 @@ fun KugouLoginScreen(vm: PlayerViewModel, onBack: () -> Unit) {
             error?.let { InlineNotice(it, error = true) }
         }
     }
-    if (accounts.isNotEmpty()) AlertDialog(onDismissRequest = { accounts = emptyList() }, title = { Text(tr("选择酷狗账号")) }, text = {
+    if (accounts.isNotEmpty()) NekoAlertDialog(onDismissRequest = { accounts = emptyList() }, title = { Text(tr("选择酷狗账号")) }, text = {
         Column {
             accounts.forEach { account ->
                 TextButton(onClick = { submit(account.userid) }) {

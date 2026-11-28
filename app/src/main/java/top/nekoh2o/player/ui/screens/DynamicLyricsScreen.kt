@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.ui.PlaybackProgress
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import android.annotation.SuppressLint
@@ -37,6 +39,7 @@ private const val LyricsPage = "$LyricsOrigin/lyric_engine/index.html?native=1"
 @Composable
 fun DynamicLyricsScreen(
     state: UiState,
+    progress: PlaybackProgress,
     onClose: () -> Unit,
     onToggle: () -> Unit,
     onPrevious: () -> Unit,
@@ -51,12 +54,12 @@ fun DynamicLyricsScreen(
                     Text(tr("动态歌词"), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     TextButton(onClick = onClose) { Text(tr("返回原歌词")) }
                 }
-                DynamicLyricsWebView(state, Modifier.weight(1f).fillMaxWidth())
+                DynamicLyricsWebView(state, progress, Modifier.weight(1f).fillMaxWidth())
                 Column(Modifier.padding(horizontal = 20.dp)) {
                     Slider(
-                        value = state.positionMs.toFloat().coerceIn(0f, maxOf(1f, state.durationMs.toFloat())),
-                        valueRange = 0f..maxOf(1f, state.durationMs.toFloat()),
-                        enabled = state.durationMs > 0,
+                        value = progress.positionMs.toFloat().coerceIn(0f, maxOf(1f, progress.durationMs.toFloat())),
+                        valueRange = 0f..maxOf(1f, progress.durationMs.toFloat()),
+                        enabled = progress.durationMs > 0,
                         onValueChange = { onSeek(it.toLong()) }
                     )
                     Row(
@@ -86,7 +89,7 @@ fun DynamicLyricsScreen(
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun DynamicLyricsWebView(state: UiState, modifier: Modifier) {
+private fun DynamicLyricsWebView(state: UiState, progress: PlaybackProgress, modifier: Modifier) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     var ready by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
@@ -145,7 +148,7 @@ private fun DynamicLyricsWebView(state: UiState, modifier: Modifier) {
             },
             update = { view ->
                 if (ready && active) {
-                    val payload = JSONObject.quote(dynamicLyricsPayload(state).toString())
+                    val payload = JSONObject.quote(dynamicLyricsPayload(state, progress).toString())
                     view.evaluateJavascript("window.nekoLyrics?.push(JSON.parse($payload))", null)
                 }
             }

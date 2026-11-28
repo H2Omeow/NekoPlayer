@@ -1,5 +1,9 @@
 package top.nekoh2o.player.ui.screens
 
+import androidx.activity.compose.BackHandler
+
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -91,16 +95,35 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
     val open: (SettingsDestination) -> Unit = { stack = stack + it }
     val back: () -> Unit = { stack = stack.dropLast(1) }
 
+    BackHandler(enabled = cookieProvider != null || stack.isNotEmpty()) {
+        if (cookieProvider != null) cookieProvider = null else back()
+    }
+
     cookieProvider?.let { provider ->
         CookieManagerScreen(vm, initialProvider = provider) { cookieProvider = null }
         return
     }
     when (val top = stack.lastOrNull()) {
-        null -> SettingsHome(
-            conflicts = sync.conflictCount,
-            onOpen = open,
-            onBack = onBack
-        )
+        null -> {
+            val state by vm.ui.collectAsState()
+            val langLabel = LanguageOptions.firstOrNull { it.first == state.settings.language }?.let {
+                if (it.first == NekoI18n.SYSTEM) tr("跟随系统") else it.second
+            }
+            val fxLabel = when (state.settings.audioEffects.engine) {
+                top.nekoh2o.player.data.model.AudioEffectEngine.NONE -> tr("关闭")
+                top.nekoh2o.player.data.model.AudioEffectEngine.SYSTEM -> tr("系统音效")
+                top.nekoh2o.player.data.model.AudioEffectEngine.NATIVE_CPP -> tr("专业音效")
+            }
+            val qLabel = qualityLevels().firstOrNull { it.first == state.quality }?.second ?: state.quality
+            SettingsHome(
+                conflicts = sync.conflictCount,
+                onOpen = open,
+                onBack = onBack,
+                languageLabel = langLabel,
+                audioEffectLabel = fxLabel,
+                qualityLabel = qLabel
+            )
+        }
         SettingsDestination.CLOUD_SYNC -> CloudSyncScreen(vm, back)
         SettingsDestination.CACHE -> CacheManagerScreen(vm, back)
         SettingsDestination.DOWNLOADS -> DownloadManagerScreen(vm, back)
@@ -129,13 +152,17 @@ fun SettingsScreen(vm: PlayerViewModel, onBack: () -> Unit) {
 fun SettingsHome(
     conflicts: Int,
     onOpen: (SettingsDestination) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    languageLabel: String? = null,
+    audioEffectLabel: String? = null,
+    qualityLabel: String? = null
 ) {
     DetailPage(title = tr("设置"), onBack = onBack) {
         SettingsSection(title = tr("外观")) {
             SettingsTile(
                 title = tr("主题与背景"),
-                subtitle = tr("壁纸、模糊、遮罩、控件透明度和界面缩放"),
+                subtitle = tr("语言、壁纸、模糊、遮罩与界面缩放"),
+                value = languageLabel,
                 icon = Icons.Outlined.Palette,
                 onClick = { onOpen(SettingsDestination.PERSONALIZATION) }
             )
@@ -144,12 +171,14 @@ fun SettingsHome(
             SettingsTile(
                 title = tr("音效"),
                 subtitle = tr("均衡器、低音增强、环绕与混响"),
+                value = audioEffectLabel,
                 icon = Icons.Outlined.GraphicEq,
                 onClick = { onOpen(SettingsDestination.AUDIO_EFFECTS) }
             )
             SettingsTile(
                 title = tr("播放与歌词"),
-                subtitle = tr("默认音质、悬浮歌词"),
+                subtitle = tr("默认音质、淡入淡出、悬浮歌词"),
+                value = qualityLabel,
                 icon = Icons.Outlined.Subtitles,
                 onClick = { onOpen(SettingsDestination.PLAYBACK) }
             )
@@ -223,24 +252,54 @@ private fun PersonalizationSettings(vm: PlayerViewModel, s: AppSettings) {
                 }
         }
     }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    val currentLanguageLabel = LanguageOptions.firstOrNull { it.first == s.language }?.let {
+        if (it.first == NekoI18n.SYSTEM) tr("跟随系统") else it.second
+    } ?: tr("跟随系统")
     SettingsSection(
         title = tr("界面语言"),
         description = tr("默认跟随系统。Android 13 以下启动器名称仍由系统语言决定。")
     ) {
-        LanguageOptions.forEach { (tag, label) ->
-            SettingsTile(
-                title = if (tag == NekoI18n.SYSTEM) tr("跟随系统") else label,
-                modifier = Modifier.selectable(
-                    selected = s.language == tag,
-                    role = Role.RadioButton,
-                    onClick = {
-                        vm.setLanguage(tag)
-                        NekoI18n.applyFrom(context, tag)
+        SettingsTile(
+            title = tr("语言"),
+            value = currentLanguageLabel,
+            onClick = { showLanguageDialog = true }
+        )
+    }
+    if (showLanguageDialog) {
+        NekoAlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text(tr("界面语言")) },
+            text = {
+                Column {
+                    LanguageOptions.forEach { (tag, label) ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .selectable(
+                                    selected = s.language == tag,
+                                    role = Role.RadioButton,
+                                    onClick = {
+                                        showLanguageDialog = false
+                                        vm.setLanguage(tag)
+                                        NekoI18n.applyFrom(context, tag)
+                                    }
+                                )
+                                .padding(vertical = NekoSpace.sm),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = s.language == tag, onClick = null)
+                            Spacer(Modifier.width(NekoSpace.md))
+                            Text(if (tag == NekoI18n.SYSTEM) tr("跟随系统") else label)
+                        }
                     }
-                ),
-                trailing = { RadioButton(selected = s.language == tag, onClick = null) }
-            )
-        }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showLanguageDialog = false }, colors = NekoDefaults.textButtonColors()) { Text(tr("取消")) }
+            }
+        )
     }
     SettingsSection(title = tr("布局")) {
         SettingsSwitchTile(
@@ -331,21 +390,52 @@ private fun qualityLevels() = listOf(
 
 @Composable
 private fun PlaybackSettings(vm: PlayerViewModel, quality: String, s: AppSettings) {
+    var showQualityDialog by remember { mutableStateOf(false) }
+    val levels = qualityLevels()
+    val currentQualityLabel = levels.firstOrNull { it.first == quality }?.second ?: quality
     SettingsSection(
-        title = tr("默认播放音质"),
+        title = tr("音质"),
         description = tr("每首歌先查询可用音质；支持默认档位时优先使用，否则选择当前账号可播放的最高档位。下载另行核验下载权限。")
     ) {
-        qualityLevels().forEach { (value, label) ->
-            SettingsTile(
-                title = label,
-                modifier = Modifier.selectable(
-                    selected = quality == value,
-                    role = Role.RadioButton,
-                    onClick = { vm.setQuality(value) }
-                ),
-                trailing = { RadioButton(selected = quality == value, onClick = null) }
-            )
-        }
+        SettingsTile(
+            title = tr("默认播放音质"),
+            value = currentQualityLabel,
+            onClick = { showQualityDialog = true }
+        )
+    }
+    if (showQualityDialog) {
+        NekoAlertDialog(
+            onDismissRequest = { showQualityDialog = false },
+            title = { Text(tr("默认播放音质")) },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 380.dp)) {
+                    items(levels, key = { it.first }) { (value, label) ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .selectable(
+                                    selected = quality == value,
+                                    role = Role.RadioButton,
+                                    onClick = {
+                                        showQualityDialog = false
+                                        vm.setQuality(value)
+                                    }
+                                )
+                                .padding(vertical = NekoSpace.sm),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = quality == value, onClick = null)
+                            Spacer(Modifier.width(NekoSpace.md))
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showQualityDialog = false }, colors = NekoDefaults.textButtonColors()) { Text(tr("取消")) }
+            }
+        )
     }
     SettingsSection(
         title = tr("播放 / 暂停淡入淡出"),
@@ -571,7 +661,7 @@ fun CacheManagerScreen(vm: PlayerViewModel, onBack: () -> Unit) {
     var showClearConfirm by remember { mutableStateOf(false) }
 
     if (showClearConfirm) {
-        AlertDialog(
+        NekoAlertDialog(
             onDismissRequest = { showClearConfirm = false },
             title = { Text(tr("清空全部缓存？")) },
             text = { Text(tr("将删除全部缓存音乐，此操作不可撤销。")) },

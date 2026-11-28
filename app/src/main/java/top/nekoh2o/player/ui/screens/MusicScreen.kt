@@ -1,5 +1,9 @@
 package top.nekoh2o.player.ui.screens
 
+import androidx.activity.compose.BackHandler
+
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import androidx.compose.foundation.clickable
@@ -84,6 +88,10 @@ fun MusicScreen(vm: PlayerViewModel) {
 
     LaunchedEffect(Unit) {
         if (state.recSongs.isEmpty() && state.recPlaylists.isEmpty()) vm.loadRecommend()
+    }
+
+    BackHandler(enabled = detailArtist != null || detailAlbum != null) {
+        if (detailArtist != null) detailArtist = null else detailAlbum = null
     }
 
     when {
@@ -485,7 +493,7 @@ fun AddToPlaylistDialog(vm: PlayerViewModel, song: Song, onDismiss: () -> Unit) 
     var creating by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
 
-    AlertDialog(
+    NekoAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("添加到歌单")) },
         text = {
@@ -520,7 +528,7 @@ fun AddToPlaylistDialog(vm: PlayerViewModel, song: Song, onDismiss: () -> Unit) 
     )
 
     if (creating) {
-        AlertDialog(
+        NekoAlertDialog(
             onDismissRequest = { creating = false },
             title = { Text(tr("新建歌单")) },
             text = {

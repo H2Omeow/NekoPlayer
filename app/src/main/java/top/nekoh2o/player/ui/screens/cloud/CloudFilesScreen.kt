@@ -1,5 +1,11 @@
 package top.nekoh2o.player.ui.screens.cloud
 
+import androidx.compose.material3.PrimaryTabRow
+import top.nekoh2o.player.ui.components.NekoChip
+
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+import top.nekoh2o.player.ui.components.NekoBottomSheet
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
@@ -101,9 +107,9 @@ import top.nekoh2o.player.ui.theme.NekoSolid
 import top.nekoh2o.player.ui.theme.NekoSpace
 
 private enum class CloudTab(private val raw: String) {
-    FILES(tr("文件")),
-    QUOTA(tr("额度")),
-    SPONSOR(tr("赞赏"));
+    FILES("文件"),
+    QUOTA("额度"),
+    SPONSOR("赞赏");
 
     val label: String get() = tr(raw)
 }
@@ -207,7 +213,7 @@ fun CloudFilesScreen(onBack: () -> Unit) {
             }
         })
 
-        TabRow(selectedTabIndex = tab.ordinal) {
+        PrimaryTabRow(selectedTabIndex = tab.ordinal, containerColor = Color.Transparent) {
             CloudTab.entries.forEach { item ->
                 Tab(selected = tab == item, onClick = { tab = item }, text = { Text(item.label) })
             }
@@ -241,7 +247,7 @@ fun CloudFilesScreen(onBack: () -> Unit) {
     }
 
     if (showNotices) {
-        AlertDialog(
+        NekoAlertDialog(
             onDismissRequest = { showNotices = false },
             title = { Text(tr("消息")) },
             text = {
@@ -283,7 +289,7 @@ fun CloudFilesScreen(onBack: () -> Unit) {
     }
 
     deleteTarget?.let { item ->
-        AlertDialog(
+        NekoAlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = { Text(tr("删除文件")) },
             text = {
@@ -335,7 +341,7 @@ fun CloudFilesScreen(onBack: () -> Unit) {
     }
     pendingShare?.let { token ->
         val base = "https://player.nekoh2o.top/s/$token"
-        AlertDialog(
+        NekoAlertDialog(
             onDismissRequest = { pendingShare = null },
             title = { Text(tr("分享链接已生成")) },
             text = {
@@ -404,7 +410,7 @@ private fun FriendPickerDialog(
         runCatching { repo.conversations() }.onSuccess { conversations = it }
         loading = false
     }
-    AlertDialog(
+    NekoAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("发送给好友")) },
         text = {
@@ -820,7 +826,7 @@ private fun PaySheet(
     onUpload: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(
+    NekoBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = NekoSolid.sheet
@@ -954,7 +960,7 @@ private fun SklandBindDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
         return true
     }
 
-    AlertDialog(
+    NekoAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = NekoSolid.dialog,
         title = { Text(tr("绑定森空岛")) },
@@ -1122,7 +1128,7 @@ private fun SklandBindDialog(onDismiss: () -> Unit, onBound: () -> Unit) {
 private fun ShareDialog(item: JsonObject, onDismiss: () -> Unit, onShare: (String, Int) -> Unit) {
     var mode by remember { mutableStateOf("app") }
     var days by remember { mutableStateOf(7) }
-    AlertDialog(
+    NekoAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("分享") + " " + (item["name"]?.jsonPrimitive?.content ?: "")) },
         text = {
@@ -1152,13 +1158,7 @@ private fun FilterChipLike(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    FilledTonalButton(
-        onClick = onClick,
-        modifier = modifier,
-        colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
-        )
-    ) { Text(label, style = MaterialTheme.typography.labelMedium) }
+    NekoChip(label = label, selected = selected, onClick = onClick, modifier = modifier)
 }
 
 // ---------- 工具 ----------

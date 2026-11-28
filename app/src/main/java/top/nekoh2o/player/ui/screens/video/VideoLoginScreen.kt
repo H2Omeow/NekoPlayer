@@ -49,10 +49,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 /** 登录方式：App 扫码、应用内网页登录、Cookie 导入。 */
-private enum class LoginMethod(val label: String) {
-    Scan(tr("App 扫码")),
-    Web(tr("网页登录")),
-    Cookie(tr("Cookie 导入"))
+private enum class LoginMethod(private val rawLabel: String) {
+    Scan("App 扫码"),
+    Web("网页登录"),
+    Cookie("Cookie 导入");
+
+    val label: String get() = tr(rawLabel)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -274,7 +276,7 @@ private fun ScanPane(repo: VideoRepository, onLoggedIn: () -> Unit) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = if (expired) tr("点击刷新二维码") else "二维码 $countdown 秒后失效 · 点击刷新",
+                    text = if (expired) tr("点击刷新二维码") else tr("二维码 {seconds} 秒后失效 · 点击刷新", "seconds" to countdown),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { pollKey++ }

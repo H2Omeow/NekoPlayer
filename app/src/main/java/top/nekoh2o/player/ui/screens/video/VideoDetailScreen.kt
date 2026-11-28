@@ -1,5 +1,8 @@
 package top.nekoh2o.player.ui.screens.video
 
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
+
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
@@ -111,7 +114,7 @@ fun VideoDetailScreen(
                 runCatching { repo.related(bvid) }.onSuccess { related = it }
                 runCatching { repo.play(bvid, d.cid, qualityFor(settings.player.defaultQuality, qualityStep)) }
                     .onSuccess { source = it }
-                    .onFailure { error = "无法获取播放地址：${it.message}" }
+                    .onFailure { error = tr("无法获取播放地址：{reason}", "reason" to (it.message ?: "")) }
                 runCatching { repo.danmaku(d.cid, d.item.aid, d.item.durationSec) }
                     .onSuccess { danmaku = DanmakuFilter.apply(it, settings.danmaku) }
                 runCatching { repo.comments(d.item.aid) }
@@ -128,7 +131,7 @@ fun VideoDetailScreen(
         if (retryKey % 2 == 1) source = null
         runCatching { repo.play(bvid, d.cid, qualityFor(settings.player.defaultQuality, qualityStep)) }
             .onSuccess { source = it }
-            .onFailure { error = "无法获取播放地址：${it.message}" }
+            .onFailure { error = tr("无法获取播放地址：{reason}", "reason" to (it.message ?: "")) }
     }
 
     // 播放进度落盘
@@ -176,7 +179,7 @@ fun VideoDetailScreen(
 
     BackHandler(enabled = fullscreen) { fullscreen = false }
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(Modifier.fillMaxSize().then(if (fullscreen) Modifier.background(Color.Black) else Modifier)) {
         if (loading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -219,7 +222,18 @@ fun VideoDetailScreen(
                             fullscreen = fullscreen,
                             onToggleFullscreen = { fullscreen = !fullscreen },
                             onBack = { if (fullscreen) fullscreen = false else onBack() },
-                            onEnded = {},
+                            onEnded = {
+                                if (settings.player.autoPlayNext && related.isNotEmpty()) {
+                                    onOpenVideo(related.first().bvid)
+                                }
+                            },
+                            onSelectQuality = { qn ->
+                                scope.launch {
+                                    runCatching { repo.play(bvid, d.cid, qn) }
+                                        .onSuccess { source = it }
+                                        .onFailure { Toast.makeText(context, it.message ?: tr("切换清晰度失败"), Toast.LENGTH_SHORT).show() }
+                                }
+                            },
                             onProgress = { pos, _ -> positionMs = pos; onProgress(pos, d.item.durationSec * 1000L) },
                             onFatalError = {
                                 if (qualityStep < 2) {
@@ -340,7 +354,7 @@ private fun Context.activity(): ComponentActivity? {
 }
 
 private fun toast(context: android.content.Context, ok: Boolean, action: String) {
-    val msg = if (ok) "$action 成功" else "$action 失败，请先登录 B 站账号"
+    val msg = if (ok) tr("{action}成功", "action" to action) else tr("{action}失败，请先登录 B 站账号", "action" to action)
     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
 }
 
@@ -363,8 +377,8 @@ private fun DetailHeader(
         Spacer(Modifier.height(6.dp))
         Text(
             buildString {
-                if (d.item.views > 0) append("${formatCount(d.item.views)}播放 · ")
-                append("${formatCount(d.item.danmakuCount)}弹幕")
+                if (d.item.views > 0) append(tr("{count} 播放", "count" to formatCount(d.item.views)) + " · ")
+                append(tr("{count} 弹幕", "count" to formatCount(d.item.danmakuCount)))
                 if (d.item.pubdate > 0) append(" · ${formatDate(d.item.pubdate)}")
                 append(" · bilibili")
             },
@@ -493,7 +507,7 @@ private fun UpRow(
 
 @Composable
 private fun DetailTabs(tab: Int, commentCount: Int, onSelect: (Int) -> Unit) {
-    val labels = listOf(tr("简介"), "评论 ${formatCount(commentCount.toLong())}", tr("相关推荐"))
+    val labels = listOf(tr("简介"), tr("评论 {count}", "count" to formatCount(commentCount.toLong())), tr("相关推荐"))
     Row(Modifier.fillMaxWidth().padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm)) {
         labels.forEachIndexed { i, label ->
             Column(
@@ -545,7 +559,7 @@ private fun DescriptionBlock(d: VideoDetail) {
         }
         Spacer(Modifier.height(NekoSpace.sm))
         Text(
-            "分区：${d.tname.ifBlank { "视频" }}" + if (d.copyright == 2) tr(" · 转载") else "",
+            tr("分区：{name}", "name" to d.tname.ifBlank { tr("视频") }) + if (d.copyright == 2) tr(" · 转载") else "",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -563,7 +577,7 @@ private fun CommentRow(c: CommentItem) {
             Text(c.content, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(4.dp))
             Text(
-                "${formatCount(c.like)} 赞" + if (c.ctime > 0) " · ${formatDate(c.ctime)}" else "",
+                tr("{count} 赞", "count" to formatCount(c.like)) + if (c.ctime > 0) " · ${formatDate(c.ctime)}" else "",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -574,43 +588,37 @@ private fun CommentRow(c: CommentItem) {
 @Composable
 private fun DanmakuInputBar(onSend: (String) -> Unit, onOpenSettings: () -> Unit, modifier: Modifier = Modifier) {
     var text by remember { mutableStateOf("") }
-    Surface(
-        color = NekoSolid.sheet,
-        tonalElevation = 0.dp,
-        modifier = modifier.fillMaxWidth()
-    ) {
+    val colors = MaterialTheme.colorScheme
+    Surface(color = NekoSolid.sheet, tonalElevation = 0.dp, modifier = modifier.fillMaxWidth()) {
         Row(
-            Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = NekoSpace.md, vertical = NekoSpace.sm),
+            Modifier.fillMaxWidth().padding(horizontal = NekoSpace.md, vertical = NekoSpace.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                placeholder = { Text(tr("发个友善的弹幕见证当下"), style = MaterialTheme.typography.bodySmall) },
-                textStyle = MaterialTheme.typography.bodySmall,
-                singleLine = true,
+            Surface(
                 shape = RoundedCornerShape(50),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = {
-                    if (text.isNotBlank()) {
-                        onSend(text.trim())
-                        text = ""
+                color = colors.surfaceContainerHigh,
+                modifier = Modifier.weight(1f).heightIn(min = 40.dp)
+            ) {
+                Box(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
+                    if (text.isEmpty()) {
+                        Text(tr("发个友善的弹幕见证当下"), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                }),
-                modifier = Modifier.weight(1f).height(44.dp)
-            )
-            IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Outlined.Settings, tr("弹幕设置"), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            TextButton(onClick = {
-                if (text.isNotBlank()) {
-                    onSend(text.trim())
-                    text = ""
+                    BasicTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        textStyle = MaterialTheme.typography.bodySmall.copy(color = colors.onSurface),
+                        singleLine = true,
+                        cursorBrush = SolidColor(colors.primary),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { if (text.isNotBlank()) { onSend(text.trim()); text = "" } }),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-            }) { Text(tr("发送")) }
+            }
+            IconButton(onClick = onOpenSettings) {
+                Icon(Icons.Outlined.Settings, tr("弹幕设置"), tint = colors.onSurfaceVariant)
+            }
+            TextButton(onClick = { if (text.isNotBlank()) { onSend(text.trim()); text = "" } }) { Text(tr("发送")) }
         }
     }
 }

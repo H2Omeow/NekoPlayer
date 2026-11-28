@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import androidx.compose.foundation.layout.*
@@ -39,7 +41,7 @@ fun DownloadManagerScreen(vm: PlayerViewModel, onBack: () -> Unit) {
     // 删除确认对话框
     if (showDeleteConfirm != null) {
         val song = showDeleteConfirm
-        AlertDialog(
+        NekoAlertDialog(
             onDismissRequest = { showDeleteConfirm = null },
             title = { Text(tr("删除下载的文件？")) },
             text = { Text(tr("确定要删除「{title}」及其文件吗？此操作不可撤销。", "title" to (song?.nm ?: tr("该歌曲")))) },

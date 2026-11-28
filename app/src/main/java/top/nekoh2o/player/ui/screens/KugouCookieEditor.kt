@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import androidx.compose.foundation.layout.*
@@ -120,7 +122,7 @@ fun KugouCookieEditor(vm: PlayerViewModel) {
         error?.let { InlineNotice(it, error = true) }
     }
 
-    if (confirmClear) AlertDialog(onDismissRequest = { confirmClear = false },
+    if (confirmClear) NekoAlertDialog(onDismissRequest = { confirmClear = false },
         title = { Text(tr("清除{target}", "target" to (if (platform == 0) tr("酷狗原版 Cookie") else tr("酷狗概念版 Cookie")))) },
         text = { Text(tr("将清除该版本的登录及设备 Cookie，下次请求会重新初始化设备。另一版本不受影响。")) },
         confirmButton = { TextButton(onClick = {

@@ -1,11 +1,19 @@
 package top.nekoh2o.player.ui.lyrics
 
+import top.nekoh2o.player.ui.PlaybackProgress
+
 import org.json.JSONArray
 import org.json.JSONObject
 import top.nekoh2o.player.ui.UiState
 import java.security.MessageDigest
 
-fun dynamicLyricsPayload(state: UiState, nowMs: Long = System.currentTimeMillis()): JSONObject {
+fun dynamicLyricsPayload(
+    state: UiState,
+    progress: PlaybackProgress? = null,
+    nowMs: Long = System.currentTimeMillis()
+): JSONObject {
+    val posMs = progress?.positionMs ?: state.positionMs
+    val durMs = progress?.durationMs ?: state.durationMs
     val song = state.current
     val track = song?.let {
         val key = "${it.source}:${it.id}:${it.hash}:${it.providerMediaId}"
@@ -19,7 +27,7 @@ fun dynamicLyricsPayload(state: UiState, nowMs: Long = System.currentTimeMillis(
         val end = maxOf(
             line.time + 0.001,
             state.lyrics.getOrNull(index + 1)?.time
-                ?: (state.durationMs / 1000.0).takeIf { it > line.time }
+                ?: (durMs / 1000.0).takeIf { it > line.time }
                 ?: (line.time + 5),
             line.words.orEmpty().maxOfOrNull { it.start + it.dur } ?: line.time
         )
@@ -35,8 +43,8 @@ fun dynamicLyricsPayload(state: UiState, nowMs: Long = System.currentTimeMillis(
     return JSONObject()
         .put("track", track ?: JSONObject.NULL)
         .put("lyrics", if (song == null) JSONObject.NULL else JSONObject().put("lines", lines))
-        .put("clock", JSONObject().put("positionSec", state.positionMs / 1000.0)
-            .put("durationSec", state.durationMs / 1000.0).put("anchoredAtMs", nowMs)
+        .put("clock", JSONObject().put("positionSec", posMs / 1000.0)
+            .put("durationSec", durMs / 1000.0).put("anchoredAtMs", nowMs)
             .put("playing", song != null && state.isPlaying)
             .put("playbackRate", state.settings.playbackSpeed.toDouble()))
         .put("appearance", JSONObject().put("showSubtitleTranslation", true)

@@ -1,5 +1,16 @@
 package top.nekoh2o.player.ui.screens
 
+import androidx.compose.ui.draw.clip
+
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.unit.Constraints
+import top.nekoh2o.player.ui.components.songKey
+
+import top.nekoh2o.player.ui.PlaybackProgress
+
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+import top.nekoh2o.player.ui.components.NekoBottomSheet
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import android.content.res.Configuration
@@ -121,6 +132,7 @@ class PlayerControls(
 @Composable
 fun FullPlayerScreen(vm: PlayerViewModel, onClose: () -> Unit) {
     val state by vm.ui.collectAsState()
+    val progress by vm.playbackProgress.collectAsState()
     val cur = state.current
     var showQueue by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
@@ -160,6 +172,7 @@ fun FullPlayerScreen(vm: PlayerViewModel, onClose: () -> Unit) {
 
     FullPlayerContent(
         state = state,
+        progress = progress,
         isFav = cur != null && vm.isFav(cur),
         landscape = landscape,
         showLyrics = showLyrics,
@@ -169,6 +182,7 @@ fun FullPlayerScreen(vm: PlayerViewModel, onClose: () -> Unit) {
 
     if (showDynamicLyrics) DynamicLyricsScreen(
         state = state,
+        progress = progress,
         onClose = { showDynamicLyrics = false },
         onToggle = vm::togglePlay,
         onPrevious = vm::prev,
@@ -178,7 +192,7 @@ fun FullPlayerScreen(vm: PlayerViewModel, onClose: () -> Unit) {
     if (showComments && cur != null) SongCommentsSheet(cur) { showComments = false }
     if (showQueue) QueueSheet(vm, onDismiss = { showQueue = false })
     if (showFloatingPermDialog) {
-        AlertDialog(
+        NekoAlertDialog(
             onDismissRequest = { showFloatingPermDialog = false },
             title = { Text(tr("需要悬浮窗权限")) },
             text = { Text(tr("悬浮歌词需要「显示在其他应用上层」权限，才能在其他应用和锁屏界面上显示当前歌词。")) },
@@ -224,6 +238,7 @@ fun FullPlayerScreen(vm: PlayerViewModel, onClose: () -> Unit) {
 @Composable
 fun FullPlayerContent(
     state: UiState,
+    progress: PlaybackProgress,
     isFav: Boolean,
     landscape: Boolean,
     showLyrics: Boolean,
@@ -249,14 +264,15 @@ fun FullPlayerContent(
                 .background(Color.Black.copy(alpha = state.settings.fpMaskAlpha))
                 .background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.45f)))
         )
-        if (landscape) LandscapeLayout(state, isFav, controls)
-        else PortraitLayout(state, isFav, showLyrics, onToggleLyrics, controls)
+        if (landscape) LandscapeLayout(state, progress, isFav, controls)
+        else PortraitLayout(state, progress, isFav, showLyrics, onToggleLyrics, controls)
     }
 }
 
 @Composable
 private fun PortraitLayout(
     state: UiState,
+    progress: PlaybackProgress,
     isFav: Boolean,
     showLyrics: Boolean,
     onToggleLyrics: () -> Unit,
@@ -268,7 +284,13 @@ private fun PortraitLayout(
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
-        PlayerTopBar(cur, controls, Modifier.padding(horizontal = NekoSpace.sm))
+        PlayerTopBar(
+            song = cur,
+            controls = controls,
+            modifier = Modifier.padding(horizontal = NekoSpace.sm),
+            showLyrics = showLyrics,
+            onToggleLyrics = onToggleLyrics
+        )
         Column(Modifier.weight(1f).padding(horizontal = NekoSpace.xl)) {
             Box(
                 Modifier
@@ -279,10 +301,41 @@ private fun PortraitLayout(
             ) {
                 Crossfade(targetState = showLyrics, animationSpec = tween(300), label = "lyrics_cover_toggle") { show ->
                     if (show) {
-                        LyricView(state, Modifier.fillMaxSize())
+                        LyricView(state, progress, controls.onSeek, Modifier.fillMaxSize())
                     } else {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            PlayerArtwork(cur?.pc, state.isPlaying, Modifier.fillMaxWidth().widthIn(max = 360.dp))
+                        Column(
+                            Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            PlayerArtwork(
+                                cur?.pc,
+                                state.isPlaying,
+                                Modifier.weight(1f, fill = false).fillMaxWidth().widthIn(max = 340.dp)
+                            )
+                            val preview = state.lyrics.getOrNull(progress.lyricIndex) ?: state.lyrics.firstOrNull()
+                            if (preview != null) {
+                                Spacer(Modifier.height(NekoSpace.lg))
+                                Text(
+                                    preview.text,
+                                    color = TextMain.copy(alpha = 0.88f),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
+                                preview.translation?.takeIf { it.isNotBlank() }?.let { trans ->
+                                    Text(
+                                        trans,
+                                        color = TextSub,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -290,7 +343,7 @@ private fun PortraitLayout(
             Spacer(Modifier.height(NekoSpace.lg))
             TrackHeader(cur, isFav, controls.onToggleFav)
             Spacer(Modifier.height(NekoSpace.sm))
-            ProgressBar(state.positionMs, state.durationMs, controls.onSeek)
+            ProgressBar(progress.positionMs, progress.durationMs, controls.onSeek)
             Transport(state, controls, Modifier.padding(vertical = NekoSpace.sm))
             ActionRow(state, controls, Modifier.padding(bottom = NekoSpace.lg))
         }
@@ -298,7 +351,7 @@ private fun PortraitLayout(
 }
 
 @Composable
-private fun LandscapeLayout(state: UiState, isFav: Boolean, controls: PlayerControls) {
+private fun LandscapeLayout(state: UiState, progress: PlaybackProgress, isFav: Boolean, controls: PlayerControls) {
     val cur = state.current
     Row(
         Modifier
@@ -315,8 +368,8 @@ private fun LandscapeLayout(state: UiState, isFav: Boolean, controls: PlayerCont
         }
         Spacer(Modifier.width(NekoSpace.xxl))
         Column(Modifier.weight(0.58f).fillMaxHeight()) {
-            LyricView(state, Modifier.weight(1f).fillMaxWidth())
-            ProgressBar(state.positionMs, state.durationMs, controls.onSeek)
+            LyricView(state, progress, controls.onSeek, Modifier.weight(1f).fillMaxWidth())
+            ProgressBar(progress.positionMs, progress.durationMs, controls.onSeek)
             Transport(state, controls)
             ActionRow(state, controls, Modifier.padding(bottom = NekoSpace.md))
         }
@@ -324,15 +377,50 @@ private fun LandscapeLayout(state: UiState, isFav: Boolean, controls: PlayerCont
 }
 
 @Composable
-private fun PlayerTopBar(song: Song?, controls: PlayerControls, modifier: Modifier = Modifier) {
+private fun PlayerTopBar(
+    song: Song?,
+    controls: PlayerControls,
+    modifier: Modifier = Modifier,
+    showLyrics: Boolean? = null,
+    onToggleLyrics: (() -> Unit)? = null
+) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = controls.onClose) {
             Icon(Icons.Filled.KeyboardArrowDown, contentDescription = tr("收起"), tint = TextMain)
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(tr("正在播放"), style = MaterialTheme.typography.labelMedium, color = TextSub)
+            if (showLyrics != null && onToggleLyrics != null) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = Color.White.copy(alpha = 0.12f)
+                ) {
+                    Row(Modifier.padding(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        listOf(false to tr("封面"), true to tr("歌词")).forEach { (isLyricTab, label) ->
+                            val selected = showLyrics == isLyricTab
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (selected) Color.Black else TextSub,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(if (selected) TextMain else Color.Transparent)
+                                    .clickable(role = Role.Tab) { if (!selected) onToggleLyrics() }
+                                    .padding(horizontal = 14.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            } else {
+                Text(tr("正在播放"), style = MaterialTheme.typography.labelMedium, color = TextSub)
+            }
             if (song != null) {
-                Text(songSourceLabel(song), style = MaterialTheme.typography.labelSmall, color = TextSub.copy(alpha = 0.5f))
+                Text(
+                    songSourceLabel(song),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSub,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
         }
         IconButton(onClick = controls.onShare) {
@@ -554,13 +642,13 @@ private fun fmtTime(ms: Long): String {
 }
 
 @Composable
-private fun LyricView(state: UiState, modifier: Modifier = Modifier) {
+private fun LyricView(state: UiState, progress: PlaybackProgress, onSeek: (Long) -> Unit, modifier: Modifier = Modifier) {
     val lyrics = state.lyrics
     if (lyrics.isEmpty()) {
         Box(modifier, Alignment.Center) { Text(tr("暂无歌词"), color = LyricIdle) }
         return
     }
-    val activeIndex = state.lyricIndex
+    val activeIndex = progress.lyricIndex
     val activeColor = TextMain
     val listState = rememberLazyListState()
     val density = LocalDensity.current
@@ -580,7 +668,19 @@ private fun LyricView(state: UiState, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(NekoSpace.lg)
     ) {
         items(lyrics.size) { i ->
-            LyricRow(lyrics[i], i == activeIndex, state.positionMs / 1000.0, state.isPlaying, activeColor)
+            val line = lyrics[i]
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(NekoRadius.control))
+                    .clickable(onClickLabel = tr("跳转到此句"), role = Role.Button) {
+                        onSeek((line.time * 1000.0).toLong().coerceAtLeast(0L))
+                    }
+                    .padding(horizontal = NekoSpace.sm, vertical = NekoSpace.xs),
+                contentAlignment = Alignment.Center
+            ) {
+                LyricRow(line, i == activeIndex, progress.positionMs / 1000.0, state.isPlaying, activeColor)
+            }
         }
     }
 }
@@ -626,7 +726,7 @@ private fun KaraokeLine(
     idleColor: Color
 ) {
     val measurer = rememberTextMeasurer()
-    val style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp)
+    val style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp, textAlign = TextAlign.Center)
     val fullText = remember(words) { words.joinToString("") { it.text } }
 
     var anchorSec by remember { mutableDoubleStateOf(positionSec) }
@@ -647,37 +747,43 @@ private fun KaraokeLine(
     }
     val drivePos = if (isPlaying) frameSec else positionSec
 
-    Canvas(
-        modifier = Modifier.fillMaxWidth()
-            .height(with(LocalDensity.current) { (style.fontSize.value * 1.7f).sp.toDp() })
-    ) {
-        val layout = measurer.measure(text = fullText, style = style)
-        val startX = (size.width - layout.size.width) / 2f
-        val topY = (size.height - layout.size.height) / 2f
-
-        var filledPx = 0f
-        var charIndex = 0
-        run {
-            words.forEach { w ->
-                val start = charIndex
-                val end = charIndex + w.text.length
-                if (start >= layout.layoutInput.text.length || end == 0) {
-                    charIndex = end; return@forEach
-                }
-                val wLeft = layout.getBoundingBox(start).left
-                val wRight = layout.getBoundingBox(end - 1).right
-                val p = ((drivePos - w.start) / w.dur).coerceIn(0.0, 1.0).toFloat()
-                if (p >= 1f) filledPx = wRight
-                else if (p > 0f) { filledPx = wLeft + (wRight - wLeft) * p; charIndex = end; return@run }
-                else { charIndex = end; return@run }
-                charIndex = end
-            }
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val maxW = constraints.maxWidth.coerceAtLeast(1)
+        val layout = remember(fullText, style, maxW) {
+            measurer.measure(text = fullText, style = style, constraints = Constraints(maxWidth = maxW))
         }
-
-        drawText(layout, color = idleColor, topLeft = Offset(startX, topY))
-        if (filledPx > 0f) {
-            clipRect(left = startX, top = 0f, right = startX + filledPx, bottom = size.height) {
-                drawText(layout, color = activeColor, topLeft = Offset(startX, topY))
+        val heightDp = with(LocalDensity.current) { layout.size.height.toDp() + 8.dp }
+        Canvas(Modifier.fillMaxWidth().height(heightDp)) {
+            val startX = (size.width - layout.size.width) / 2f
+            val topY = (size.height - layout.size.height) / 2f
+            var cursor = 0
+            var filledChars = 0f
+            for (w in words) {
+                val len = w.text.length
+                val p = ((drivePos - w.start) / w.dur.coerceAtLeast(0.001)).coerceIn(0.0, 1.0).toFloat()
+                if (p >= 1f) { cursor += len; filledChars = cursor.toFloat() }
+                else { filledChars = cursor + len * p; break }
+            }
+            drawText(layout, color = idleColor, topLeft = Offset(startX, topY))
+            if (filledChars <= 0f) return@Canvas
+            for (line in 0 until layout.lineCount) {
+                val ls = layout.getLineStart(line)
+                val le = layout.getLineEnd(line, visibleEnd = true)
+                if (le <= ls) continue
+                if (filledChars <= ls) break
+                val top = topY + layout.getLineTop(line)
+                val bottom = topY + layout.getLineBottom(line)
+                val left = startX + layout.getLineLeft(line)
+                val right = if (filledChars >= le) {
+                    startX + layout.getLineRight(line)
+                } else {
+                    val whole = filledChars.toInt().coerceIn(ls, le - 1)
+                    val box = layout.getBoundingBox(whole)
+                    startX + box.left + (box.right - box.left) * (filledChars - whole).coerceIn(0f, 1f)
+                }
+                clipRect(left = left, top = top, right = right, bottom = bottom) {
+                    drawText(layout, color = activeColor, topLeft = Offset(startX, topY))
+                }
             }
         }
     }
@@ -691,7 +797,7 @@ private fun <T> OptionDialog(
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    NekoAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -732,7 +838,7 @@ private fun QualityDialog(song: Song?, current: String, onSelect: (String) -> Un
         finally { loading = false }
     }
     val preferred = top.nekoh2o.player.data.repo.SongQualityRepository.preferredFor(song?.source.orEmpty(), current)
-    AlertDialog(
+    NekoAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("下载音质")) },
         text = {
@@ -790,7 +896,17 @@ private fun QueueSheet(vm: PlayerViewModel, onDismiss: () -> Unit) {
         vm.moveInQueue(from.index, to.index)
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val keyedQueue = remember(state.queue) {
+        val seen = HashMap<String, Int>()
+        state.queue.map { song ->
+            val base = songKey(song)
+            val count = seen.getOrDefault(base, 0)
+            seen[base] = count + 1
+            (if (count == 0) base else "$base#$count") to song
+        }
+    }
+
+    NekoBottomSheet(onDismissRequest = onDismiss) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = NekoSpace.xl, vertical = NekoSpace.sm),
             verticalAlignment = Alignment.CenterVertically
@@ -808,10 +924,9 @@ private fun QueueSheet(vm: PlayerViewModel, onDismiss: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp),
                 contentPadding = PaddingValues(bottom = NekoSpace.lg)
             ) {
-                items(state.queue, key = { it.id }) { song ->
-                    val index = state.queue.indexOf(song)
+                itemsIndexed(keyedQueue, key = { _, pair -> pair.first }) { index, (itemKey, song) ->
                     val playing = index == state.currentIndex
-                    ReorderableItem(reorderState, key = song.id) { dragging ->
+                    ReorderableItem(reorderState, key = itemKey) { dragging ->
                         Surface(
                             color = if (dragging) MaterialTheme.colorScheme.surfaceContainerHighest else Color.Transparent,
                             modifier = Modifier.animateItem()

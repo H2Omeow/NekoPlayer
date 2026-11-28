@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens.video
 
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -68,7 +70,7 @@ fun VideoProfileScreen(
     var refresh by remember { mutableIntStateOf(0) }
     val entries = remember(historyVersion, refresh) { history.list() }
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Column(Modifier.fillMaxSize()) {
         DetailTopBar(tr("我的"), onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -144,7 +146,7 @@ fun VideoProfileScreen(
     }
 
         if (confirmClear) {
-        AlertDialog(
+        NekoAlertDialog(
             onDismissRequest = { confirmClear = false },
             title = { Text(tr("清空观看历史")) },
             text = { Text(tr("清空后无法恢复，确定要继续吗？")) },
@@ -161,7 +163,7 @@ fun VideoProfileScreen(
     }
 
 if (confirmLogout) {
-        AlertDialog(
+        NekoAlertDialog(
             onDismissRequest = { confirmLogout = false },
             title = { Text(tr("退出登录")) },
             text = { Text(tr("退出后将无法观看 1080P、发送弹幕或同步收藏，确定退出吗？")) },

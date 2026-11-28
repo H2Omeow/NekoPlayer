@@ -1,5 +1,8 @@
 package top.nekoh2o.player
 
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import android.Manifest
@@ -47,6 +50,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)

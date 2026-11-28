@@ -1,5 +1,13 @@
 package top.nekoh2o.player.ui.social
 
+import top.nekoh2o.player.ui.components.ScreenHeader
+import top.nekoh2o.player.ui.theme.NekoDefaults
+
+import androidx.activity.compose.BackHandler
+
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+import top.nekoh2o.player.ui.components.NekoBottomSheet
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import android.content.Intent
@@ -78,7 +86,8 @@ fun SocialScreen(vm: PlayerViewModel, onLogin: () -> Unit) {
         ChatScreen(vm, active, state.messages, state.messagesLoading, active.peerId in state.online)
     } else {
         Column(Modifier.fillMaxSize()) {
-            PrimaryTabRow(selectedTabIndex = tab) {
+            ScreenHeader(tr("社区"))
+            PrimaryTabRow(selectedTabIndex = tab, containerColor = Color.Transparent) {
                 Tab(selected = tab == 0, onClick = { tab = 0 }, text = {
                     Text(if (state.unread > 0) tr("消息 {count}", "count" to state.unread) else tr("消息"))
                 })
@@ -223,6 +232,8 @@ private fun ChatScreen(
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
     }
 
+    BackHandler { vm.socialVm.closeChat() }
+
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = NekoSpace.sm, vertical = NekoSpace.xs),
@@ -272,7 +283,7 @@ private fun ChatScreen(
             }
         }
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = NekoSpace.sm, vertical = NekoSpace.sm),
+            Modifier.fillMaxWidth().imePadding().padding(horizontal = NekoSpace.sm, vertical = NekoSpace.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { vm.socialVm.openShareComposer(player.current) }) {
@@ -313,14 +324,17 @@ private fun MessageBubble(vm: PlayerViewModel, message: SocialMessage) {
         }
         return
     }
+    val bubbleText = if (message.owned) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    val bubbleAction = if (message.owned) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = if (message.owned) Arrangement.End else Arrangement.Start
     ) {
+        CompositionLocalProvider(LocalContentColor provides bubbleText) {
         Column(
             Modifier.widthIn(max = 300.dp).clip(RoundedCornerShape(14.dp))
                 .background(
-                    if (message.owned) MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+                    if (message.owned) MaterialTheme.colorScheme.primary.copy(alpha = 0.92f)
                     else MaterialTheme.colorScheme.surfaceContainerHigh
                 )
                 .padding(horizontal = 12.dp, vertical = 9.dp)
@@ -349,16 +363,22 @@ private fun MessageBubble(vm: PlayerViewModel, message: SocialMessage) {
                             overflow = TextOverflow.Ellipsis
                         )
                         Row {
-                            TextButton(onClick = { vm.playSharedSong(song.toSong(), 0) }) { Text(tr("播放")) }
+                            TextButton(
+                                onClick = { vm.playSharedSong(song.toSong(), 0) },
+                                colors = ButtonDefaults.textButtonColors(contentColor = bubbleAction)
+                            ) { Text(tr("播放")) }
                             if (!message.shareToken.isNullOrBlank()) {
-                                TextButton(onClick = {
-                                    context.startActivity(
-                                        Intent(
-                                            Intent.ACTION_VIEW,
-                                            Uri.parse("$SOCIAL_BASE/s/${message.shareToken}")
+                                TextButton(
+                                    onClick = {
+                                        context.startActivity(
+                                            Intent(
+                                                Intent.ACTION_VIEW,
+                                                Uri.parse("$SOCIAL_BASE/s/${message.shareToken}")
+                                            )
                                         )
-                                    )
-                                }) { Text(tr("查看")) }
+                                    },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = bubbleAction)
+                                ) { Text(tr("查看")) }
                             }
                         }
                     }
@@ -370,6 +390,7 @@ private fun MessageBubble(vm: PlayerViewModel, message: SocialMessage) {
             } else {
                 Text(message.text.ifBlank { " " }, style = MaterialTheme.typography.bodyMedium)
             }
+        }
         }
     }
     Row(
@@ -421,7 +442,11 @@ private fun FeedTab(vm: PlayerViewModel, state: SocialUiState, current: Song?) {
 @Composable
 private fun FeedCard(vm: PlayerViewModel, share: SocialShare) {
     val context = LocalContext.current
-    ElevatedCard(Modifier.fillMaxWidth()) {
+    Surface(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(NekoRadius.card),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
         Column(Modifier.padding(12.dp)) {
             Row(
                 Modifier.clickable { share.sharer?.id?.let(vm.socialVm::loadProfile) },
@@ -538,10 +563,14 @@ private fun DiscoverTab(vm: PlayerViewModel, state: SocialUiState) {
                         if (profile.isSelf) {
                             Text(tr("这是你"), style = MaterialTheme.typography.labelSmall)
                         } else {
-                            OutlinedButton(
-                                onClick = { vm.socialVm.toggleFollow(profile) },
-                                enabled = !profile.isFollowing
-                            ) { Text(if (profile.isFollowing) tr("已关注") else tr("关注")) }
+                            if (profile.isFollowing) {
+                                OutlinedButton(
+                                    onClick = { vm.socialVm.toggleFollow(profile) },
+                                    colors = NekoDefaults.outlinedButtonColors()
+                                ) { Text(tr("已关注")) }
+                            } else {
+                                Button(onClick = { vm.socialVm.toggleFollow(profile) }) { Text(tr("关注")) }
+                            }
                         }
                     }
                 }
@@ -554,7 +583,7 @@ private fun DiscoverTab(vm: PlayerViewModel, state: SocialUiState) {
 @Composable
 private fun ProfileSheet(vm: PlayerViewModel, state: SocialUiState) {
     var blockConfirm by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = { vm.socialVm.closeProfile() }) {
+    NekoBottomSheet(onDismissRequest = { vm.socialVm.closeProfile() }) {
         val profile = state.profile
         if (state.profileLoading && profile == null) {
             Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
@@ -618,7 +647,7 @@ private fun ProfileSheet(vm: PlayerViewModel, state: SocialUiState) {
     }
     if (blockConfirm) {
         val profile = state.profile ?: return
-        AlertDialog(
+        NekoAlertDialog(
             onDismissRequest = { blockConfirm = false },
             title = { Text(if (profile.blocked) tr("取消拉黑？") else tr("拉黑该用户？")) },
             text = { Text(if (profile.blocked) tr("取消后可以重新关注和私信。") else tr("拉黑后双方无法私信或关注。")) },
@@ -640,6 +669,7 @@ private fun ProfileSheet(vm: PlayerViewModel, state: SocialUiState) {
 fun ShareSongSheet(vm: PlayerViewModel) {
     val state by vm.socialVm.state.collectAsState()
     val player by vm.ui.collectAsState()
+    val playbackProgress by vm.playbackProgress.collectAsState()
     val song = state.shareComposer ?: return
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -650,11 +680,11 @@ fun ShareSongSheet(vm: PlayerViewModel) {
     var lyric by rememberSaveable(song.id, song.source) { mutableStateOf(false) }
     var progress by rememberSaveable(song.id, song.source) { mutableStateOf(false) }
     val isCurrent = player.current?.let { it.id == song.id && it.source == song.source } == true
-    val currentLyric = if (isCurrent && player.lyricIndex in player.lyrics.indices) {
-        player.lyrics[player.lyricIndex].text
+    val currentLyric = if (isCurrent && playbackProgress.lyricIndex in player.lyrics.indices) {
+        player.lyrics[playbackProgress.lyricIndex].text
     } else ""
 
-    ModalBottomSheet(onDismissRequest = { vm.socialVm.closeShareComposer() }) {
+    NekoBottomSheet(onDismissRequest = { vm.socialVm.closeShareComposer() }) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = NekoSpace.xl).padding(bottom = NekoSpace.xl)
         ) {
@@ -739,8 +769,8 @@ fun ShareSongSheet(vm: PlayerViewModel) {
                                 progress = progress && isCurrent
                             ),
                             lyric = if (isCurrent) currentLyric else "",
-                            progress = if (isCurrent && player.durationMs > 0) {
-                                SocialProgress(player.positionMs, player.durationMs)
+                            progress = if (isCurrent && playbackProgress.durationMs > 0) {
+                                SocialProgress(playbackProgress.positionMs, playbackProgress.durationMs)
                             } else null
                         )
                     },
@@ -780,7 +810,7 @@ private fun Avatar(profile: SocialProfile?, size: androidx.compose.ui.unit.Dp) {
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Filled.Person, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     } else {
         AsyncImage(

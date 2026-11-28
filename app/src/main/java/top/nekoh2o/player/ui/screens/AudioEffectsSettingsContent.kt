@@ -1,5 +1,12 @@
 package top.nekoh2o.player.ui.screens
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import androidx.compose.foundation.layout.*
@@ -124,38 +131,69 @@ private fun EqualizerVisualizer(
     frequencies: List<Int>,
     onBandsChange: (List<Float>) -> Unit
 ) {
+    val latestBands by rememberUpdatedState(bands)
+    val latestChange by rememberUpdatedState(onBandsChange)
+    val colors = MaterialTheme.colorScheme
     Row(
-        Modifier
-            .fillMaxWidth()
-            .height(220.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        Modifier.fillMaxWidth().height(220.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         bands.forEachIndexed { index, gain ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).fillMaxHeight()
             ) {
                 Text(
-                    "${if (gain >= 0) "+" else ""}${gain.toInt()}",
+                    "${if (gain > 0f) "+" else ""}${gain.toInt()}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (gain == 0f) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+                    color = if (gain == 0f) colors.onSurfaceVariant else colors.primary
                 )
-                // 横向滑条旋转 270° 作为竖向推子
-                Slider(
-                    value = gain,
-                    onValueChange = { newGain ->
-                        onBandsChange(bands.toMutableList().also { it[index] = newGain })
-                    },
-                    valueRange = -15f..15f,
+                Canvas(
                     modifier = Modifier
                         .weight(1f)
-                        .graphicsLayer { rotationZ = 270f }
-                        .width(180.dp)
-                )
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .pointerInput(index) {
+                            detectTapGestures { pos ->
+                                val pad = 8.dp.toPx()
+                                val usable = (size.height - pad * 2f).coerceAtLeast(1f)
+                                val next = (15f - ((pos.y - pad) / usable).coerceIn(0f, 1f) * 30f)
+                                latestChange(latestBands.toMutableList().also { it[index] = next })
+                            }
+                        }
+                        .pointerInput(index) {
+                            detectVerticalDragGestures { change, _ ->
+                                change.consume()
+                                val pad = 8.dp.toPx()
+                                val usable = (size.height - pad * 2f).coerceAtLeast(1f)
+                                val next = (15f - ((change.position.y - pad) / usable).coerceIn(0f, 1f) * 30f)
+                                latestChange(latestBands.toMutableList().also { it[index] = next })
+                            }
+                        }
+                ) {
+                    val cx = size.width / 2f
+                    val pad = 8.dp.toPx()
+                    val topY = pad
+                    val botY = (size.height - pad).coerceAtLeast(topY + 1f)
+                    val midY = (topY + botY) / 2f
+                    val ratio = ((15f - gain.coerceIn(-15f, 15f)) / 30f)
+                    val thumbY = topY + (botY - topY) * ratio
+                    val trackW = 3.dp.toPx()
+                    // 轨道底线 + 0dB 中心刻度
+                    drawLine(colors.onSurface.copy(alpha = 0.16f), Offset(cx, topY), Offset(cx, botY), trackW, StrokeCap.Round)
+                    drawLine(colors.onSurface.copy(alpha = 0.35f), Offset(cx - 5.dp.toPx(), midY), Offset(cx + 5.dp.toPx(), midY), 1.dp.toPx(), StrokeCap.Round)
+                    // 从 0dB 中线向当前值绘制高亮段
+                    drawLine(colors.primary, Offset(cx, midY), Offset(cx, thumbY), trackW, StrokeCap.Round)
+                    drawCircle(
+                        color = if (gain == 0f) colors.onSurfaceVariant else colors.primary,
+                        radius = 6.dp.toPx(),
+                        center = Offset(cx, thumbY)
+                    )
+                }
                 Text(
                     if (frequencies[index] >= 1000) "${frequencies[index] / 1000}k" else "${frequencies[index]}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = colors.onSurfaceVariant
                 )
             }
         }

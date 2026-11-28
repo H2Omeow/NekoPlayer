@@ -1,5 +1,8 @@
 package top.nekoh2o.player.ui.screens.video
 
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+import top.nekoh2o.player.ui.components.NekoBottomSheet
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -33,7 +36,7 @@ fun DanmakuSettingsSheet(
     fun set(block: (DanmakuSettings) -> DanmakuSettings) {
         onChange(settings.copy(danmaku = block(d).normalized()))
     }
-    ModalBottomSheet(
+    NekoBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = NekoSolid.sheet,
         dragHandle = { BottomSheetDefaults.DragHandle() }
@@ -76,7 +79,7 @@ fun DanmakuSettingsSheet(
                     listOf(tr("系统") to "system", tr("衬线") to "serif", tr("等宽") to "mono"),
                     d.fontFamily
                 ) { v -> set { it.copy(fontFamily = v) } }
-                SliderRow(tr("同屏上限"), d.density.toFloat(), 30f..300f, "${d.density} 条") { v ->
+                SliderRow(tr("同屏上限"), d.density.toFloat(), 30f..300f, tr("{count} 条", "count" to d.density)) { v ->
                     set { it.copy(density = v.toInt()) }
                 }
                 SwitchRow(tr("合并重复弹幕"), d.mergeDuplicate) { v -> set { it.copy(mergeDuplicate = v) } }
@@ -98,7 +101,7 @@ fun PlayerSettingsSheet(
     fun set(block: (PlayerSettings) -> PlayerSettings) {
         onChange(settings.copy(player = block(p).normalized()))
     }
-    ModalBottomSheet(
+    NekoBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = NekoSolid.sheet,
         dragHandle = { BottomSheetDefaults.DragHandle() }
@@ -129,7 +132,7 @@ fun PlayerSettingsSheet(
                     listOf("1.5×" to 1.5f, "2.0×" to 2f, "3.0×" to 3f, tr("关闭") to 1f),
                     p.longPressSpeed
                 ) { v -> set { it.copy(longPressSpeed = v) } }
-                SliderRow(tr("控制条自动隐藏"), p.autoHideControlsSec.toFloat(), 1f..10f, "${p.autoHideControlsSec} 秒") { v ->
+                SliderRow(tr("控制条自动隐藏"), p.autoHideControlsSec.toFloat(), 1f..10f, tr("{seconds} 秒", "seconds" to p.autoHideControlsSec)) { v ->
                     set { it.copy(autoHideControlsSec = v.toInt()) }
                 }
                 SwitchRow(tr("横屏自动全屏"), p.autoFullscreen) { v -> set { it.copy(autoFullscreen = v) } }
@@ -257,14 +260,14 @@ private fun BlockWordsRow(words: List<String>, onChange: (List<String>) -> Unit)
     ) {
         Text(tr("屏蔽关键词"), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text(
-            "已屏蔽 ${words.size} 个",
+            tr("已屏蔽 {count} 个", "count" to words.size),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
     if (showDialog) {
         var draft by remember { mutableStateOf(words.joinToString("\n")) }
-        AlertDialog(
+        NekoAlertDialog(
             onDismissRequest = { showDialog = false },
             title = { Text(tr("屏蔽关键词")) },
             text = {

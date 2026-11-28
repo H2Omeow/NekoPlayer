@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import androidx.compose.foundation.layout.*
@@ -42,7 +44,7 @@ fun QrLoginDialog(vm: PlayerViewModel, onDismiss: () -> Unit) {
         }
     }
 
-    AlertDialog(
+    NekoAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("网易云扫码登录")) },
         text = {

@@ -1,5 +1,8 @@
 package top.nekoh2o.player.ui.nav
 
+import kotlinx.coroutines.flow.StateFlow
+import top.nekoh2o.player.ui.PlaybackProgress
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import androidx.compose.animation.AnimatedContent
@@ -160,8 +163,7 @@ fun MainScaffold(
                     MiniPlayer(
                         song = song,
                         isPlaying = state.isPlaying,
-                        progress = if (state.durationMs > 0)
-                            (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f,
+                        progressFlow = vm.playbackProgress,
                         onOpen = onOpenFullPlayer,
                         onToggle = vm::togglePlay,
                         onNext = vm::next
@@ -259,7 +261,7 @@ fun MainLayout(
         if (immersive) {
             Box(Modifier.fillMaxSize()) { content() }
         } else {
-            Row(Modifier.padding(pad)) {
+            Row(Modifier.padding(pad).consumeWindowInsets(pad)) {
                 if (useRail) {
                     NavigationRail(
                         Modifier.fillMaxHeight(),
@@ -317,7 +319,7 @@ private fun TabIcon(tab: Tab, selected: Boolean, unread: Int) {
 fun MiniPlayer(
     song: Song,
     isPlaying: Boolean,
-    progress: Float,
+    progressFlow: StateFlow<PlaybackProgress>,
     onOpen: () -> Unit,
     onToggle: () -> Unit,
     onNext: () -> Unit
@@ -366,23 +368,21 @@ fun MiniPlayer(
                     Icon(Icons.Filled.SkipNext, contentDescription = tr("下一首"))
                 }
             }
-            // 进度条贴在卡片底边，圆角裁切
-            Box(
-                Modifier
-                    .padding(horizontal = NekoSpace.md)
-                    .padding(bottom = 6.dp)
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .clip(RoundedCornerShape(1.dp))
-                    .background(colors.onSurface.copy(alpha = 0.12f))
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth(progress)
-                        .fillMaxHeight()
-                        .background(colors.primary)
-                )
-            }
+            MiniProgressBar(progressFlow)
         }
+    }
+}
+
+@Composable
+private fun MiniProgressBar(progressFlow: StateFlow<PlaybackProgress>) {
+    val p by progressFlow.collectAsState()
+    val fraction = if (p.durationMs > 0) (p.positionMs.toFloat() / p.durationMs).coerceIn(0f, 1f) else 0f
+    val colors = MaterialTheme.colorScheme
+    Box(
+        Modifier.padding(horizontal = NekoSpace.md).padding(bottom = 6.dp)
+            .fillMaxWidth().height(2.dp).clip(RoundedCornerShape(1.dp))
+            .background(colors.onSurface.copy(alpha = 0.12f))
+    ) {
+        Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(colors.primary))
     }
 }

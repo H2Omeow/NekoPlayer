@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens.cloud
 
+import top.nekoh2o.player.ui.components.NekoBottomSheet
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -72,7 +74,7 @@ fun memeCopy(kind: String): MemeCopy = when (kind) {
 @Composable
 fun MemeSheet(kind: String, onDismiss: () -> Unit) {
     val copy = memeCopy(kind)
-    ModalBottomSheet(
+    NekoBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = NekoSolid.sheet

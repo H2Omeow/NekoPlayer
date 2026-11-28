@@ -32,7 +32,7 @@ import top.nekoh2o.player.data.repo.VideoRepository
 import top.nekoh2o.player.ui.theme.NekoSpace
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
-private val ORDER_LABELS = listOf(tr("综合") to "totalrank", tr("最多播放") to "click", tr("最新发布") to "pubdate", tr("最多弹幕") to "dm")
+private val ORDER_LABELS = listOf("综合" to "totalrank", "最多播放" to "click", "最新发布" to "pubdate", "最多弹幕" to "dm")
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -78,11 +78,10 @@ fun VideoSearchScreen(
         if (submitted.isNotBlank()) load(true)
     }
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Column(Modifier.fillMaxSize()) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
                 .padding(horizontal = NekoSpace.sm, vertical = NekoSpace.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -160,7 +159,7 @@ fun VideoSearchScreen(
                     ) {
                         ORDER_LABELS.forEach { (label, value) ->
                             Text(
-                                label,
+                                tr(label),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = if (order == value) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = if (order == value) FontWeight.SemiBold else FontWeight.Normal,
@@ -189,7 +188,7 @@ fun VideoSearchScreen(
                                 modifier = Modifier.size(22.dp)
                             )
                             error != null -> TextButton(onClick = { scope.launch { load(true) } }) {
-                                Text("加载失败，点击重试：$error")
+                                Text(tr("加载失败，点击重试：{reason}", "reason" to (error ?: "")))
                             }
                             results.isEmpty() -> Text(
                                 tr("没有找到相关视频"),

@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import androidx.compose.foundation.layout.*
@@ -296,7 +298,7 @@ private fun ConfirmDialog(
             })
         }
     }
-    AlertDialog(
+    NekoAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("${action.label}？") },
         text = { Text(body) },

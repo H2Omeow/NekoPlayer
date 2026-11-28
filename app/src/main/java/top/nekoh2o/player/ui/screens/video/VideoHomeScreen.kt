@@ -1,5 +1,9 @@
 package top.nekoh2o.player.ui.screens.video
 
+import top.nekoh2o.player.ui.components.ScreenHeader
+
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -85,7 +89,7 @@ fun VideoScreen() {
 
     BackHandler(enabled = routeStack.size > 1) { pop() }
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(Modifier.fillMaxSize()) {
         when (val r = route) {
             VideoRoute.Home -> VideoHomeContent(
                 repo = repo,
@@ -95,6 +99,7 @@ fun VideoScreen() {
                 historyVersion = historyVersion,
                 onOpenVideo = { bvid, start -> push(VideoRoute.Detail(bvid, start)) },
                 onOpenSearch = { q -> push(VideoRoute.Search(q)) },
+                onOpenProfile = { push(VideoRoute.Profile) },
                 onLogin = {
                     if (account.isLogin) {
                         push(VideoRoute.Profile)
@@ -187,6 +192,7 @@ private fun VideoHomeContent(
     historyVersion: Int,
     onOpenVideo: (String, Long) -> Unit,
     onOpenSearch: (String) -> Unit,
+    onOpenProfile: () -> Unit,
     onLogin: () -> Unit
 ) {
     var category by remember { mutableStateOf(VideoCategory.RECOMMEND) }
@@ -223,7 +229,7 @@ private fun VideoHomeContent(
         contentPadding = PaddingValues(bottom = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(NekoSpace.md),
         verticalArrangement = Arrangement.spacedBy(NekoSpace.lg),
-        modifier = Modifier.fillMaxSize().statusBarsPadding()
+        modifier = Modifier.fillMaxSize()
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             HomeHeader(account, onSearch = { onOpenSearch("") }, onLogin = onLogin)
@@ -234,7 +240,7 @@ private fun VideoHomeContent(
                 contentPadding = PaddingValues(horizontal = NekoSpace.lg)
             ) {
                 items(VideoCategory.entries) { c ->
-                    VideoChip(c.label, c == category) { category = c }
+                    VideoChip(tr(c.label), c == category) { category = c }
                 }
             }
         }
@@ -255,7 +261,7 @@ private fun VideoHomeContent(
                             tr("全部"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.clickable { }
+                            modifier = Modifier.clickable(onClick = onOpenProfile)
                         )
                     }
                     LazyRow(
@@ -292,15 +298,17 @@ private fun VideoHomeContent(
             }
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
-            SectionHeader(
-                title = when (category) {
-                    VideoCategory.RECOMMEND -> tr("为你推荐")
-                    VideoCategory.FOLLOW -> tr("关注动态")
-                    VideoCategory.HOT -> tr("热门")
-                    else -> category.label
-                },
-                action = if (loading) tr("加载中…") else null
-            )
+            Box(Modifier.padding(horizontal = NekoSpace.lg)) {
+                SectionHeader(
+                    title = when (category) {
+                        VideoCategory.RECOMMEND -> tr("为你推荐")
+                        VideoCategory.FOLLOW -> tr("关注动态")
+                        VideoCategory.HOT -> tr("热门")
+                        else -> tr(category.label)
+                    },
+                    action = if (loading) tr("加载中…") else null
+                )
+            }
         }
 
         if (error != null && items.isEmpty()) {
@@ -325,14 +333,13 @@ private fun VideoHomeContent(
             }
         }
 
-        items(items, key = { it.bvid }) { video ->
+        itemsIndexed(items, key = { _, video -> video.bvid }) { index, video ->
             VideoGridCard(
                 item = video,
                 onClick = { onOpenVideo(video.bvid, 0L) },
                 modifier = Modifier.padding(
-                    start = if (gridState.layoutInfo.visibleItemsInfo.isEmpty()) NekoSpace.lg else 0.dp
-                ).padding(
-                    end = NekoSpace.md
+                    start = if (index % 2 == 0) NekoSpace.lg else 0.dp,
+                    end = if (index % 2 == 1) NekoSpace.lg else 0.dp
                 )
             )
         }
@@ -359,22 +366,11 @@ private fun VideoHomeContent(
 
 @Composable
 private fun HomeHeader(account: BiliAccount, onSearch: () -> Unit, onLogin: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            tr("视频"),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(Modifier.weight(1f))
+    ScreenHeader(tr("视频")) {
         IconButton(onClick = onSearch) {
             Icon(Icons.Filled.Search, tr("搜索"), tint = MaterialTheme.colorScheme.onSurface)
         }
-        Spacer(Modifier.width(4.dp))
-        Box(Modifier.clickable(onClick = onLogin)) {
+        Box(Modifier.padding(end = NekoSpace.sm).clickable(onClick = onLogin)) {
             Avatar(account.face, 34.dp)
         }
     }

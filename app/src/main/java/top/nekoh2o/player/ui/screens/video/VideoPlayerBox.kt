@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens.video
 
+import top.nekoh2o.player.ui.components.NekoDropdownMenu
+
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
@@ -87,6 +89,7 @@ fun VideoPlayerBox(
     onProgress: (positionMs: Long, durationMs: Long) -> Unit,
     onOpenDanmakuSettings: () -> Unit,
     onOpenPlayerSettings: () -> Unit,
+    onSelectQuality: (Int) -> Unit = {},
     onFatalError: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -210,6 +213,7 @@ fun VideoPlayerBox(
     var seekPreviewMs by remember { mutableLongStateOf(-1L) }
     var gestureHint by remember { mutableStateOf<String?>(null) }
     var hintValue by remember { mutableFloatStateOf(0f) }
+    var draggingBrightness by remember { mutableStateOf(false) }
 
     LaunchedEffect(controlsVisible, isPlaying) {
         if (controlsVisible && isPlaying) {
@@ -242,10 +246,10 @@ fun VideoPlayerBox(
                         val step = playerSettings.doubleTapSeekSec.coerceIn(3, 60) * 1000L
                         if (offset.x < half * 0.72f) {
                             exo.seekTo((exo.currentPosition - step).coerceAtLeast(0))
-                            gestureHint = "◀◀ 后退 ${step / 1000} 秒"
+                            gestureHint = tr("◀◀ 后退 {seconds} 秒", "seconds" to step / 1000)
                         } else if (offset.x > size.width - half * 0.72f) {
                             exo.seekTo((exo.currentPosition + step).coerceAtMost(durationMs.coerceAtLeast(0)))
-                            gestureHint = "快进 ${step / 1000} 秒 ▶▶"
+                            gestureHint = tr("快进 {seconds} 秒 ▶▶", "seconds" to step / 1000)
                         } else {
                             if (exo.isPlaying) exo.pause() else exo.play()
                         }
@@ -259,7 +263,7 @@ fun VideoPlayerBox(
                                 boosted = true
                                 speed = playerSettings.longPressSpeed
                                 exo.setPlaybackSpeed(speed)
-                                gestureHint = "${playerSettings.longPressSpeed}× 倍速播放中"
+                                gestureHint = tr("{speed}× 倍速播放中", "speed" to playerSettings.longPressSpeed)
                             } else null
                             tryAwaitRelease()
                             job?.cancel()
@@ -275,8 +279,9 @@ fun VideoPlayerBox(
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onDragStart = { offset ->
-                        hintValue = if (offset.x < size.width / 2f) {
-                            -1f
+                        draggingBrightness = offset.x < size.width / 2f
+                        hintValue = if (draggingBrightness) {
+                            activity?.window?.attributes?.screenBrightness?.takeIf { it > 0f } ?: 0.5f
                         } else {
                             audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() /
                                 audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
@@ -286,22 +291,19 @@ fun VideoPlayerBox(
                     onDragCancel = { gestureHint = null },
                     onVerticalDrag = { change, dragAmount ->
                         change.consume()
-                        val delta = -dragAmount / size.height
-                        if (hintValue < 0f) {
-                            // 左半屏：亮度（这里用系统窗口亮度近似，-1 表示跟随系统）
+                        val delta = -dragAmount / size.height * playerSettings.gestureSensitivity
+                        if (draggingBrightness) {
                             val w = activity?.window ?: return@detectVerticalDragGestures
-                            val current = w.attributes.screenBrightness.takeIf { it > 0f } ?: 0.5f
-                            val next = (current + delta * 1.6f).coerceIn(0.02f, 1f)
+                            val next = (hintValue + delta * 1.4f).coerceIn(0.02f, 1f)
                             w.attributes = w.attributes.apply { screenBrightness = next }
                             hintValue = next
-                            gestureHint = "亮度 ${(next * 100).toInt()}%"
+                            gestureHint = tr("亮度 {percent}%", "percent" to (next * 100).toInt())
                         } else {
-                            val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                            val cur = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                            val next = (cur + (delta * max * 1.8f).toInt()).coerceIn(0, max)
-                            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, next, 0)
-                            hintValue = next.toFloat() / max
-                            gestureHint = "音量 ${(hintValue * 100).toInt()}%"
+                            val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+                            val nextRatio = (hintValue + delta * 1.4f).coerceIn(0f, 1f)
+                            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (nextRatio * max).toInt(), 0)
+                            hintValue = nextRatio
+                            gestureHint = tr("音量 {percent}%", "percent" to (nextRatio * 100).toInt())
                         }
                     }
                 )
@@ -356,6 +358,9 @@ fun VideoPlayerBox(
                     bufferedMs = bufferedMs,
                     speed = speed,
                     qualityLabel = source?.qualityLabel ?: tr("自动"),
+                    acceptQuality = source?.acceptQuality.orEmpty(),
+                    acceptLabels = source?.acceptLabels.orEmpty(),
+                    onSelectQuality = onSelectQuality,
                     danmakuOn = danmakuSettings.enabled,
                     fullscreen = fullscreen,
                     onBack = onBack,
@@ -469,6 +474,9 @@ private fun PlayerChrome(
     bufferedMs: Long,
     speed: Float,
     qualityLabel: String,
+    acceptQuality: List<Int>,
+    acceptLabels: List<String>,
+    onSelectQuality: (Int) -> Unit,
     danmakuOn: Boolean,
     fullscreen: Boolean,
     onBack: () -> Unit,
@@ -528,7 +536,7 @@ private fun PlayerChrome(
                     ) {
                         DanmakuButton(danmakuOn, onToggleDanmaku, 34.dp)
                         Spacer(Modifier.weight(1f))
-                        QualityChip(qualityLabel)
+                        QualityChip(qualityLabel, acceptQuality, acceptLabels, onSelectQuality)
                         Spacer(Modifier.width(6.dp))
                         SpeedChip(speed, onSpeed)
                         Spacer(Modifier.width(2.dp))
@@ -564,7 +572,7 @@ private fun PlayerChrome(
                     )
                     Spacer(Modifier.width(12.dp))
                     DanmakuButton(danmakuOn, onToggleDanmaku, 36.dp)
-                    QualityChip(qualityLabel)
+                    QualityChip(qualityLabel, acceptQuality, acceptLabels, onSelectQuality)
                     Spacer(Modifier.width(8.dp))
                     SpeedChip(speed, onSpeed)
                     IconButton(onClick = onToggleFullscreen, modifier = Modifier.size(36.dp)) {
@@ -603,16 +611,35 @@ private fun DanmakuButton(danmakuOn: Boolean, onToggleDanmaku: () -> Unit, size:
 }
 
 @Composable
-private fun QualityChip(label: String) {
-    Text(
-        label.ifBlank { tr("自动") },
-        color = Color.White.copy(alpha = 0.85f),
-        style = MaterialTheme.typography.labelMedium,
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(Color.White.copy(alpha = 0.14f))
-            .padding(horizontal = 8.dp, vertical = 3.dp)
-    )
+private fun QualityChip(
+    label: String,
+    acceptQuality: List<Int>,
+    acceptLabels: List<String>,
+    onSelect: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val options = remember(acceptQuality, acceptLabels) {
+        acceptQuality.mapIndexed { idx, qn ->
+            qn to (acceptLabels.getOrNull(idx)?.takeIf { it.isNotBlank() } ?: "${qn}P")
+        }
+    }
+    Box {
+        Text(
+            label.ifBlank { tr("自动") },
+            color = Color.White.copy(alpha = 0.85f),
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.14f))
+                .clickableNoRipple { if (options.size > 1) expanded = true }
+                .padding(horizontal = 8.dp, vertical = 3.dp)
+        )
+        NekoDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { (qn, text) ->
+                DropdownMenuItem(text = { Text(text) }, onClick = { expanded = false; onSelect(qn) })
+            }
+        }
+    }
 }
 
 @Composable

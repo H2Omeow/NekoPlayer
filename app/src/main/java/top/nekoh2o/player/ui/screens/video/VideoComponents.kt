@@ -1,5 +1,9 @@
 package top.nekoh2o.player.ui.screens.video
 
+import androidx.compose.material3.Button
+import top.nekoh2o.player.ui.components.EmptyState
+import top.nekoh2o.player.ui.components.NekoChip
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -187,7 +191,7 @@ fun VideoGridCard(
         Text(
             text = subtitle ?: buildString {
                 append(item.upName.ifBlank { "bilibili" })
-                if (item.views > 0) append(" · ${formatCount(item.views)}播放")
+                if (item.views > 0) append(" · " + tr("{count} 播放", "count" to formatCount(item.views)))
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -247,7 +251,7 @@ fun VideoListRow(
                     modifier = Modifier.size(14.dp)
                 )
                 Text(
-                    text = "${formatCount(item.views)} · 弹幕 ${formatCount(item.danmakuCount)}",
+                    text = "${formatCount(item.views)} · " + tr("弹幕 {count}", "count" to formatCount(item.danmakuCount)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -276,17 +280,7 @@ fun Avatar(url: String?, size: androidx.compose.ui.unit.Dp) {
 
 @Composable
 fun VideoChip(text: String, selected: Boolean, onClick: () -> Unit) {
-    val cs = MaterialTheme.colorScheme
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = if (selected) cs.onPrimary else cs.onSurfaceVariant,
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(if (selected) cs.primary else cs.surfaceContainerHigh)
-            .clickable(onClick = onClick)
-            .padding(horizontal = NekoSpace.lg, vertical = NekoSpace.sm)
-    )
+    NekoChip(label = text, selected = selected, onClick = onClick)
 }
 
 @Composable
@@ -326,39 +320,13 @@ fun VideoEmptyState(
     onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier.fillMaxWidth().padding(vertical = 56.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            icon, contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            modifier = Modifier.size(40.dp)
-        )
-        Spacer(Modifier.height(NekoSpace.md))
-        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-        if (message != null) {
-            Spacer(Modifier.height(NekoSpace.xs))
-            Text(
-                message,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 32.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-        }
-        if (action != null && onAction != null) {
-            Spacer(Modifier.height(NekoSpace.lg))
-            Text(
-                text = action,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.primary)
-                    .clickable(onClick = onAction)
-                    .padding(horizontal = NekoSpace.xl, vertical = NekoSpace.sm)
-            )
-        }
-    }
+    EmptyState(
+        icon = icon,
+        title = title,
+        description = message,
+        modifier = modifier,
+        action = if (action != null && onAction != null) {
+            { Button(onClick = onAction) { Text(action) } }
+        } else null
+    )
 }

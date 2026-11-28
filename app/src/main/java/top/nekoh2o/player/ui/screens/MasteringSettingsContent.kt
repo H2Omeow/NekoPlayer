@@ -1,5 +1,7 @@
 package top.nekoh2o.player.ui.screens
 
+import top.nekoh2o.player.ui.components.NekoDropdownMenu
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import androidx.compose.foundation.layout.Box
@@ -35,7 +37,7 @@ internal fun MasteringSettingsContent(
                     Icon(Icons.Default.ArrowDropDown, contentDescription = tr("选择母带预设"))
                 }
             )
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            NekoDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 DropdownMenuItem(text = { Text(tr("关闭母带处理")) }, onClick = { onPreset(0); expanded = false })
                 MasteringPresets.available.forEach { preset ->
                     DropdownMenuItem(

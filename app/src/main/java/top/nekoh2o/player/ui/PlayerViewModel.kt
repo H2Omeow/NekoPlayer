@@ -65,6 +65,13 @@ import java.io.File
 
 enum class PlayMode { LOOP, SINGLE, RANDOM }
 
+/** 高频播放进度独立出 UiState，避免每 100ms 触发全应用 UI 树重组。 */
+data class PlaybackProgress(
+    val positionMs: Long = 0L,
+    val durationMs: Long = 0L,
+    val lyricIndex: Int = -1
+)
+
 data class UiState(
     val query: String = "",
     val searchType: SearchType = SearchType.SONG,
@@ -170,6 +177,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _ui = MutableStateFlow(UiState())
     val ui: StateFlow<UiState> = _ui
+
+    private val _progress = MutableStateFlow(PlaybackProgress())
+    val playbackProgress: StateFlow<PlaybackProgress> = _progress
 
     private var controller: MediaController? = null
     private val queue = mutableListOf<Song>()
@@ -294,12 +304,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     // ==================== 状态同步 ====================
     private fun syncFromController() {
         val c = controller ?: return
+        val pos = c.currentPosition.coerceAtLeast(0)
+        val dur = c.duration.coerceAtLeast(0)
         _ui.value = _ui.value.copy(
             queue = queue.toList(),
             currentIndex = if (queue.isNotEmpty()) c.currentMediaItemIndex else -1,
-            isPlaying = c.isPlaying,
-            durationMs = c.duration.coerceAtLeast(0)
+            isPlaying = c.isPlaying
         )
+        _progress.value = PlaybackProgress(pos, dur, currentLyricIndex(pos))
     }
 
     private fun onSongChanged() {
@@ -308,9 +320,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val song = queue.getOrNull(idx)
         _ui.value = _ui.value.copy(
             currentIndex = if (queue.isNotEmpty()) idx else -1,
-            lyrics = emptyList(),
-            lyricIndex = -1
+            lyrics = emptyList()
         )
+        _progress.value = PlaybackProgress(0L, c.duration.coerceAtLeast(0), -1)
         if (song != null) {
             local.addHistory(song)
             pushMineToState()
@@ -328,7 +340,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 val pos = c.currentPosition.coerceAtLeast(0)
                 val dur = c.duration.coerceAtLeast(0)
                 val li = currentLyricIndex(pos)
-                _ui.value = _ui.value.copy(positionMs = pos, durationMs = dur, lyricIndex = li)
+                _progress.value = PlaybackProgress(pos, dur, li)
                 // 同步悬浮窗歌词（主行 + 翻译行 + 逐字进度）
                 if (_ui.value.settings.floatingLyricEnabled && FloatingLyricState.enabled.value) {
                     val cur = if (li >= 0) _ui.value.lyrics.getOrNull(li) else null
@@ -663,9 +675,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ==================== 播放入口 ====================
+    private fun sameSong(a: Song, b: Song) = a.source == b.source && a.id == b.id && a.hash == b.hash
+
     fun playNow(song: Song) {
         val c = controller ?: return
-        val existing = queue.indexOfFirst { it.id == song.id }
+        val existing = queue.indexOfFirst { sameSong(it, song) }
         if (existing != -1 && existing == c.currentMediaItemIndex) { c.play(); return }
         if (existing != -1) { queue.removeAt(existing); c.removeMediaItem(existing) }
         val insertAt = if (queue.isEmpty()) 0 else c.currentMediaItemIndex + 1
@@ -681,7 +695,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun addToQueue(song: Song) {
         val c = controller ?: return
         if (queue.isEmpty()) { playNow(song); return }
-        if (queue.any { it.id == song.id }) { toast(tr("已在播放列表")); return }
+        if (queue.any { sameSong(it, song) }) { toast(tr("已在播放列表")); return }
         queue.add(song)
         c.addMediaItem(song.toMediaItem())
         syncFromController()
@@ -730,7 +744,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         saveCurrentPlaybackState()
     }
     fun seekTo(ms: Long) {
-        controller?.seekTo(ms)
+        val safe = ms.coerceAtLeast(0L)
+        controller?.seekTo(safe)
+        _progress.value = _progress.value.copy(positionMs = safe, lyricIndex = currentLyricIndex(safe))
         // 延迟保存，避免拖动进度条时频繁写入
         viewModelScope.launch {
             kotlinx.coroutines.delay(500)
@@ -767,7 +783,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             }
             val current = queue.getOrNull(_ui.value.currentIndex)
             if (current?.id == song.id && current.source == song.source) {
-                _ui.value = _ui.value.copy(lyrics = lys, lyricIndex = -1)
+                _ui.value = _ui.value.copy(lyrics = lys)
+                _progress.value = _progress.value.copy(lyricIndex = currentLyricIndex(_progress.value.positionMs))
             }
         }
     }

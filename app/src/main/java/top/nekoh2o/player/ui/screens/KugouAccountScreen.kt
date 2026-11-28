@@ -1,5 +1,9 @@
 package top.nekoh2o.player.ui.screens
 
+import androidx.activity.compose.BackHandler
+
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import androidx.compose.foundation.layout.*
@@ -36,6 +40,8 @@ fun KugouAccountScreen(vm: PlayerViewModel, onBack: () -> Unit, onLogin: () -> U
     val kgAccount = state.kgAccount
     var showVipDialog by remember { mutableStateOf(false) }
     var showCookieManager by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = showCookieManager) { showCookieManager = false }
 
     if (showCookieManager) {
         CookieManagerScreen(vm, initialProvider = "kugou") { showCookieManager = false }
@@ -134,7 +140,7 @@ private fun VipReceiveDialog(
     onDismiss: () -> Unit,
     onReceive: (vipType: Int, days: Int) -> Unit
 ) {
-    AlertDialog(
+    NekoAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("领取概念版每日权益")) },
         text = { Text(tr("领取资格、有效期与结果以酷狗返回为准。请先完成官方要求的听歌任务。")) },

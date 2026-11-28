@@ -1,5 +1,9 @@
 package top.nekoh2o.player.ui.screens
 
+import androidx.activity.compose.BackHandler
+
+import top.nekoh2o.player.ui.components.NekoAlertDialog
+
 import top.nekoh2o.player.i18n.NekoI18n.tr
 
 import androidx.compose.foundation.layout.*
@@ -87,6 +91,10 @@ fun MineScreen(
     var addTarget by remember { mutableStateOf<Song?>(null) }
     var creating by remember { mutableStateOf(false) }
     val actions = remember(vm) { vm.songActions { addTarget = it } }
+
+    BackHandler(enabled = page != MinePage.HOME || openedPlaylist in state.playlists.indices) {
+        if (page != MinePage.HOME) page = MinePage.HOME else openedPlaylist = -1
+    }
 
     when {
         page == MinePage.SETTINGS -> SettingsScreen(vm) { page = MinePage.HOME }
@@ -393,7 +401,7 @@ private fun PlaylistDetail(
 @Composable
 fun CreatePlaylistDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
     var name by remember { mutableStateOf("") }
-    AlertDialog(
+    NekoAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("新建歌单")) },
         text = {
