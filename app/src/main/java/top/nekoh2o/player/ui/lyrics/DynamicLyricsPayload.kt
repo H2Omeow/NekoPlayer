@@ -1,19 +1,27 @@
 package top.nekoh2o.player.ui.lyrics
 
-import top.nekoh2o.player.ui.PlaybackProgress
-
 import org.json.JSONArray
 import org.json.JSONObject
+import top.nekoh2o.player.ui.PlaybackProgress
 import top.nekoh2o.player.ui.UiState
 import java.security.MessageDigest
 
 fun dynamicLyricsPayload(
     state: UiState,
-    progress: PlaybackProgress? = null,
+    nowMs: Long = System.currentTimeMillis()
+): JSONObject = dynamicLyricsPayload(
+    state = state,
+    progress = PlaybackProgress(state.positionMs, state.durationMs, state.lyricIndex),
+    nowMs = nowMs
+)
+
+fun dynamicLyricsPayload(
+    state: UiState,
+    progress: PlaybackProgress,
     nowMs: Long = System.currentTimeMillis()
 ): JSONObject {
-    val posMs = progress?.positionMs ?: state.positionMs
-    val durMs = progress?.durationMs ?: state.durationMs
+    val posMs = progress.positionMs
+    val durMs = progress.durationMs
     val song = state.current
     val track = song?.let {
         val key = "${it.source}:${it.id}:${it.hash}:${it.providerMediaId}"
@@ -33,20 +41,30 @@ fun dynamicLyricsPayload(
         )
         val words = JSONArray()
         line.words.orEmpty().forEach { word ->
-            words.put(JSONObject().put("text", word.text).put("startTime", word.start)
-                .put("endTime", word.start + word.dur))
+            words.put(
+                JSONObject().put("text", word.text).put("startTime", word.start)
+                    .put("endTime", word.start + word.dur)
+            )
         }
-        lines.put(JSONObject().put("startTime", line.time).put("endTime", end)
-            .put("fullText", line.text).put("translation", line.translation.orEmpty())
-            .put("words", words))
+        lines.put(
+            JSONObject().put("startTime", line.time).put("endTime", end)
+                .put("fullText", line.text).put("translation", line.translation.orEmpty())
+                .put("words", words)
+        )
     }
     return JSONObject()
         .put("track", track ?: JSONObject.NULL)
         .put("lyrics", if (song == null) JSONObject.NULL else JSONObject().put("lines", lines))
-        .put("clock", JSONObject().put("positionSec", posMs / 1000.0)
-            .put("durationSec", durMs / 1000.0).put("anchoredAtMs", nowMs)
-            .put("playing", song != null && state.isPlaying)
-            .put("playbackRate", state.settings.playbackSpeed.toDouble()))
-        .put("appearance", JSONObject().put("showSubtitleTranslation", true)
-            .put("hideTranslationSubtitle", false))
+        .put(
+            "clock",
+            JSONObject().put("positionSec", posMs / 1000.0)
+                .put("durationSec", durMs / 1000.0).put("anchoredAtMs", nowMs)
+                .put("playing", song != null && state.isPlaying)
+                .put("playbackRate", state.settings.playbackSpeed.toDouble())
+        )
+        .put(
+            "appearance",
+            JSONObject().put("showSubtitleTranslation", true)
+                .put("hideTranslationSubtitle", false)
+        )
 }
