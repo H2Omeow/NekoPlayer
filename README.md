@@ -4,27 +4,33 @@
 
 面向 Android、Windows 与 Linux 的音乐与视频播放器。音乐侧接入网易云、酷狗及聚合音源，视频侧直连 B 站；同时提供账号同步、社区、文件云存储与管理后台。
 
-当前版本 **1.4.4**（Android `versionCode 32`）。桌面端自 1.2.0 起使用 Flutter 实现，原 Compose `desktop/` 不再更新功能。
+当前版本为 **v1.5.0**（Android `versionCode 39`）。桌面端自 v1.2.0 起使用 Flutter，旧版 Compose 桌面端源码位于 `desktop/`。[v1.5.0 更新说明](docs/RELEASE_v1.5.0.md)
 
-## 平台与产物
+## 下载与安装
 
 | 平台 | 产物 | 说明 |
 | --- | --- | --- |
-| Android 7.0+（API 24） | `NekoPlayer-vX.Y.Z.apk` | Media3 / ExoPlayer，支持后台播放与系统媒体控制 |
-| Windows x64 / ARM64 | `*-windows-*.setup.exe` | Flutter 桌面端，安装包未做代码签名，系统可能提示未知发布者 |
-| Linux x64 / ARM64 | `.deb` / `.rpm` / `.tar.gz` | 依赖 GTK 3、libmpv；AMD64 与 ARM64 分别构建 |
+| Android 7.0+（API 24） | `NekoPlayer-vX.Y.Z.apk` | 支持后台播放与系统媒体控制，可覆盖安装旧版官方 APK |
+| Windows x64 / ARM64 | `*-windows-*-setup.exe` | 按系统架构选择安装包 |
+| Linux x64 / ARM64 | `.deb` / `.rpm` / `.tar.gz` | 需要 GTK 3 和 libmpv |
 
-每个 Release 附带 `SHA256SUMS`，下载后可用于校验完整性。
+发布页提供各平台安装包和 `SHA256SUMS` 校验清单。[下载 Android APK](https://github.com/H2Omeow/NekoPlayer/releases/download/v1.5.0/NekoPlayer-v1.5.0.apk) · [v1.5.0 全平台下载](https://github.com/H2Omeow/NekoPlayer/releases/tag/v1.5.0) · [历史版本](https://github.com/H2Omeow/NekoPlayer/releases)
+
+## v1.5.0 的 Android 更新
+
+- 播放进度独立更新，减少播放时无关界面的刷新。界面延伸到状态栏和导航栏，弹窗和菜单在全局壁纸模式下也能保持清晰。
+- 竖屏播放器可在封面和歌词之间切换，封面下方可预览当前歌词。在歌词页点击任意一行可跳到对应进度。
+- 10 段均衡器改用竖向推子，设置首页显示当前配置。视频页修复亮度手势、清晰度切换和自动连播，歌曲评论与 MV 面板也已更新。
 
 ## 功能
 
 ### 视频（B 站）
 
-- 独立视频页：搜索、推荐、热门、分类筛选、无限滚动；支持直接粘贴 BV 号。
-- 播放页：16:9 播放器、清晰度切换、倍速、全屏、进度记忆、相关推荐、评论、简介。
-- 弹幕：滚动/顶部/底部三种模式，按播放进度渲染；可调字号、速度、透明度、显示区域、同屏密度、描边与阴影，支持彩色弹幕、屏蔽词与合并重复。
-- 账号：App 扫码、网页登录、Cookie 导入三种 B 站登录方式；登录后可发弹幕、点赞、投币、收藏与关注。
-- 播放失败时自动重取直链并逐级降低清晰度；媒体请求携带 `Referer`、`Origin`、桌面 User-Agent 与初始 `Range` 头。
+- 独立视频页提供搜索、推荐、热门和分类筛选，支持直接粘贴 BV 号。首页可继续观看，「我的」可查看观看历史。
+- 播放页支持清晰度切换、倍速、全屏、进度记忆、相关推荐、评论和简介。
+- 弹幕支持滚动、顶部和底部三种模式，可调字号、速度、透明度、显示区域、同屏密度、描边、阴影和彩色显示。Android 还支持屏蔽关键词和合并重复弹幕。
+- B 站账号支持 App 扫码和 Cookie 导入，Android 还支持应用内网页登录。登录后可发送弹幕、点赞、投币、收藏和关注 UP 主。
+- Android 遇到网络播放错误时会重新获取播放地址，并尝试降低清晰度。
 
 ### 音乐
 
@@ -57,10 +63,6 @@
 - 云端同步播放历史、收藏、自建歌单、网易云 Cookie，以及酷狗原版/概念版完整 Cookie 与当前平台。
 - 本机已有登录优先；空白设备登录后自动恢复。
 - Cookie 与同步数据加密保存到服务端；同步接口使用分区乐观锁，冲突返回 409。
-
-## 下载
-
-前往 [Releases](../../releases) 获取最新版本。历史版本按标签归档。
 
 ## 构建
 

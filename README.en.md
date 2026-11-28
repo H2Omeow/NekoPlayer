@@ -4,27 +4,33 @@
 
 A music and video player for Android, Windows, and Linux. Music comes from NetEase Cloud Music, KuGou, and aggregated sources; video connects directly to Bilibili. The app also provides account sync, community features, file storage, and an admin panel.
 
-Current version: **1.4.4** (Android `versionCode 32`). The desktop app has been built on Flutter since 1.2.0; the original Compose `desktop/` app no longer receives feature updates.
+The current release is **v1.5.0** (Android `versionCode 39`). The desktop app has used Flutter since v1.2.0. The source for the legacy Compose desktop app is in `desktop/`. [v1.5.0 release notes (Chinese)](docs/RELEASE_v1.5.0.md)
 
-## Platforms and artifacts
+## Download and install
 
-| Platform | Artifact | Notes |
+| Platform | Package | Notes |
 | --- | --- | --- |
-| Android 7.0+ (API 24) | `NekoPlayer-vX.Y.Z.apk` | Media3 / ExoPlayer, background playback and system media controls |
-| Windows x64 / ARM64 | `*-windows-*.setup.exe` | Flutter desktop; installers are not code-signed |
-| Linux x64 / ARM64 | `.deb` / `.rpm` / `.tar.gz` | Requires GTK 3 and libmpv |
+| Android 7.0+ (API 24) | `NekoPlayer-vX.Y.Z.apk` | Supports background playback and system media controls. Install over an older official APK to upgrade. |
+| Windows x64 / ARM64 | `*-windows-*-setup.exe` | Choose the installer for your architecture. |
+| Linux x64 / ARM64 | `.deb` / `.rpm` / `.tar.gz` | Requires GTK 3 and libmpv. |
 
-Each release ships `SHA256SUMS` for integrity checks.
+The release page includes installers for all platforms and a `SHA256SUMS` file to verify downloads. [Download Android APK](https://github.com/H2Omeow/NekoPlayer/releases/download/v1.5.0/NekoPlayer-v1.5.0.apk) · [v1.5.0 downloads](https://github.com/H2Omeow/NekoPlayer/releases/tag/v1.5.0) · [Release history](https://github.com/H2Omeow/NekoPlayer/releases)
+
+## What's new on Android in v1.5.0
+
+- Playback progress updates independently, reducing updates elsewhere in the interface. The layout extends behind the status and navigation bars, and dialogs and menus remain readable over a wallpaper.
+- The portrait player lets you switch between cover art and lyrics. The cover view previews the current lyric, and tapping a line in the lyrics view seeks to it.
+- The 10-band equalizer uses vertical sliders, and the settings page summarizes the current configuration. The update also fixes video brightness gestures, quality switching, and autoplay, and refreshes the song comments and music video panels.
 
 ## Features
 
 ### Video (Bilibili)
 
-- Dedicated video tab: search, recommendations, popular, category filters, infinite scrolling, and direct BV input.
-- Player: 16:9 stage, quality switching, playback rate, fullscreen, resume, related videos, comments, and description.
-- Danmaku: scrolling, top, and bottom modes driven by playback position; adjustable size, speed, opacity, display area, density, stroke, and shadow, plus color danmaku, keyword blocking, and duplicate merging.
-- Account: QR code, in-app web login, and Cookie import; signing in enables comments, likes, coins, favorites, and follows.
-- On playback failure the app refreshes the media URL and steps down the quality; media requests carry `Referer`, `Origin`, a desktop User-Agent, and an initial `Range` header.
+- The dedicated video tab offers search, recommendations, popular videos, category filters, and direct BV input. Resume videos from the home page or browse watch history in your video profile.
+- The player supports quality switching, playback speed, fullscreen, resume, related videos, comments, and descriptions.
+- Danmaku supports scrolling, top, and bottom modes, with controls for font size, speed, opacity, display area, density, outline, shadow, and color. Android also supports keyword blocking and duplicate merging.
+- Bilibili sign-in supports QR codes and cookie import. Android also supports in-app web sign-in. Signing in lets you send danmaku, like videos, give coins, add favorites, and follow creators.
+- On Android, the player can refresh the video URL and switch to a lower quality after a network playback error.
 
 ### Music
 
@@ -57,10 +63,6 @@ Each release ships `SHA256SUMS` for integrity checks.
 - Cloud sync for playback history, favorites, playlists, NetEase cookies, and both KuGou editions' cookies.
 - Local sessions take priority; a blank device restores after sign-in.
 - Cookies and sync payloads are encrypted on the server; sync uses per-section optimistic locking and returns 409 on conflict.
-
-## Download
-
-See [Releases](../../releases). Older builds are archived by tag.
 
 ## Building
 
